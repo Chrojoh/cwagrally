@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C-WAGS Rally Course Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #1a1d23; --bg2: #21262f; --bg3: #2a3040;
+  --border: #363d4f; --border2: #4a5468;
+  --gold: #f0a500; --gold2: #d4891a; --gold-dim: #f0a50022;
+  --green: #2dd4a0; --green-dim: #2dd4a015;
+  --red: #ff5252; --blue: #4fc3f7;
+  --text: #e8eaf0; --text2: #9aa3b5; --text3: #6b7589;
+  --starter: #2dd4a0; --advanced: #4fc3f7; --pro: #a78bfa; --arf: #fb923c; --zoom: #f472b6;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-serif; min-height: 100vh; }
+
+/* HEADER */
+.header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; gap: 14px; }
+.header-icon { font-size: 26px; }
+.header-title { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 900; letter-spacing: 1px; color: var(--gold); }
+.header-sub { font-size: 11px; color: var(--text3); letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
+
+/* LAYOUT */
+.main { display: grid; grid-template-columns: 300px 1fr; gap: 0; height: calc(100vh - 57px); overflow: hidden; }
+.sidebar { background: var(--bg2); border-right: 1px solid var(--border); padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+.canvas-area { padding: 16px; overflow: hidden; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+
+/* CONTROLS */
+.section-label { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; letter-spacing: 3px; color: var(--text3); text-transform: uppercase; font-weight: 700; margin-bottom: 8px; }
+
+.class-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.cls-btn {
+  padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border2);
+  background: var(--bg3); color: var(--text2); cursor: pointer;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 1px;
+  transition: all 0.12s;
+}
+.cls-btn:hover { border-color: var(--gold); color: var(--gold); }
+.cls-btn.active { border-color: var(--gold); background: var(--gold-dim); color: var(--gold); }
+
+.options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.opt-group label { font-size: 11px; color: var(--text3); display: block; margin-bottom: 4px; }
+.opt-group select, .opt-group input {
+  width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); padding: 5px 8px; font-size: 12px; font-family: 'Barlow', sans-serif;
+}
+.opt-group input[type=checkbox] { width: auto; margin-right: 6px; }
+.opt-checkbox { display: flex; align-items: center; padding: 8px 0; font-size: 12px; color: var(--text2); }
+
+.generate-btn {
+  width: 100%; padding: 12px; background: var(--gold); color: #1a1d23;
+  border: none; border-radius: 5px; cursor: pointer;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 900; letter-spacing: 2px;
+  text-transform: uppercase; transition: background 0.12s;
+}
+.generate-btn:hover { background: var(--gold2); }
+
+/* EXERCISE LIST */
+.ex-list { flex: 1; }
+.ex-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12px;
+}
+.ex-num {
+  width: 22px; height: 22px; border-radius: 50%; background: var(--bg3);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 11px;
+  flex-shrink: 0; border: 1px solid var(--border2);
+}
+.ex-text { flex: 1; }
+.ex-id { font-size: 10px; color: var(--text3); }
+.ex-name { color: var(--text); }
+.ex-flag { font-size: 10px; color: var(--text3); margin-top: 2px; }
+.flag-eq { color: #fb923c; } .flag-stat { color: #a78bfa; } .flag-seq { color: #f472b6; }
+
+/* VALIDATION */
+.validation { background: var(--bg3); border-radius: 6px; padding: 10px 12px; border: 1px solid var(--border); }
+.val-item { font-size: 11px; padding: 3px 0; display: flex; align-items: center; gap: 6px; }
+.val-ok { color: var(--green); } .val-warn { color: var(--gold); } .val-err { color: var(--red); }
+
+/* CANVAS AREA */
+.canvas-header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.canvas-title { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; color: var(--text); }
+.canvas-meta { font-size: 11px; color: var(--text3); }
+.canvas-actions { margin-left: auto; display: flex; gap: 8px; }
+.action-btn {
+  padding: 6px 12px; background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 4px; color: var(--text2); cursor: pointer;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px;
+  transition: all 0.12s;
+}
+.action-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+/* CANVAS AREA */
+.canvas-header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex-shrink: 0; }
+.canvas-title { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; color: var(--text); }
+.canvas-meta { font-size: 11px; color: var(--text3); }
+.canvas-actions { margin-left: auto; display: flex; gap: 8px; }
+.action-btn {
+  padding: 6px 12px; background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 4px; color: var(--text2); cursor: pointer;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px;
+  transition: all 0.12s;
+}
+.action-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+.canvas-wrap { flex: 1; overflow: auto; min-height: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); }
+#courseCanvas { border: 1px solid var(--border); border-radius: 6px; display: block; cursor: crosshair; }
+#courseCanvas.dragging { cursor: grabbing; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 12px; flex-shrink: 0; }
+.leg-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text3); }
+.leg-dot { width: 12px; height: 12px; border-radius: 50%; }
+
+/* SIGN UPLOAD */
+.sign-upload-area {
+  border: 1px dashed var(--border2); border-radius: 5px;
+  padding: 10px; text-align: center; cursor: pointer;
+  color: var(--text3); font-size: 11px; transition: all 0.12s;
+  background: var(--bg3);
+}
+.sign-upload-area:hover { border-color: var(--gold); color: var(--gold); }
+.sign-upload-area input { display: none; }
+.sign-count { font-size: 10px; color: var(--green); margin-top: 4px; display: none; }
+.sign-count.visible { display: block; }
+
+/* SUBSTITUTE MODAL */
+#subModal {
+  display: none; position: fixed; inset: 0; z-index: 1000;
+  align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.65);
+}
+#subModalBox {
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: 8px; width: 360px; max-height: 80vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+}
+#subModalHeader {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+}
+#subModalTitle {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 700; color: var(--gold);
+  flex: 1;
+}
+#subModalClose {
+  background: none; border: none; color: var(--text3); font-size: 18px;
+  cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0;
+}
+#subModalClose:hover { color: var(--text); }
+#subModalList {
+  overflow-y: auto; padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 6px;
+  flex: 1;
+}
+#subModalHint {
+  padding: 8px 16px 12px; font-size: 10px; color: var(--text3);
+  border-top: 1px solid var(--border);
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">🐾</div>
+  <div>
+    <div class="header-title">C-WAGS RALLY COURSE GENERATOR</div>
+    <div class="header-sub">Canine-Work And Games · Course Design Tool</div>
+  </div>
+</div>
+
+<div class="main">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <div>
+      <div class="section-label">Class</div>
+      <div class="class-btns">
+        <button class="cls-btn active" onclick="selectClass('S')">Starter</button>
+        <button class="cls-btn" onclick="selectClass('A')">Advanced</button>
+        <button class="cls-btn" onclick="selectClass('P')">Pro</button>
+        <button class="cls-btn" onclick="selectClass('ARF')">ARF</button>
+        <button class="cls-btn" onclick="selectClass('Z1')">Zoom 1</button>
+        <button class="cls-btn" onclick="selectClass('Z15')">Zoom 1.5</button>
+        <button class="cls-btn" onclick="selectClass('Z2')">Zoom 2</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Options</div>
+      <div class="options-grid">
+        <div class="opt-group"><label>Ring Width (ft)</label><input type="number" id="ringW" value="60" min="30" max="100" oninput="updateRingInfo()"></div>
+        <div class="opt-group"><label>Ring Height (ft)</label><input type="number" id="ringH" value="50" min="25" max="80" oninput="updateRingInfo()"></div>
+        <div class="opt-group"><label>Min Distance (ft)</label><input type="number" id="minDist" value="10" min="8" max="15"></div>
+        <div class="opt-group"><label>Randomness</label>
+          <select id="randLevel"><option value="low">Low</option><option value="med" selected>Medium</option><option value="high">High</option></select>
+        </div>
+      </div>
+      <div id="ringInfo" style="font-size:11px;color:var(--text3);padding:4px 0 2px 0;"></div>
+      <div class="opt-checkbox"><input type="checkbox" id="includeEquip"> Include Equipment (jumps, tunnels, tables)</div>
+      <div class="opt-checkbox"><input type="checkbox" id="includeLeavedog" checked> Include Leave Dog exercises</div>
+    </div>
+
+    <div>
+      <div class="section-label">Sign Images</div>
+      <div id="githubSignStatus" style="font-size:11px;padding:7px 10px;border-radius:5px;background:var(--bg3);border:1px solid var(--border);margin-bottom:6px;display:flex;align-items:center;gap:7px;">
+        <span id="githubSignIcon">⏳</span>
+        <span id="githubSignMsg" style="color:var(--text3)">Loading signs from GitHub…</span>
+      </div>
+      <div class="sign-upload-area" onclick="document.getElementById('signFileInput').click()" style="margin-top:2px;">
+        🖼 Override: upload local sign images
+        <div style="font-size:10px;margin-top:3px;color:var(--text3)">Name files to match exercise IDs (e.g. S1.png, A9.png)</div>
+        <input type="file" id="signFileInput" multiple accept="image/*" onchange="loadSignImages(this.files)">
+      </div>
+      <div class="sign-count" id="signCount"></div>
+    </div>
+
+    <button class="generate-btn" onclick="generate()">⚡ GENERATE COURSE</button>
+
+    <div class="validation" id="validation">
+      <div class="section-label">Validation</div>
+      <div class="val-item val-ok" id="v-count">— exercises: —</div>
+      <div class="val-item" id="v-class">— class min: —</div>
+      <div class="val-item" id="v-stat">— stationary: —</div>
+      <div class="val-item" id="v-seq">— sequences: —</div>
+      <div class="val-item" id="v-dist">— spacing: —</div>
+    </div>
+
+    <div>
+      <div class="section-label">Course Exercises (<span id="exCount">0</span>)</div>
+      <div class="ex-list" id="exList"></div>
+    </div>
+
+  </div>
+
+  <!-- CANVAS AREA -->
+  <div class="canvas-area">
+    <div class="canvas-header">
+      <div>
+        <div class="canvas-title" id="canvasTitle">Starter Rally Course</div>
+        <div class="canvas-meta" id="canvasMeta">Select a class and click Generate</div>
+      </div>
+      <div class="canvas-actions">
+        <button class="action-btn" onclick="generate()">↺ Regenerate</button>
+        <button class="action-btn" onclick="exportPDF()">⬇ Export PDF</button>
+      </div>
+    </div>
+
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="courseCanvas"></canvas>
+    </div>
+
+    <div class="legend">
+      <div class="leg-item"><div class="leg-dot" style="background:#f0a500"></div>Start / Finish</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#4fc3f7"></div>Moving exercise</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#a78bfa"></div>Stationary exercise</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#fb923c"></div>Equipment required</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#f472b6"></div>Leave Dog / Recall</div>
+    </div>
+  </div>
+</div>
+
+<!-- SUBSTITUTE MODAL -->
+<div id="subModal" onclick="if(event.target===this)closeSubstituteModal()">
+  <div id="subModalBox">
+    <div id="subModalHeader">
+      <div id="subModalTitle">Substitutes</div>
+      <button id="subModalClose" onclick="closeSubstituteModal()">✕</button>
+    </div>
+    <div id="subModalList"></div>
+    <div id="subModalHint">Only showing signs valid for this position — meets sequence, spacing, and class rules.</div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════
+// EXERCISE DATABASE
+// td = turn delta degrees (+ clockwise / right, - counter-clockwise / left)
+// stat = stationary, mult = multiple allowed, eq = equipment, seq = sequence note
+// cls = array of class codes
+// ════════════════════════════════════════════════
+const EX = {
+  // ── STARTER ──────────────────────────────────
+  S1:  { n:'Right Turn',         td:90,   stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn' },
+  S2:  { n:'Left Turn',          td:-90,  stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn' },
+  S3:  { n:'270° Right',         td:270,  stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn' },
+  S4:  { n:'270° Left',          td:-270, stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn' },
+  S5:  { n:'Halt–Pivot Rt–Halt', td:90,   stat:true, mult:false, eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'halt' },
+  S6:  { n:'Halt–Pivot Rt–Fwd',  td:90,   stat:true, mult:false, eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'halt' },
+  S7:  { n:'Right About Turn',   td:180,  stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn' },
+  S8:  { n:'About U Turn',       td:180,  stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn' },
+  S9:  { n:'Halt–Stand',         td:0,    stat:true, mult:false, eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'halt' },
+  S10: { n:'Halt–Down',          td:0,    stat:true, mult:false, eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'halt' },
+  S11: { n:'Halt–Walk Around',   td:0,    stat:true, mult:false, eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'halt' },
+  S12: { n:'Halt–Down–Wk Around',td:0,    stat:true, mult:false, eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'halt' },
+  S13: { n:'Halt–1,2,3 Steps Fwd',td:0,  stat:true, mult:false, eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'halt' },
+  S14: { n:'Call Front',         td:0,    stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'front' },
+  S15: { n:'Forward Right',      td:0,    stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'front' },
+  S16: { n:'Forward Left',       td:0,    stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'front' },
+  S17: { n:'1,2,3 Steps Back',   td:0,    stat:false,mult:false, eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'front' },
+  S18: { n:'Slow',               td:0,    stat:false,mult:true,  eq:null,   seq:'→Normal/Fast', cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'pace' },
+  S19: { n:'Fast',               td:0,    stat:false,mult:true,  eq:null,   seq:'→Normal/Slow', cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'pace' },
+  S20: { n:'Normal',             td:0,    stat:false,mult:true,  eq:null,   seq:'after Slow/Fast', cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'pace' },
+  S21: { n:'Moving Side Step Rt',td:45,   stat:false,mult:false, eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'move' },
+  S22: { n:'Zig',                td:0,    stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'move' },
+  S23: { n:'360° Right',         td:0,    stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'circle' },
+  S24: { n:'360° Left',          td:0,    stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'circle' },
+  S25: { n:'Serpentine',         td:0,    stat:false,mult:true,  eq:'cone', seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'cone' },
+  S26: { n:'Straight Figure 8',  td:0,    stat:false,mult:false, eq:'cone', seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'cone' },
+  S27: { n:'Spiral Right',       td:0,    stat:false,mult:false, eq:'cone', seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'cone' },
+  S28: { n:'Spiral Left',        td:0,    stat:false,mult:false, eq:'cone', seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'cone' },
+  S29: { n:'Cone Figure 8',      td:0,    stat:false,mult:true,  eq:'cone', seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'cone' },
+  S30: { n:'Halt',               td:0,    stat:true, mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'halt' },
+  S31: { n:'Zag',                td:0,    stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'move' },
+  S32: { n:'Bear Right',         td:45,   stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn' },
+  S33: { n:'Bear Left',          td:-45,  stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn' },
+  S34: { n:'Ribbon Right',       td:225,  stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn' },
+  S35: { n:'Ribbon Left',        td:-225, stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn' },
+  // ── ADVANCED ─────────────────────────────────
+  A1:  { n:'Halt–Pivot Lt–Halt', td:-90,  stat:true, mult:false, eq:null,   seq:null,       cls:['A','P','ARF'],                     cat:'halt' },
+  A2:  { n:'Halt–Pivot Lt–Fwd',  td:-90,  stat:true, mult:false, eq:null,   seq:null,       cls:['A','P','ARF'],                     cat:'halt' },
+  A3:  { n:'Left About Turn',    td:180,  stat:false,mult:false, eq:null,   seq:null,       cls:['A','P','ARF','Z1','Z15','Z2'],     cat:'turn' },
+  A4:  { n:'Halt–180° Pivot Rt–Fwd',td:180,stat:true,mult:false,eq:null,   seq:null,       cls:['A','P','ARF'],                     cat:'halt' },
+  A5:  { n:'Halt–Stand–Sit',     td:0,    stat:true, mult:false, eq:null,   seq:null,       cls:['A','P','ARF'],                     cat:'halt' },
+  A6:  { n:'Halt–Stand–Down',    td:0,    stat:true, mult:false, eq:null,   seq:null,       cls:['A','P','ARF'],                     cat:'halt' },
+  A7:  { n:'Halt–Down–Sit',      td:0,    stat:true, mult:false, eq:null,   seq:null,       cls:['A','P','ARF'],                     cat:'halt' },
+  A8:  { n:'Halt–Fast From Sit', td:0,    stat:true, mult:false, eq:null,   seq:'→Normal/Slow', cls:['A','P','ARF'],                 cat:'halt' },
+  A9:  { n:'Jump',               td:0,    stat:false,mult:true,  eq:'jump', seq:null,       cls:['A','P','ARF','Z15','Z2'],          cat:'equip' },
+  A10: { n:'Off-Set Figure 8',   td:0,    stat:false,mult:false, eq:'cone', seq:null,       cls:['A','P','ARF','Z15','Z2'],          cat:'cone' },
+  A11: { n:'Cloverleaf Fig 8',   td:0,    stat:false,mult:false, eq:'cone', seq:null,       cls:['A','P','ARF','Z15','Z2'],          cat:'cone' },
+  A12: { n:'Finish Right',       td:0,    stat:false,mult:false, eq:null,   seq:'from front', cls:['A','P','ARF'],                   cat:'front' },
+  A13: { n:'Finish Left',        td:0,    stat:false,mult:false, eq:null,   seq:'from front', cls:['A','P','ARF'],                   cat:'front' },
+  A14: { n:'Halt–Leave Dog',     td:0,    stat:true, mult:true,  eq:null,   seq:'→recall',  cls:['A','P','ARF','Z15','Z2'],          cat:'leave' },
+  A15: { n:'Turn–Down,Sit,Front',td:180,  stat:false,mult:false, eq:null,   seq:'after leave', cls:['A','P','ARF'],                  cat:'recall' },
+  A16: { n:'Turn–Call Front',    td:180,  stat:false,mult:false, eq:null,   seq:'after leave', cls:['A','P','ARF'],                  cat:'recall' },
+  A17: { n:'Call to Heel',       td:0,    stat:false,mult:false, eq:null,   seq:null,       cls:['A','P','ARF','Z15','Z2'],          cat:'front' },
+  A18: { n:'Return to Dog',      td:180,  stat:false,mult:false, eq:null,   seq:'after leave', cls:['A','P','ARF'],                  cat:'recall' },
+  A19: { n:'Handler About Turn Fwd',td:180,stat:false,mult:false,eq:null,   seq:'from front', cls:['A','P','ARF','Z15','Z2'],        cat:'front' },
+  A20: { n:'Halt–Stand',         td:0,    stat:true, mult:false, eq:null,   seq:null,       cls:['A','P','ARF'],                     cat:'halt' },
+  A21: { n:'Zig Zag Right',      td:0,    stat:false,mult:false, eq:null,   seq:null,       cls:['A','P','ARF','Z15','Z2'],          cat:'move' },
+  A22: { n:'Zig Zag Left',       td:0,    stat:false,mult:false, eq:null,   seq:null,       cls:['A','P','ARF','Z15','Z2'],          cat:'move' },
+  A23: { n:'Stand–Walk Around',  td:0,    stat:false,mult:false, eq:null,   seq:null,       cls:['A','P','ARF','Z15','Z2'],          cat:'front' },
+  A24: { n:'Stand–Leave Dog',    td:0,    stat:true, mult:true,  eq:null,   seq:'→recall',  cls:['A','P','ARF','Z15','Z2'],          cat:'leave' },
+  // ── PRO ──────────────────────────────────────
+  P1:  { n:'L Turn–Back 2 Steps',td:-90,  stat:false,mult:true,  eq:null,   seq:null,       cls:['P','ARF','Z2'],                    cat:'turn' },
+  P2:  { n:'R Turn–Back 2 Steps',td:90,   stat:false,mult:true,  eq:null,   seq:null,       cls:['P','ARF','Z2'],                    cat:'turn' },
+  PR3: { n:'Double Left About',  td:0,    stat:false,mult:false, eq:null,   seq:null,       cls:['P','ARF','Z15','Z2'],              cat:'turn' },
+  PR4: { n:'Heel Back 3 Steps',  td:0,    stat:false,mult:true,  eq:null,   seq:null,       cls:['P','ARF','Z2'],                    cat:'move' },
+  PR6: { n:'Moving Stand–Walk Around',td:0,stat:false,mult:false,eq:null,  seq:null,       cls:['P','ARF','Z2'],                    cat:'move' },
+  PR7: { n:'Moving Stand–Leave Dog',td:0, stat:false,mult:true,  eq:null,   seq:'→recall',  cls:['P','ARF','Z2'],                    cat:'leave' },
+  PR8: { n:'Moving Down–Leave Dog',td:0,  stat:false,mult:true,  eq:null,   seq:'→recall',  cls:['P','ARF','Z2'],                    cat:'leave' },
+  P9:  { n:'Jump (Pro)',         td:0,    stat:false,mult:true,  eq:'jump', seq:null,       cls:['P','ARF','Z2'],                    cat:'equip' },
+  P10: { n:'Off-Set Figure 8 (Pro)',td:0, stat:false,mult:false, eq:'cone', seq:null,       cls:['P','ARF','Z2'],                    cat:'cone' },
+  P11: { n:'Halt–180° Pivot Lt', td:180,  stat:true, mult:false, eq:null,   seq:null,       cls:['P','ARF'],                         cat:'halt' },
+  P12: { n:'Halt–Step Right',    td:0,    stat:true, mult:false, eq:null,   seq:null,       cls:['P','ARF'],                         cat:'halt' },
+  P13: { n:'Finish/Fwd L or R',  td:0,    stat:false,mult:false, eq:null,   seq:'from front', cls:['P','ARF'],                       cat:'front' },
+  P14: { n:'Turn–Drop on Recall',td:180,  stat:false,mult:false, eq:null,   seq:'after leave', cls:['P','ARF'],                      cat:'recall' },
+  P15: { n:'Turn–Down,Sit,Front',td:180,  stat:false,mult:false, eq:null,   seq:'after leave', cls:['P','ARF'],                      cat:'recall' },
+  P17: { n:'Turn–Call to Heel–Halt',td:180,stat:false,mult:false,eq:null,  seq:'after leave', cls:['P','ARF'],                      cat:'recall' },
+  P18: { n:'Turn–Call to Heel–Fwd',td:180,stat:false,mult:false, eq:null,   seq:'after leave', cls:['P','ARF','Z2'],                 cat:'recall' },
+  PR19:{ n:'Lateral Side-Step Rt',td:0,   stat:false,mult:false, eq:null,   seq:null,       cls:['P','ARF','Z2'],                    cat:'move' },
+  PR20:{ n:'Lateral Side-Step Lt',td:0,   stat:false,mult:false, eq:null,   seq:null,       cls:['P','ARF','Z2'],                    cat:'move' },
+  PR22:{ n:'Broad Jump',         td:0,    stat:false,mult:false, eq:'jump', seq:null,       cls:['P','ARF','Z2'],                    cat:'equip' },
+  // ── ARF ──────────────────────────────────────
+  R1:  { n:'Halt–Step Left–Halt',td:0,    stat:true, mult:false, eq:null,   seq:'right-side only', cls:['ARF'],                     cat:'halt' },
+  R2:  { n:'Dog Circle Right',   td:0,    stat:false,mult:false, eq:null,   seq:null,       cls:['ARF','Z15','Z2'],                  cat:'circle' },
+  R5:  { n:'Turn Face Dog–3 Steps Fwd',td:180,stat:false,mult:false,eq:null,seq:'after leave',cls:['ARF'],                          cat:'recall' },
+  APR9:{ n:'Jump (ARF)',         td:0,    stat:false,mult:true,  eq:'jump', seq:null,       cls:['ARF'],                             cat:'equip' },
+  R10: { n:'Tunnel',             td:0,    stat:false,mult:true,  eq:'tunnel',seq:null,      cls:['ARF','Z2'],                        cat:'equip' },
+  R11: { n:'Table',              td:0,    stat:false,mult:false, eq:'table',seq:null,       cls:['ARF'],                             cat:'equip' },
+  R13: { n:'R About Turn SS',    td:180,  stat:false,mult:false, eq:null,   seq:null,       cls:['ARF'],                             cat:'turn' },
+  R14: { n:'L U-About Turn SS',  td:180,  stat:false,mult:false, eq:null,   seq:null,       cls:['ARF'],                             cat:'turn' },
+  R15: { n:'Turn Away SS',       td:180,  stat:false,mult:false, eq:null,   seq:null,       cls:['ARF'],                             cat:'turn' },
+  R16: { n:'Turn In SS x2',      td:180,  stat:false,mult:false, eq:null,   seq:null,       cls:['ARF','Z2'],                        cat:'turn' },
+  R18: { n:'Pause Box',          td:0,    stat:false,mult:false, eq:'table',seq:null,       cls:['ARF'],                             cat:'equip' },
+  R21: { n:'Send Out Around',    td:0,    stat:false,mult:false, eq:'cone', seq:null,       cls:['ARF'],                             cat:'equip' },
+};
+
+// ── CLASS CONFIG ────────────────────────────────
+const CLASS_CFG = {
+  S:   { name:'Starter Rally',    min:17,max:20, minFromClass:0,  classPrefix:['S'],          leash:true,  zoom:false, qual:70, ring:[1800,3500] },
+  A:   { name:'Advanced Rally',   min:18,max:21, minFromClass:8,  classPrefix:['A'],          leash:false, zoom:false, qual:70, ring:[1800,3500] },
+  P:   { name:'Pro Rally',        min:19,max:22, minFromClass:7,  classPrefix:['P','PR'],     leash:false, zoom:false, qual:70, ring:[2400,4000] },
+  ARF: { name:'ARF',              min:19,max:22, minFromClass:8,  classPrefix:['R','APR'],    leash:false, zoom:false, qual:70, ring:[2400,4000] },
+  Z1:  { name:'Zoom 1',           min:15,max:18, minFromClass:0,  classPrefix:['Z1'],         leash:true,  zoom:true,  qual:70, ring:[1800,3500] },
+  Z15: { name:'Zoom 1.5',         min:15,max:20, minFromClass:6,  classPrefix:['Z15'],        leash:false, zoom:true,  qual:70, ring:[1800,3500] },
+  Z2:  { name:'Zoom 2',           min:17,max:20, minFromClass:8,  classPrefix:['Z2'],         leash:false, zoom:true,  qual:70, ring:[2400,4000] },
+};
+
+// Recall pairs
+const RECALL_MAP = {
+  A14: ['A15','A16','A18'],
+  A24: ['A15','A16','A18'],
+  PR7: ['P14','P15','P17','P18','R5'],
+  PR8: ['P14','P15','P17','P18','R5'],
+};
+const RECALL_IDS = new Set(['A15','A16','A18','A19','P14','P15','P17','P18','R5']);
+const PACE_AFTER = { S18:['S20','S19'], S19:['S20','S18'], A8:['S20','S18'] };
+
+let currentClass = 'S';
+let currentCourse = [];
+const PAD_C = 36;
+let currentScale = 9;
+
+function getScale(ringW, ringH) {
+  const wrap = document.getElementById('canvasWrap');
+  if (!wrap) return 9;
+  const rect = wrap.getBoundingClientRect();
+  const availW = Math.max(300, rect.width  - PAD_C * 2 - 16);
+  const availH = Math.max(200, rect.height - PAD_C * 2 - 16);
+  return Math.max(5, Math.min(16, Math.min(availW / ringW, availH / ringH)));
+}
+
+// Ring defaults: middle of each class's allowed range
+// Starter/Advanced/Zoom1/Zoom1.5 → 1800–3500 sq ft
+// Pro/ARF/Zoom2                  → 2400–4000 sq ft
+const RING_DEFAULTS = {
+  S:   { w: 60, h: 50 },  // 3000 sq ft
+  A:   { w: 60, h: 50 },  // 3000 sq ft
+  P:   { w: 65, h: 55 },  // 3575 sq ft
+  ARF: { w: 65, h: 55 },  // 3575 sq ft
+  Z1:  { w: 60, h: 50 },  // 3000 sq ft
+  Z15: { w: 60, h: 50 },  // 3000 sq ft
+  Z2:  { w: 65, h: 55 },  // 3575 sq ft
+};
+
+function updateRingInfo() {
+  const w = parseInt(document.getElementById('ringW').value) || 0;
+  const h = parseInt(document.getElementById('ringH').value) || 0;
+  const sqft = w * h;
+  const cfg = CLASS_CFG[currentClass];
+  const [lo, hi] = cfg.ring;
+  const ok = sqft >= lo && sqft <= hi;
+  const color = ok ? '#2dd4a0' : (sqft < lo ? '#ff5252' : '#f0a500');
+  document.getElementById('ringInfo').innerHTML =
+    `<span style="color:${color}">${sqft.toLocaleString()} sq ft</span>`+
+    `<span style="color:var(--text3)"> · allowed: ${lo.toLocaleString()}–${hi.toLocaleString()} sq ft</span>`;
+}
+
+
+function selectClass(cls) {
+  currentClass = cls;
+  document.querySelectorAll('.cls-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('canvasTitle').textContent = CLASS_CFG[cls].name + ' Course';
+  const d = RING_DEFAULTS[cls];
+  document.getElementById('ringW').value = d.w;
+  document.getElementById('ringH').value = d.h;
+  updateRingInfo();
+  generate();
+}
+
+function rnd(min, max) { return Math.random() * (max - min) + min; }
+function rndInt(min, max) { return Math.floor(rnd(min, max + 1)); }
+function shuffle(arr) { for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr; }
+
+function normalizeAngle(a) { return ((a % 360) + 360) % 360; }
+
+function vecFromHeading(h) {
+  const r = h * Math.PI / 180;
+  return { x: Math.sin(r), y: -Math.cos(r) }; // canvas: y down, so -cos for north
+}
+
+function dist(a, b) { return Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2); }
+
+function wallRoom(pos, heading, ringW, ringH, margin=5) {
+  // How much room is ahead in the current heading?
+  const v = vecFromHeading(heading);
+  // Find min distance to wall in that direction
+  let room = 999;
+  if (v.x > 0.1) room = Math.min(room, (ringW - margin - pos.x) / v.x);
+  if (v.x < -0.1) room = Math.min(room, (pos.x - margin) / (-v.x));
+  if (v.y > 0.1) room = Math.min(room, (ringH - margin - pos.y) / v.y);
+  if (v.y < -0.1) room = Math.min(room, (pos.y - margin) / (-v.y));
+  return Math.max(0, room);
+}
+
+function getPool(cls, includeEquip, includeLeave) {
+  return Object.entries(EX).filter(([id, ex]) => {
+    if (!ex.cls.includes(cls)) return false;
+    if (!includeEquip && ex.eq && ex.eq !== 'cone') return false;
+    if (!includeLeave && (ex.cat === 'leave' || RECALL_IDS.has(id))) return false;
+    return true;
+  }).map(([id, ex]) => ({ id, ...ex }));
+}
+
+// ── Build class-specific ID set (exact, not prefix-startsWith) ──────────────
+// This maps each class code to its unique sign IDs (signs that ONLY appear in
+// that class and above, not in every lower class).
+const CLASS_OWN_IDS = {
+  S:   new Set(Object.keys(EX).filter(id => EX[id].cls[0] === 'S' || (EX[id].cls.includes('S') && !['A','P','ARF','Z1','Z15','Z2'].some(c => !EX[id].cls.includes(c) && EX[id].cls[0]!=='S')))),
+  A:   new Set(['A1','A2','A3','A4','A5','A6','A7','A8','A9','A10','A11','A12','A13','A14','A15','A16','A17','A18','A19','A20','A21','A22','A23','A24']),
+  P:   new Set(['P1','P2','PR3','PR4','P5','PR6','PR7','PR8','P9','P10','P11','P12','P13','P14','P15','P17','P18','PR19','PR20','PR22']),
+  ARF: new Set(['R1','R2','R5','APR9','R10','R11','R13','R14','R15','R16','R17','R18','R21']),
+  Z1:  new Set([]), // Zoom 1 uses Starter signs - no additional class minimum
+  Z15: new Set(['A9','A10','A11','PR3','A17','A18','A19','A21','A22','A23','A24','R2']),
+  Z2:  new Set(['P1','P2','PR4','PR6','PR7','PR8','P9','P10','P18','PR22','R5_z2','R10','PR19','PR20','R16']),
+};
+
+function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave, randFactor) {
+  // Returns placed[] array or null if failed
+  const pool = getPool(cls, includeEquip, includeLeave);
+  if (pool.length < 5) return null;
+
+  const target = rndInt(cfg.min, cfg.max);
+  const maxStationary = Math.floor(target / 3);
+
+  const placed = [];
+  let heading = 0;
+  // Start near bottom-center with some random offset
+  let pos = { x: ringW * (0.4 + Math.random() * 0.2), y: ringH - 8 };
+
+  let stationaryCount = 0;
+  const usedIds = {};
+  let needsFollowBy = null;  // string[] of allowed IDs for next exercise
+  let lastCat = null;
+  let classCount = 0;
+  const ownIds = CLASS_OWN_IDS[cls] || new Set();
+
+  placed.push({ id:'START', n:'Start', pos:{...pos}, heading, cat:'start' });
+
+  // Per-exercise attempt loop — try to place each exercise up to 40 times
+  // If truly stuck, bail and let outer loop restart
+  let stuckCount = 0;
+
+  while (placed.length - 1 < target) {
+    if (stuckCount > 60) return null; // totally stuck — restart
+
+    // ── 1. Build filtered pool for this step ──────────────
+    let avail = pool.filter(ex => {
+      if (needsFollowBy) return needsFollowBy.includes(ex.id);
+      if (RECALL_IDS.has(ex.id) && lastCat !== 'leave') return false;
+      if ((ex.cat === 'leave') && needsFollowBy) return false;
+      if (ex.stat && stationaryCount >= maxStationary) return false;
+      if (!ex.mult && (usedIds[ex.id] || 0) >= 1) return false;
+      if (ex.mult && (usedIds[ex.id] || 0) >= 2) return false;
+      if (cfg.zoom && (ex.stat || ex.cat === 'halt')) return false;
+      return true;
+    });
+
+    // ── 2. Class minimum bias — must use enough class-specific signs ──
+    if (!needsFollowBy) {
+      const remaining = target - (placed.length - 1);
+      const needed = cfg.minFromClass - classCount;
+      // If urgently needed, force class-specific; otherwise just bias
+      if (needed > 0) {
+        const clsAvail = avail.filter(ex => ownIds.has(ex.id));
+        if (clsAvail.length > 0 && needed >= remaining * 0.4) {
+          avail = clsAvail; // force when we're running out of room
+        } else if (clsAvail.length > 0 && Math.random() < 0.55) {
+          avail = clsAvail; // bias toward class signs otherwise
+        }
+      }
+    }
+
+    if (avail.length === 0) { stuckCount++; continue; }
+
+    // ── 3. Wall avoidance — bias toward signs that turn us inward ─────
+    const room = wallRoom(pos, heading, ringW, ringH, minDist + 1);
+    if (room < minDist + 4 && !needsFollowBy) {
+      const turners = avail.filter(ex => {
+        const newH = normalizeAngle(heading + ex.td);
+        return wallRoom(pos, newH, ringW, ringH, minDist + 1) > room + 4;
+      });
+      if (turners.length > 0) avail = turners;
+      // If no turners exist in filtered avail, don't zero out — keep original avail
+    }
+
+    // ── 4. Pick a random exercise from filtered list ──────────────────
+    shuffle(avail);
+    let placed_one = false;
+
+    for (const ex of avail) {
+      // Try placing this exercise with multiple fallback distance relaxations
+      const newPos = tryPlaceExercise(pos, heading, ex.td, placed, ringW, ringH, minDist, randFactor);
+      if (!newPos) continue;
+
+      // ── 5. Leave-dog lookahead: make sure a recall CAN fit ────────
+      if (ex.cat === 'leave') {
+        const recallOptions = RECALL_MAP[ex.id] || [];
+        const recallPool = pool.filter(r => recallOptions.includes(r.id));
+        const recallPos = tryPlaceExercise(newPos, normalizeAngle(heading + ex.td), 180,
+          [...placed, {pos: newPos, cat:'ex'}], ringW, ringH, minDist * 0.8, 0.6);
+        if (!recallPos && recallPool.length > 0) continue; // skip leave dog if recall won't fit
+      }
+
+      // ── 6. Accept ─────────────────────────────────────────────────
+      placed.push({ id:ex.id, n:ex.n, pos:newPos, heading, cat:ex.cat, stat:ex.stat, eq:ex.eq, seq:ex.seq });
+      heading = normalizeAngle(heading + ex.td);
+      if (ex.stat) stationaryCount++;
+      usedIds[ex.id] = (usedIds[ex.id] || 0) + 1;
+      lastCat = ex.cat;
+      pos = newPos;
+      if (ownIds.has(ex.id)) classCount++;
+      stuckCount = 0;
+
+      // Update sequence constraint
+      if (PACE_AFTER[ex.id]) {
+        needsFollowBy = PACE_AFTER[ex.id];
+      } else if (ex.cat === 'leave') {
+        needsFollowBy = RECALL_MAP[ex.id] || null;
+      } else {
+        needsFollowBy = null;
+      }
+
+      placed_one = true;
+      break;
+    }
+
+    if (!placed_one) stuckCount++;
+  }
+
+  // ── Validate class minimum met ────────────────────────────────────────
+  if (cfg.minFromClass > 0 && classCount < cfg.minFromClass) return null;
+
+  // ── Place FINISH ──────────────────────────────────────────────────────
+  const finPos = findFinishPos(pos, heading, placed, ringW, ringH, minDist);
+  placed.push({ id:'FINISH', n:'Finish', pos:finPos, heading, cat:'finish' });
+
+  return placed;
+}
+
+// ── DRAG STATE ───────────────────────────────────────────────────
+let dragIdx = -1;
+let dragStartFt = null;
+let mouseDidMove = false;
+
+// ── SIGN IMAGES ──────────────────────────────────────────────────
+const signImages = {}; // keyed by exercise ID, e.g. 'S1', 'A9'
+
+const GITHUB_SIGNS_BASE = 'https://raw.githubusercontent.com/chrojoh/cwagrally/main/signs/';
+const ALL_SIGN_IDS = Object.keys(EX);
+
+function setGithubStatus(icon, msg, color) {
+  document.getElementById('githubSignIcon').textContent = icon;
+  const msgEl = document.getElementById('githubSignMsg');
+  msgEl.textContent = msg;
+  msgEl.style.color = color || 'var(--text3)';
+}
+
+function autoLoadGithubSigns() {
+  let attempted = 0, loaded = 0, failed = 0;
+  const total = ALL_SIGN_IDS.length;
+  setGithubStatus('⏳', `Checking GitHub for ${total} signs…`, 'var(--text3)');
+
+  ALL_SIGN_IDS.forEach(id => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      signImages[id] = img;
+      loaded++;
+      attempted++;
+      updateGithubProgress(loaded, attempted, total);
+    };
+    img.onerror = () => {
+      failed++;
+      attempted++;
+      updateGithubProgress(loaded, attempted, total);
+    };
+    // Try .png first; fallback handled by onerror (user can upload manually)
+    img.src = GITHUB_SIGNS_BASE + id + '.png';
+  });
+}
+
+function updateGithubProgress(loaded, attempted, total) {
+  if (attempted < total) {
+    setGithubStatus('⏳', `Loading from GitHub… ${attempted}/${total}`, 'var(--text3)');
+    return;
+  }
+  // All attempted
+  if (loaded === 0) {
+    setGithubStatus('📂', 'No signs found on GitHub — upload manually below', 'var(--text3)');
+  } else if (loaded === total) {
+    setGithubStatus('✅', `All ${loaded} signs loaded from GitHub`, 'var(--green)');
+  } else {
+    setGithubStatus('🟡', `${loaded} of ${total} signs loaded from GitHub`, 'var(--gold)');
+  }
+  if (currentCourse.length > 0) redraw();
+}
+
+function loadSignImages(files) {
+  let loaded = 0;
+  const total = files.length;
+  Array.from(files).forEach(file => {
+    // Strip extension to get ID: "S1.png" → "S1", "A9.jpg" → "A9"
+    const id = file.name.replace(/\.[^.]+$/, '');
+    const img = new Image();
+    img.onload = () => {
+      signImages[id] = img;
+      loaded++;
+      const countEl = document.getElementById('signCount');
+      countEl.textContent = `✓ ${loaded} of ${total} local sign images loaded`;
+      countEl.classList.add('visible');
+      // Redraw if course is already showing
+      if (currentCourse.length > 0) redraw();
+    };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+function redraw() {
+  if (!currentCourse || currentCourse.length === 0) return;
+  const ringW = parseInt(document.getElementById('ringW').value);
+  const ringH = parseInt(document.getElementById('ringH').value);
+  renderCourse(currentCourse, ringW, ringH, CLASS_CFG[currentClass]);
+}
+function canvasEvtPx(e) {
+  const canvas = document.getElementById('courseCanvas');
+  const rect = canvas.getBoundingClientRect();
+  const sx = canvas.width / rect.width, sy = canvas.height / rect.height;
+  return { x: (e.clientX - rect.left) * sx, y: (e.clientY - rect.top) * sy };
+}
+
+function canvasEvtToFt(e) {
+  const {x, y} = canvasEvtPx(e);
+  const ringW = parseInt(document.getElementById('ringW').value);
+  const ringH = parseInt(document.getElementById('ringH').value);
+  return canvasToFt(x, y, ringW, ringH);
+}
+
+function findStationAt(px, py) {
+  let bestIdx = -1, bestDist = 9999;
+  for (let i = 0; i < currentCourse.length; i++) {
+    const cp = toCanvas(currentCourse[i].pos);
+    const d = Math.sqrt((px - cp.x) ** 2 + (py - cp.y) ** 2);
+    if (d < 18 && d < bestDist) { bestDist = d; bestIdx = i; }
+  }
+  return bestIdx;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const canvas = document.getElementById('courseCanvas');
+
+  canvas.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    const {x, y} = canvasEvtPx(e);
+    const idx = findStationAt(x, y);
+    if (idx >= 0) {
+      dragIdx = idx;
+      dragStartFt = { ...currentCourse[idx].pos };
+      mouseDidMove = false;
+      canvas.classList.add('dragging');
+      e.preventDefault();
+    }
+  });
+
+  canvas.addEventListener('mousemove', e => {
+    if (dragIdx < 0) {
+      // Show pointer cursor when hovering a station
+      const {x, y} = canvasEvtPx(e);
+      const idx = findStationAt(x, y);
+      const hoverEx = idx >= 0 ? currentCourse[idx] : null;
+      canvas.style.cursor = (hoverEx && hoverEx.cat !== 'start' && hoverEx.cat !== 'finish') ? 'pointer' : 'crosshair';
+      return;
+    }
+    const ft = canvasEvtToFt(e);
+    const dx = Math.abs(ft.x - dragStartFt.x), dy = Math.abs(ft.y - dragStartFt.y);
+    if (dx > 0.5 || dy > 0.5) mouseDidMove = true;
+    if (mouseDidMove) {
+      currentCourse[dragIdx].pos = { ...ft };
+      redraw();
+      updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
+    }
+  });
+
+  canvas.addEventListener('mouseup', e => {
+    if (dragIdx < 0) return;
+    canvas.classList.remove('dragging');
+    const wasDrag = mouseDidMove;
+    if (mouseDidMove) {
+      // Enforce minimum only between consecutive stations in path
+      const minD = parseInt(document.getElementById('minDist').value);
+      const allPoints = currentCourse; // placed[] is already in order
+      let violated = false;
+      for (let i = 0; i < allPoints.length - 1; i++) {
+        if (dist(allPoints[i].pos, allPoints[i + 1].pos) < minD) { violated = true; break; }
+      }
+      if (violated) {
+        // Snap back — do NOT regenerate, just warn
+        currentCourse[dragIdx].pos = { ...dragStartFt };
+        // Collect which indices are violating after snap-back
+        const badIdx = [];
+        for (let i = 0; i < allPoints.length - 1; i++) {
+          if (dist(allPoints[i].pos, allPoints[i + 1].pos) < minD) {
+            badIdx.push(i); badIdx.push(i + 1);
+          }
+        }
+        redraw();
+        updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
+        showDistanceWarning([...new Set(badIdx)]);
+      }
+    } else {
+      // It was a click, not a drag — open substitute modal for exercise stations
+      const idx = dragIdx;
+      const clicked = currentCourse[idx];
+      if (clicked && clicked.cat !== 'start' && clicked.cat !== 'finish') {
+        openSubstituteModal(idx);
+      }
+    }
+    dragIdx = -1;
+  });
+
+  // Touch support
+  canvas.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    const {x, y} = canvasEvtPx(t);
+    const idx = findStationAt(x, y);
+    if (idx >= 0) { dragIdx = idx; dragStartFt = { ...currentCourse[idx].pos }; mouseDidMove = false; e.preventDefault(); }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', e => {
+    if (dragIdx < 0) return;
+    const ft = canvasEvtToFt(e.touches[0]);
+    currentCourse[dragIdx].pos = { ...ft }; mouseDidMove = true; redraw();
+    updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
+    e.preventDefault();
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', e => {
+    if (dragIdx < 0) return;
+    if (mouseDidMove) {
+      const minD = parseInt(document.getElementById('minDist').value);
+      const allPoints = currentCourse;
+      let violated = false;
+      for (let i = 0; i < allPoints.length - 1; i++) {
+        if (dist(allPoints[i].pos, allPoints[i + 1].pos) < minD) { violated = true; break; }
+      }
+      if (violated) {
+        currentCourse[dragIdx].pos = { ...dragStartFt };
+        const badIdx = [];
+        for (let i = 0; i < allPoints.length - 1; i++) {
+          if (dist(allPoints[i].pos, allPoints[i + 1].pos) < minD) {
+            badIdx.push(i); badIdx.push(i + 1);
+          }
+        }
+        redraw();
+        updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
+        showDistanceWarning([...new Set(badIdx)]);
+      }
+    }
+    dragIdx = -1;
+  });
+});
+
+// ════════════════════════════════════════════════
+// SUBSTITUTE MODAL
+// ════════════════════════════════════════════════
+let substituteIdx = -1;
+
+function openSubstituteModal(idx) {
+  substituteIdx = idx;
+  const ex = currentCourse[idx];
+  const cls = currentClass;
+  const cfg = CLASS_CFG[cls];
+  const minDist = parseInt(document.getElementById('minDist').value);
+  const includeEquip = document.getElementById('includeEquip').checked;
+  const includeLeave = document.getElementById('includeLeavedog').checked;
+
+  // Build full pool for this class
+  const pool = getPool(cls, includeEquip, includeLeave);
+
+  // Figure out constraints for this position
+  const prevEx = idx > 0 ? currentCourse[idx - 1] : null;
+  const nextEx = idx < currentCourse.length - 1 ? currentCourse[idx + 1] : null;
+  const exercises = currentCourse.filter(p => p.cat !== 'start' && p.cat !== 'finish');
+  const exIdx = exercises.indexOf(ex); // index within exercises only
+
+  // Count usages of each id (excluding current)
+  const usedIds = {};
+  exercises.forEach((e, i) => {
+    if (i !== exIdx) usedIds[e.id] = (usedIds[e.id] || 0) + 1;
+  });
+
+  const stationaryCount = exercises.filter((e, i) => e.stat && i !== exIdx).length;
+  const maxStationary = Math.floor(exercises.length / 3);
+
+  const candidates = pool.filter(candidate => {
+    if (candidate.id === ex.id) return false;
+    // Mult/duplicate check
+    if (!candidate.mult && (usedIds[candidate.id] || 0) >= 1) return false;
+    if (candidate.mult && (usedIds[candidate.id] || 0) >= 2) return false;
+    // Stationary limit
+    if (candidate.stat && stationaryCount >= maxStationary) return false;
+    // Zoom halt restriction
+    if (cfg.zoom && (candidate.stat || candidate.cat === 'halt')) return false;
+    // Recall-only signs can't just be swapped in freely
+    if (RECALL_IDS.has(candidate.id)) {
+      if (!prevEx || prevEx.cat !== 'leave') return false;
+    }
+    // Prev must allow this candidate
+    if (prevEx) {
+      if (PACE_AFTER[prevEx.id] && !PACE_AFTER[prevEx.id].includes(candidate.id)) return false;
+      if (prevEx.cat === 'leave') {
+        const valid = (RECALL_MAP[prevEx.id] || []).includes(candidate.id);
+        if (!valid) return false;
+      }
+    }
+    // This candidate's required follower must match next
+    if (nextEx) {
+      if (PACE_AFTER[candidate.id] && !PACE_AFTER[candidate.id].includes(nextEx.id)) return false;
+      if (candidate.cat === 'leave') {
+        const recallOk = (RECALL_MAP[candidate.id] || []).includes(nextEx.id);
+        if (!recallOk) return false;
+      }
+    } else {
+      // No next — can't be a leave-dog or pace sign that requires a follower
+      if (candidate.cat === 'leave') return false;
+      if (PACE_AFTER[candidate.id]) return false;
+    }
+    // Distance: check candidate's position fits with neighbors
+    const pos = ex.pos;
+    if (prevEx && dist(pos, prevEx.pos) < minDist) return false;
+    if (nextEx && dist(pos, nextEx.pos) < minDist) return false;
+    return true;
+  });
+
+  // Build modal content
+  const modal = document.getElementById('subModal');
+  const title = document.getElementById('subModalTitle');
+  const list = document.getElementById('subModalList');
+  title.textContent = `Substitutes for #${exIdx + 1}: ${ex.n} (${ex.id})`;
+  list.innerHTML = '';
+
+  if (candidates.length === 0) {
+    list.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:12px 0;">No valid substitutes found for this position.</div>';
+  } else {
+    candidates.forEach(c => {
+      const color = c.stat ? '#a78bfa' : (c.eq ? '#fb923c' : (c.cat === 'leave' || c.cat === 'recall' ? '#f472b6' : '#4fc3f7'));
+      const imgEl = signImages[c.id]
+        ? `<img src="${signImages[c.id].src}" style="width:36px;height:36px;object-fit:contain;border-radius:3px;border:1px solid ${color};background:#fff;flex-shrink:0;">`
+        : `<div style="width:36px;height:36px;border-radius:3px;border:1px dashed var(--border2);background:var(--bg3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text3)">no img</div>`;
+      const flags = [c.stat ? '<span style="color:#a78bfa">◾ Stat</span>' : '', c.eq ? `<span style="color:#fb923c">▲ ${c.eq}</span>` : '', c.seq ? `<span style="color:#f472b6">↝ ${c.seq}</span>` : ''].filter(Boolean).join(' ');
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:5px;cursor:pointer;border:1px solid var(--border);background:var(--bg3);transition:border-color 0.12s;';
+      row.innerHTML = `${imgEl}<div style="flex:1"><div style="font-size:10px;color:var(--text3)">${c.id}</div><div style="font-size:13px;color:var(--text)">${c.n}</div>${flags ? `<div style="font-size:10px;margin-top:2px">${flags}</div>` : ''}</div><div style="font-size:10px;color:${color};font-weight:700;flex-shrink:0">Use ›</div>`;
+      row.onmouseenter = () => row.style.borderColor = color;
+      row.onmouseleave = () => row.style.borderColor = 'var(--border)';
+      row.onclick = () => applySubstitute(c);
+      list.appendChild(row);
+    });
+  }
+
+  modal.style.display = 'flex';
+}
+
+function closeSubstituteModal() {
+  document.getElementById('subModal').style.display = 'none';
+  substituteIdx = -1;
+}
+
+function applySubstitute(candidate) {
+  if (substituteIdx < 0) return;
+  const old = currentCourse[substituteIdx];
+  currentCourse[substituteIdx] = {
+    ...old,
+    id: candidate.id,
+    n: candidate.n,
+    cat: candidate.cat,
+    stat: candidate.stat,
+    eq: candidate.eq,
+    seq: candidate.seq,
+  };
+  closeSubstituteModal();
+  redraw();
+  updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
+}
+
+// Indices of stations that are currently violating the distance rule (for highlight)
+let distViolators = new Set();
+
+function showDistanceWarning(violatingIndices) {
+  distViolators = new Set(violatingIndices);
+  redraw(); // redraw will now highlight the bad stations
+  const canvas = document.getElementById('courseCanvas');
+  // Remove any existing tip
+  const old = document.getElementById('dist-warn-tip');
+  if (old) old.remove();
+  const tip = document.createElement('div');
+  tip.id = 'dist-warn-tip';
+  tip.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#21262f;border:1px solid #ff5252;color:#ff5252;padding:8px 16px;border-radius:6px;font-size:12px;z-index:999;box-shadow:0 4px 20px #0006;pointer-events:none;';
+  tip.textContent = '⚠ Too close — move the highlighted station(s) further apart.';
+  document.body.appendChild(tip);
+  setTimeout(() => {
+    tip.remove();
+    distViolators = new Set();
+    redraw();
+  }, 3000);
+}
+
+function generate() {
+  const cls = currentClass;
+  const cfg = CLASS_CFG[cls];
+  const ringW = parseInt(document.getElementById('ringW').value);
+  const ringH = parseInt(document.getElementById('ringH').value);
+  const minDist = parseInt(document.getElementById('minDist').value);
+  const includeEquip = document.getElementById('includeEquip').checked;
+  const includeLeave = document.getElementById('includeLeavedog').checked;
+  const randFactor = { low: 0.15, med: 0.3, high: 0.5 }[document.getElementById('randLevel').value];
+
+  // Retry up to 8 times — usually succeeds in 1–2
+  let placed = null;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    placed = tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave, randFactor);
+    if (placed) break;
+  }
+
+  if (!placed) {
+    // Last resort: one final attempt with relaxed constraints
+    placed = tryGenerate(cls, cfg, ringW, ringH, minDist - 2, includeEquip, false, 0.5);
+  }
+
+  if (!placed || placed.length < 3) {
+    alert('Could not build a valid course with current settings. Try a larger ring, lower minimum distance, or include leave-dog exercises.');
+    return;
+  }
+
+  currentCourse = placed;
+  renderCourse(placed, ringW, ringH, cfg);
+  updateSidebar(placed, cls, cfg);
+}
+
+function tryPlaceExercise(pos, heading, turnDelta, placed, ringW, ringH, minDist, randFactor) {
+  const margin = 4;
+  // Try progressively wider jitter; if still failing, relax minDist slightly
+  const passes = [
+    { jitter: randFactor * 50, slack: 0 },
+    { jitter: 70,               slack: 0 },
+    { jitter: 120,              slack: 0 },
+    { jitter: 180,              slack: minDist * 0.15 }, // relax spacing slightly
+  ];
+  for (const { jitter, slack } of passes) {
+    const effectiveMin = minDist - slack;
+    for (let t = 0; t < 20; t++) {
+      const distance = rnd(minDist, minDist + 14);
+      const angle = heading + rnd(-jitter, jitter);
+      const v = vecFromHeading(angle);
+      const np = { x: pos.x + v.x * distance, y: pos.y + v.y * distance };
+      if (np.x < margin || np.x > ringW - margin) continue;
+      if (np.y < margin || np.y > ringH - margin) continue;
+      const tooClose = placed.some(p => (p.cat !== 'start') && dist(np, p.pos) < effectiveMin - 0.5);
+      if (tooClose) continue;
+      return np;
+    }
+  }
+  return null;
+}
+
+function findFinishPos(pos, heading, placed, ringW, ringH, minDist) {
+  for (let t = 0; t < 60; t++) {
+    const angle = rnd(0, 360);
+    const d = rnd(minDist, minDist + 12);
+    const v = vecFromHeading(angle);
+    const fp = { x: pos.x + v.x * d, y: pos.y + v.y * d };
+    if (fp.x < 5 || fp.x > ringW - 5 || fp.y < 5 || fp.y > ringH - 5) continue;
+    const tooClose = placed.some(p => dist(fp, p.pos) < minDist - 2);
+    if (!tooClose) return fp;
+  }
+  // absolute fallback: somewhere near last exercise
+  return { x: Math.min(ringW-5, Math.max(5, pos.x + 6)), y: Math.min(ringH-5, Math.max(5, pos.y - 6)) };
+}
+
+// ════════════════════════════════════════════════
+// RENDERER
+// ════════════════════════════════════════════════
+function toCanvas(pos) {
+  return { x: PAD_C + pos.x * currentScale, y: PAD_C + pos.y * currentScale };
+}
+function canvasToFt(cx, cy, ringW, ringH) {
+  return {
+    x: Math.max(2, Math.min(ringW - 2, (cx - PAD_C) / currentScale)),
+    y: Math.max(2, Math.min(ringH - 2, (cy - PAD_C) / currentScale))
+  };
+}
+
+function renderCourse(placed, ringW, ringH, cfg) {
+  const canvas = document.getElementById('courseCanvas');
+  currentScale = getScale(ringW, ringH);
+  const W = ringW * currentScale + PAD_C * 2;
+  const H = ringH * currentScale + PAD_C * 2;
+  canvas.width = W; canvas.height = H;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  ctx.fillStyle = '#1a1d23';
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid (every 5ft minor, every 10ft major)
+  for (let gx = 0; gx <= ringW; gx += 5) {
+    const px = PAD_C + gx * currentScale;
+    ctx.strokeStyle = gx % 10 === 0 ? '#363d4f' : '#2a3040';
+    ctx.lineWidth   = gx % 10 === 0 ? 0.8 : 0.4;
+    ctx.beginPath(); ctx.moveTo(px, PAD_C); ctx.lineTo(px, PAD_C + ringH * currentScale); ctx.stroke();
+  }
+  for (let gy = 0; gy <= ringH; gy += 5) {
+    const py = PAD_C + gy * currentScale;
+    ctx.strokeStyle = gy % 10 === 0 ? '#363d4f' : '#2a3040';
+    ctx.lineWidth   = gy % 10 === 0 ? 0.8 : 0.4;
+    ctx.beginPath(); ctx.moveTo(PAD_C, py); ctx.lineTo(PAD_C + ringW * currentScale, py); ctx.stroke();
+  }
+
+  // Ring border
+  ctx.strokeStyle = '#4a5468';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(PAD_C, PAD_C, ringW * currentScale, ringH * currentScale);
+
+  // ── Rulers ────────────────────────────────────────────────────────
+  const stepW = ringW <= 50 ? 5 : 10;
+  const stepH = ringH <= 50 ? 5 : 10;
+  const tickColor   = '#4a5468';
+  const labelColor  = '#6b7589';
+  const accentColor = '#363d4f';
+  ctx.font = '8px Barlow, sans-serif';
+
+  // Left ruler (height axis)
+  for (let ft = 0; ft <= ringH; ft += stepH) {
+    const py = PAD_C + ft * currentScale;
+    const isMajor = ft % (stepH * 2) === 0;
+    ctx.strokeStyle = isMajor ? tickColor : accentColor;
+    ctx.lineWidth   = isMajor ? 1 : 0.5;
+    ctx.beginPath(); ctx.moveTo(PAD_C - (isMajor ? 8 : 4), py); ctx.lineTo(PAD_C, py); ctx.stroke();
+    if (isMajor) {
+      ctx.fillStyle = labelColor; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(ft + 'ft', PAD_C - 10, py);
+    }
+  }
+  ctx.strokeStyle = tickColor; ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.moveTo(PAD_C, PAD_C); ctx.lineTo(PAD_C, PAD_C + ringH * currentScale); ctx.stroke();
+
+  // Bottom ruler (width axis)
+  for (let ft = 0; ft <= ringW; ft += stepW) {
+    const px = PAD_C + ft * currentScale;
+    const isMajor = ft % (stepW * 2) === 0;
+    ctx.strokeStyle = isMajor ? tickColor : accentColor;
+    ctx.lineWidth   = isMajor ? 1 : 0.5;
+    ctx.beginPath(); ctx.moveTo(px, PAD_C + ringH * currentScale); ctx.lineTo(px, PAD_C + ringH * currentScale + (isMajor ? 8 : 4)); ctx.stroke();
+    if (isMajor) {
+      ctx.fillStyle = labelColor; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(ft + 'ft', px, PAD_C + ringH * currentScale + 10);
+    }
+  }
+  ctx.strokeStyle = tickColor; ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.moveTo(PAD_C, PAD_C + ringH * currentScale); ctx.lineTo(PAD_C + ringW * currentScale, PAD_C + ringH * currentScale); ctx.stroke();
+
+  // Ring label
+  ctx.fillStyle = '#363d4f';
+  ctx.font = 'bold 11px Barlow Condensed, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${ringW}ft × ${ringH}ft = ${ringW * ringH} sq ft`, PAD_C + ringW * currentScale / 2, PAD_C - 8);
+
+  // Draw path between exercises (skip start and finish for arrow)
+  const exercises = placed.filter(p => p.cat !== 'start' && p.cat !== 'finish');
+  const allPoints = [placed[0], ...exercises, placed[placed.length-1]];
+
+  for (let i = 0; i < allPoints.length - 1; i++) {
+    const from = toCanvas(allPoints[i].pos);
+    const to = toCanvas(allPoints[i+1].pos);
+    // i corresponds to placed[] index; exercises are placed[1..n]
+    const isViolating = distViolators.has(i) && distViolators.has(i + 1);
+    drawArrow(ctx, from.x, from.y, to.x, to.y, isViolating ? '#ff525288' : '#4fc3f744', isViolating ? 2.5 : 1.5);
+  }
+
+  // Draw exercises
+  for (let i = 1; i <= exercises.length; i++) {
+    const ex = exercises[i - 1];
+    const cp = toCanvas(ex.pos);
+    // courseIdx = i (1-based exercise), but placed index = i (since placed[0]=start, placed[1..n]=exercises)
+    drawExercise(ctx, cp.x, cp.y, i, ex, distViolators.has(i));
+  }
+
+  // Draw Start
+  const startPt = toCanvas(placed[0].pos);
+  drawStartFinish(ctx, startPt.x, startPt.y, 'S', '#f0a500');
+  
+  // Draw Finish
+  const finPt = toCanvas(placed[placed.length - 1].pos);
+  drawStartFinish(ctx, finPt.x, finPt.y, 'F', '#f0a500');
+  
+  // Title
+  ctx.fillStyle = '#e8eaf0';
+  ctx.font = 'bold 14px Barlow Condensed, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(cfg.name.toUpperCase() + ' COURSE', PAD_C, PAD_C - 16);
+}
+
+function drawArrow(ctx, x1, y1, x2, y2, color, width) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.sqrt(dx*dx + dy*dy);
+  if (len < 1) return;
+  const nx = dx/len, ny = dy/len;
+  // Stop short of destination circle
+  const stopDist = 14;
+  const ex = x2 - nx * stopDist, ey = y2 - ny * stopDist;
+  const startX = x1 + nx * 14, startY = y1 + ny * 14;
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(ex, ey); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Arrowhead
+  const ah = 8, aw = 4;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(ex + nx * ah, ey + ny * ah);
+  ctx.lineTo(ex - ny * aw, ey + nx * aw);
+  ctx.lineTo(ex + ny * aw, ey - nx * aw);
+  ctx.closePath(); ctx.fill();
+}
+
+const CAT_COLOR = {
+  halt: '#a78bfa', move: '#4fc3f7', turn: '#4fc3f7', circle: '#4fc3f7',
+  cone: '#4fc3f7', equip: '#fb923c', front: '#4fc3f7', leave: '#f472b6',
+  recall: '#f472b6', pace: '#4fc3f7',
+};
+
+function drawExercise(ctx, cx, cy, num, ex, highlight) {
+  const r = 13;
+  const color = ex.stat ? '#a78bfa' : (ex.eq ? '#fb923c' : (ex.cat === 'leave' || ex.cat === 'recall' ? '#f472b6' : '#4fc3f7'));
+
+  // Violation glow ring
+  if (highlight) {
+    ctx.beginPath(); ctx.arc(cx, cy, r + 6, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,82,82,0.18)'; ctx.fill();
+    ctx.strokeStyle = '#ff5252'; ctx.lineWidth = 2.5;
+    ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  // Circle
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = '#1a1d23'; ctx.fill();
+  ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+
+  // Number
+  ctx.fillStyle = color;
+  ctx.font = `bold ${num >= 10 ? '9' : '11'}px Barlow Condensed, sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(num, cx, cy);
+
+  // Sign thumbnail to the right if image loaded
+  const img = signImages[ex.id];
+  if (img) {
+    const thumbSize = 34;
+    const gap = 5;
+    const tx = cx + r + gap;
+    const ty = cy - thumbSize / 2;
+    // White background card
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.roundRect(tx - 1, ty - 1, thumbSize + 2, thumbSize + 2, 3);
+    ctx.fill();
+    // Colored border matching station type
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(tx - 1, ty - 1, thumbSize + 2, thumbSize + 2, 3);
+    ctx.stroke();
+    // Draw image fitted inside
+    const aspect = img.naturalWidth / img.naturalHeight;
+    let dw = thumbSize, dh = thumbSize;
+    if (aspect > 1) dh = thumbSize / aspect;
+    else dw = thumbSize * aspect;
+    ctx.drawImage(img, tx + (thumbSize - dw) / 2, ty + (thumbSize - dh) / 2, dw, dh);
+  }
+
+  // Label below circle
+  ctx.fillStyle = '#9aa3b5';
+  ctx.font = '7px Barlow, sans-serif';
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'center';
+  const shortName = ex.n.length > 14 ? ex.n.substring(0, 13) + '…' : ex.n;
+  ctx.fillText(shortName, cx, cy + r + 3);
+  ctx.textBaseline = 'alphabetic';
+}
+
+function drawStartFinish(ctx, cx, cy, label, color) {
+  ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+  ctx.fillStyle = '#1a1d23'; ctx.fill();
+  ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.font = 'bold 14px Barlow Condensed, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(label, cx, cy);
+  ctx.textBaseline = 'alphabetic';
+}
+
+// ════════════════════════════════════════════════
+// SIDEBAR & VALIDATION
+// ════════════════════════════════════════════════
+function updateSidebar(placed, cls, cfg) {
+  const exercises = placed.filter(p => p.cat !== 'start' && p.cat !== 'finish');
+  document.getElementById('exCount').textContent = exercises.length;
+  
+  const listEl = document.getElementById('exList');
+  listEl.innerHTML = '';
+  exercises.forEach((ex, i) => {
+    const div = document.createElement('div');
+    div.className = 'ex-item';
+    const color = ex.stat ? '#a78bfa' : (ex.eq ? '#fb923c' : (ex.cat === 'leave' || ex.cat === 'recall' ? '#f472b6' : '#4fc3f7'));
+    const imgEl = signImages[ex.id]
+      ? `<img src="${signImages[ex.id].src}" style="width:32px;height:32px;object-fit:contain;border-radius:3px;border:1px solid ${color};background:#fff;flex-shrink:0;">`
+      : `<div style="width:32px;height:32px;border-radius:3px;border:1px solid var(--border);background:var(--bg3);flex-shrink:0;"></div>`;
+    div.innerHTML = `
+      <div class="ex-num" style="border-color:${color};color:${color}">${i+1}</div>
+      ${imgEl}
+      <div class="ex-text">
+        <div class="ex-id">${ex.id}</div>
+        <div class="ex-name">${ex.n}</div>
+        <div class="ex-flag">
+          ${ex.stat ? '<span class="flag-stat">◾ Stationary</span> ' : ''}
+          ${ex.eq ? `<span class="flag-eq">▲ ${ex.eq}</span> ` : ''}
+          ${ex.seq ? `<span class="flag-seq">↝ ${ex.seq}</span>` : ''}
+        </div>
+      </div>`;
+    listEl.appendChild(div);
+  });
+
+  // Validation
+  const count = exercises.length;
+  const inRange = count >= cfg.min && count <= cfg.max;
+  setVal('v-count', `${count} exercises (need ${cfg.min}–${cfg.max})`, inRange ? 'ok' : 'err');
+  
+  const statCount = exercises.filter(e => e.stat).length;
+  const maxStat = Math.floor(count / 3);
+  setVal('v-stat', `${statCount} stationary (max ~${maxStat})`, statCount <= maxStat ? 'ok' : 'warn');
+  
+  // Class minimum
+  const ownIds = CLASS_OWN_IDS[cls] || new Set();
+  const classSpecificCount = exercises.filter(ex => ownIds.has(ex.id)).length;
+  if (cfg.minFromClass > 0) {
+    const ok = classSpecificCount >= cfg.minFromClass;
+    setVal('v-class', `${classSpecificCount}/${cfg.minFromClass} from ${cls} class`, ok ? 'ok' : 'err');
+  } else {
+    setVal('v-class', 'No class minimum (Starter / Zoom 1 use full pool)', 'ok');
+  }
+  
+  // Sequence check
+  let seqOk = true, seqNote = 'All sequences valid';
+  for (let i = 0; i < exercises.length - 1; i++) {
+    const ex = exercises[i];
+    const next = exercises[i+1];
+    if (PACE_AFTER[ex.id] && !PACE_AFTER[ex.id].includes(next.id)) {
+      seqOk = false; seqNote = `${ex.id} must be followed by ${PACE_AFTER[ex.id].join(' or ')}`; break;
+    }
+    if (ex.cat === 'leave') {
+      const valid = (RECALL_MAP[ex.id] || []).includes(next.id);
+      if (!valid) { seqOk = false; seqNote = `${ex.id} must be followed by recall`; break; }
+    }
+  }
+  setVal('v-seq', seqNote, seqOk ? 'ok' : 'err');
+  
+  // Distance check — only consecutive pairs in path need 10ft minimum
+  const minD = parseInt(document.getElementById('minDist').value);
+  const allPoints = [placed[0], ...exercises, placed[placed.length - 1]];
+  let minFound = Infinity;
+  let violatingPair = null;
+  for (let i = 0; i < allPoints.length - 1; i++) {
+    const d = dist(allPoints[i].pos, allPoints[i + 1].pos);
+    if (d < minFound) { minFound = d; if (d < minD) violatingPair = [i, i + 1]; }
+  }
+  const distOk = minFound >= minD;
+  const distTxt = allPoints.length < 2 ? `Min ${minD}ft enforced (consecutive)` :
+    `Closest consecutive: ${minFound.toFixed(1)}ft (min ${minD}ft)`;
+  setVal('v-dist', distTxt, distOk ? 'ok' : 'err');
+  
+  // Meta
+  document.getElementById('canvasMeta').textContent =
+    `${count} exercises · ${cfg.leash ? 'On or Off Leash' : 'Off Leash'} · QQ: ${cfg.qual}+ pts · Ring: ${parseInt(document.getElementById('ringW').value)*parseInt(document.getElementById('ringH').value)} sq ft`;
+}
+
+function setVal(id, text, type) {
+  const el = document.getElementById(id);
+  el.textContent = (type === 'ok' ? '✓ ' : type === 'warn' ? '⚠ ' : '✗ ') + text;
+  el.className = `val-item val-${type}`;
+}
+
+function exportPDF() {
+  const canvas = document.getElementById('courseCanvas');
+  const imgData = canvas.toDataURL('image/png');
+  const cls = currentClass;
+  const cfg = CLASS_CFG[cls];
+  const ringW = parseInt(document.getElementById('ringW').value);
+  const ringH = parseInt(document.getElementById('ringH').value);
+  const exercises = currentCourse.filter(p => p.cat !== 'start' && p.cat !== 'finish');
+  const dateStr = new Date().toLocaleDateString('en-CA', { year:'numeric', month:'long', day:'numeric' });
+
+  const clsColors = { S:'#2dd4a0', A:'#4fc3f7', P:'#a78bfa', ARF:'#fb923c', Z1:'#f472b6', Z15:'#f472b6', Z2:'#f472b6' };
+  const clsColor = clsColors[cls] || '#f0a500';
+
+  const stationRows = exercises.map((ex, i) => {
+    const color = ex.stat ? '#a78bfa' : (ex.eq ? '#fb923c' : (ex.cat==='leave'||ex.cat==='recall' ? '#f472b6' : '#4fc3f7'));
+    return `<tr>
+      <td style="color:${color};font-weight:700">${i+1}</td>
+      <td style="color:#6b7589">${ex.id}</td>
+      <td>${ex.n}</td>
+      <td style="font-size:7pt;color:#6b7589">${ex.stat?'Stat':''}${ex.eq?' ▲'+ex.eq:''}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+  @page { size: letter landscape; margin: 12mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Barlow', Arial, sans-serif; background: #fff; color: #222; height: 100%; display: flex; flex-direction: column; }
+  .page { display: flex; flex-direction: column; height: 100%; }
+  .header { background: #f5f6fa; border-bottom: 2px solid ${clsColor}; padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .header-title { font-size: 15pt; font-weight: 900; letter-spacing: 1px; color: ${clsColor}; font-family: 'Barlow Condensed', Arial, sans-serif; }
+  .header-sub { font-size: 8pt; color: #6b7589; letter-spacing: 1px; margin-top: 2px; }
+  .class-badge { background: ${clsColor}22; border: 1.5px solid ${clsColor}; color: ${clsColor}; font-size: 9pt; font-weight: 700; letter-spacing: 1px; padding: 2px 8px; border-radius: 3px; }
+  .meta { font-size: 8pt; color: #6b7589; margin-top: 3px; text-align: right; }
+  .body { display: flex; flex: 1; gap: 0; overflow: hidden; }
+  .course-img { flex: 1; padding: 10px; display: flex; align-items: center; justify-content: center; }
+  .course-img img { max-width: 100%; max-height: 170mm; object-fit: contain; border: 1px solid #dde; border-radius: 4px; }
+  .sidebar { width: 70mm; flex-shrink: 0; border-left: 1px solid #dde; padding: 10px; display: flex; flex-direction: column; gap: 10px; font-size: 8.5pt; }
+  .sidebar-title { font-size: 7pt; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #6b7589; margin-bottom: 4px; }
+  .station-table { width: 100%; border-collapse: collapse; font-size: 8pt; }
+  .station-table th { text-align: left; padding: 2px 5px; font-size: 7pt; color: #6b7589; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #eee; }
+  .station-table td { padding: 2px 5px; border-bottom: 1px solid #f0f0f0; }
+  .footer { background: #f5f6fa; border-top: 1px solid #dde; padding: 4px 16px; font-size: 7pt; color: #6b7589; display: flex; justify-content: space-between; flex-shrink: 0; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style></head><body>
+<div class="page">
+  <div class="header">
+    <div><div class="header-title">🐾 C-WAGS RALLY COURSE</div><div class="header-sub">Canine-Work And Games · Course Design Tool</div></div>
+    <div style="text-align:right"><div class="class-badge">${cfg.name.toUpperCase()}</div><div class="meta">${exercises.length} stations · ${cfg.leash?'On/Off Leash':'Off Leash'} · Qualify: ${cfg.qual}+ pts · ${ringW}ft × ${ringH}ft</div></div>
+  </div>
+  <div class="body">
+    <div class="course-img"><img src="${imgData}" alt="Course diagram"></div>
+    <div class="sidebar">
+      <div><div class="sidebar-title">Station List</div>
+        <table class="station-table">
+          <thead><tr><th>#</th><th>ID</th><th>Exercise</th><th>Notes</th></tr></thead>
+          <tbody>${stationRows}</tbody>
+        </table>
+      </div>
+      <div style="margin-top:auto;font-size:7.5pt;color:#aaa;line-height:1.5">
+        Class rules: ${cfg.min}–${cfg.max} stations · Min 10ft spacing<br>
+        Ring: ${cfg.ring[0].toLocaleString()}–${cfg.ring[1].toLocaleString()} sq ft<br>
+        ${cfg.minFromClass > 0 ? `Min ${cfg.minFromClass} ${cls}-class signs required` : 'No class sign minimum'}
+      </div>
+    </div>
+  </div>
+  <div class="footer">
+    <span>Generated ${dateStr}</span>
+    <span>C-WAGS Rally · ${cfg.name} Course</span>
+  </div>
+</div>
+<script>window.onload = () => { window.print(); }<\/script>
+</body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `CWAGS-Rally-${cls}-course.html`; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+  const tip = document.createElement('div');
+  tip.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#21262f;border:1px solid #4a5468;color:#e8eaf0;padding:10px 18px;border-radius:6px;font-size:12px;z-index:999;box-shadow:0 4px 20px #0006;pointer-events:none;';
+  tip.innerHTML = '📄 <strong>File downloaded.</strong> Open it in your browser, then press <kbd style="background:#2a3040;padding:1px 5px;border-radius:3px">Ctrl+P</kbd> / <kbd style="background:#2a3040;padding:1px 5px;border-radius:3px">⌘P</kbd> → Save as PDF';
+  document.body.appendChild(tip);
+  setTimeout(() => tip.remove(), 6000);
+}
+
+// Generate on load
+window.onload = () => {
+  updateRingInfo();
+  autoLoadGithubSigns();
+  requestAnimationFrame(() => requestAnimationFrame(() => generate()));
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(() => { if (currentCourse.length > 0) redraw(); });
+    const wrap = document.getElementById('canvasWrap');
+    if (wrap) ro.observe(wrap);
+  } else {
+    window.addEventListener('resize', () => { if (currentCourse.length > 0) redraw(); });
+  }
+};
+</script>
+</body>
+</html>
