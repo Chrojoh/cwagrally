@@ -27,7 +27,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
 /* LAYOUT */
 .main { display: grid; grid-template-columns: 300px 1fr; gap: 0; height: calc(100vh - 57px); overflow: hidden; }
 .sidebar { background: var(--bg2); border-right: 1px solid var(--border); padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
-.canvas-area { padding: 16px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+.canvas-area { padding: 16px; overflow: hidden; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
 
 /* CONTROLS */
 .section-label { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; letter-spacing: 3px; color: var(--text3); text-transform: uppercase; font-weight: 700; margin-bottom: 8px; }
@@ -95,9 +95,24 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
 }
 .action-btn:hover { border-color: var(--blue); color: var(--blue); }
 
-#courseCanvas { border: 1px solid var(--border); border-radius: 6px; display: block; cursor: crosshair; }
+/* CANVAS AREA */
+.canvas-header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex-shrink: 0; }
+.canvas-title { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; color: var(--text); }
+.canvas-meta { font-size: 11px; color: var(--text3); }
+.canvas-actions { margin-left: auto; display: flex; gap: 8px; }
+.action-btn {
+  padding: 6px 12px; background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 4px; color: var(--text2); cursor: pointer;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px;
+  transition: all 0.12s;
+}
+.action-btn:hover { border-color: var(--blue); color: var(--blue); }
 
-.legend { display: flex; flex-wrap: wrap; gap: 12px; }
+.canvas-wrap { flex: 1; overflow: auto; min-height: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); }
+#courseCanvas { border: 1px solid var(--border); border-radius: 6px; display: block; cursor: crosshair; }
+#courseCanvas.dragging { cursor: grabbing; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 12px; flex-shrink: 0; }
 .leg-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text3); }
 .leg-dot { width: 12px; height: 12px; border-radius: 50%; }
 </style>
@@ -175,7 +190,9 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
       </div>
     </div>
 
-    <canvas id="courseCanvas" width="800" height="600"></canvas>
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="courseCanvas"></canvas>
+    </div>
 
     <div class="legend">
       <div class="leg-item"><div class="leg-dot" style="background:#f0a500"></div>Start / Finish</div>
@@ -314,7 +331,17 @@ const PACE_AFTER = { S18:['S20','S19'], S19:['S20','S18'], A8:['S20','S18'] };
 
 let currentClass = 'S';
 let currentCourse = [];
-const SCALE = 10; // pixels per foot
+const PAD_C = 36;
+let currentScale = 9;
+
+function getScale(ringW, ringH) {
+  const wrap = document.getElementById('canvasWrap');
+  if (!wrap) return 9;
+  const rect = wrap.getBoundingClientRect();
+  const availW = Math.max(300, rect.width  - PAD_C * 2 - 16);
+  const availH = Math.max(200, rect.height - PAD_C * 2 - 16);
+  return Math.max(5, Math.min(16, Math.min(availW / ringW, availH / ringH)));
+}
 
 // Ring defaults: middle of each class's allowed range
 // Starter/Advanced/Zoom1/Zoom1.5 → 1800–3500 sq ft
@@ -525,6 +552,92 @@ function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave
   return placed;
 }
 
+// ── DRAG STATE ───────────────────────────────────────────────────
+let dragIdx = -1;
+let dragStartFt = null;
+let mouseDidMove = false;
+
+function redraw() {
+  if (!currentCourse || currentCourse.length === 0) return;
+  const ringW = parseInt(document.getElementById('ringW').value);
+  const ringH = parseInt(document.getElementById('ringH').value);
+  renderCourse(currentCourse, ringW, ringH, CLASS_CFG[currentClass]);
+}
+
+function canvasEvtPx(e) {
+  const canvas = document.getElementById('courseCanvas');
+  const rect = canvas.getBoundingClientRect();
+  const sx = canvas.width / rect.width, sy = canvas.height / rect.height;
+  return { x: (e.clientX - rect.left) * sx, y: (e.clientY - rect.top) * sy };
+}
+
+function canvasEvtToFt(e) {
+  const {x, y} = canvasEvtPx(e);
+  const ringW = parseInt(document.getElementById('ringW').value);
+  const ringH = parseInt(document.getElementById('ringH').value);
+  return canvasToFt(x, y, ringW, ringH);
+}
+
+function findStationAt(px, py) {
+  let bestIdx = -1, bestDist = 9999;
+  for (let i = 0; i < currentCourse.length; i++) {
+    const cp = toCanvas(currentCourse[i].pos);
+    const d = Math.sqrt((px - cp.x) ** 2 + (py - cp.y) ** 2);
+    if (d < 18 && d < bestDist) { bestDist = d; bestIdx = i; }
+  }
+  return bestIdx;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const canvas = document.getElementById('courseCanvas');
+
+  canvas.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    const {x, y} = canvasEvtPx(e);
+    const idx = findStationAt(x, y);
+    if (idx >= 0) {
+      dragIdx = idx;
+      dragStartFt = { ...currentCourse[idx].pos };
+      mouseDidMove = false;
+      canvas.classList.add('dragging');
+      e.preventDefault();
+    }
+  });
+
+  canvas.addEventListener('mousemove', e => {
+    if (dragIdx < 0) return;
+    const ft = canvasEvtToFt(e);
+    const dx = Math.abs(ft.x - dragStartFt.x), dy = Math.abs(ft.y - dragStartFt.y);
+    if (dx > 0.5 || dy > 0.5) mouseDidMove = true;
+    if (mouseDidMove) { currentCourse[dragIdx].pos = { ...ft }; redraw(); }
+  });
+
+  canvas.addEventListener('mouseup', e => {
+    if (dragIdx < 0) return;
+    canvas.classList.remove('dragging');
+    dragIdx = -1;
+  });
+
+  // Touch support
+  canvas.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    const {x, y} = canvasEvtPx(t);
+    const idx = findStationAt(x, y);
+    if (idx >= 0) { dragIdx = idx; dragStartFt = { ...currentCourse[idx].pos }; mouseDidMove = false; e.preventDefault(); }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', e => {
+    if (dragIdx < 0) return;
+    const ft = canvasEvtToFt(e.touches[0]);
+    currentCourse[dragIdx].pos = { ...ft }; mouseDidMove = true; redraw(); e.preventDefault();
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', e => {
+    if (dragIdx < 0) return;
+    dragIdx = -1;
+  });
+});
+
 function generate() {
   const cls = currentClass;
   const cfg = CLASS_CFG[cls];
@@ -600,18 +713,25 @@ function findFinishPos(pos, heading, placed, ringW, ringH, minDist) {
 // ════════════════════════════════════════════════
 // RENDERER
 // ════════════════════════════════════════════════
+function toCanvas(pos) {
+  return { x: PAD_C + pos.x * currentScale, y: PAD_C + pos.y * currentScale };
+}
+function canvasToFt(cx, cy, ringW, ringH) {
+  return {
+    x: Math.max(2, Math.min(ringW - 2, (cx - PAD_C) / currentScale)),
+    y: Math.max(2, Math.min(ringH - 2, (cy - PAD_C) / currentScale))
+  };
+}
+
 function renderCourse(placed, ringW, ringH, cfg) {
   const canvas = document.getElementById('courseCanvas');
-  const PAD = 32; // padding around ring in pixels
-  const PXPFT = SCALE;
-  const W = ringW * PXPFT + PAD * 2;
-  const H = ringH * PXPFT + PAD * 2;
+  currentScale = getScale(ringW, ringH);
+  const W = ringW * currentScale + PAD_C * 2;
+  const H = ringH * currentScale + PAD_C * 2;
   canvas.width = W; canvas.height = H;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
   const ctx = canvas.getContext('2d');
-
-  function toCanvas(pos) {
-    return { x: PAD + pos.x * PXPFT, y: PAD + pos.y * PXPFT };
-  }
 
   // Background
   ctx.fillStyle = '#1a1d23';
@@ -619,28 +739,28 @@ function renderCourse(placed, ringW, ringH, cfg) {
 
   // Grid (every 10ft = minor, every 20ft = major)
   for (let gx = 0; gx <= ringW; gx += 5) {
-    const px = PAD + gx * PXPFT;
+    const px = PAD_C + gx * currentScale;
     ctx.strokeStyle = gx % 10 === 0 ? '#2a3040' : '#222730';
     ctx.lineWidth = gx % 10 === 0 ? 0.8 : 0.4;
-    ctx.beginPath(); ctx.moveTo(px, PAD); ctx.lineTo(px, PAD + ringH * PXPFT); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px, PAD_C); ctx.lineTo(px, PAD_C + ringH * currentScale); ctx.stroke();
   }
   for (let gy = 0; gy <= ringH; gy += 5) {
-    const py = PAD + gy * PXPFT;
+    const py = PAD_C + gy * currentScale;
     ctx.strokeStyle = gy % 10 === 0 ? '#2a3040' : '#222730';
     ctx.lineWidth = gy % 10 === 0 ? 0.8 : 0.4;
-    ctx.beginPath(); ctx.moveTo(PAD, py); ctx.lineTo(PAD + ringW * PXPFT, py); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD_C, py); ctx.lineTo(PAD_C + ringW * currentScale, py); ctx.stroke();
   }
 
   // Ring border
   ctx.strokeStyle = '#4a5468';
   ctx.lineWidth = 2;
-  ctx.strokeRect(PAD, PAD, ringW * PXPFT, ringH * PXPFT);
+  ctx.strokeRect(PAD_C, PAD_C, ringW * currentScale, ringH * currentScale);
 
   // Ring label
   ctx.fillStyle = '#363d4f';
   ctx.font = 'bold 11px Barlow Condensed, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`${ringW}ft × ${ringH}ft = ${ringW * ringH} sq ft`, PAD + ringW * PXPFT / 2, PAD - 8);
+  ctx.fillText(`${ringW}ft × ${ringH}ft = ${ringW * ringH} sq ft`, PAD_C + ringW * currentScale / 2, PAD_C - 8);
 
   // Draw path between exercises (skip start and finish for arrow)
   const exercises = placed.filter(p => p.cat !== 'start' && p.cat !== 'finish');
@@ -671,7 +791,7 @@ function renderCourse(placed, ringW, ringH, cfg) {
   ctx.fillStyle = '#e8eaf0';
   ctx.font = 'bold 14px Barlow Condensed, sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(cfg.name.toUpperCase() + ' COURSE', PAD, PAD - 16);
+  ctx.fillText(cfg.name.toUpperCase() + ' COURSE', PAD_C, PAD_C - 16);
 }
 
 function drawArrow(ctx, x1, y1, x2, y2, color, width) {
@@ -833,7 +953,17 @@ function exportPNG() {
 }
 
 // Generate on load
-window.onload = () => { updateRingInfo(); generate(); };
+window.onload = () => {
+  updateRingInfo();
+  requestAnimationFrame(() => requestAnimationFrame(() => generate()));
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(() => { if (currentCourse.length > 0) redraw(); });
+    const wrap = document.getElementById('canvasWrap');
+    if (wrap) ro.observe(wrap);
+  } else {
+    window.addEventListener('resize', () => { if (currentCourse.length > 0) redraw(); });
+  }
+};
 </script>
 </body>
 </html>
