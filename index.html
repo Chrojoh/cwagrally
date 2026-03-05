@@ -737,17 +737,17 @@ function renderCourse(placed, ringW, ringH, cfg) {
   ctx.fillStyle = '#1a1d23';
   ctx.fillRect(0, 0, W, H);
 
-  // Grid (every 10ft = minor, every 20ft = major)
+  // Grid (every 5ft minor, every 10ft major)
   for (let gx = 0; gx <= ringW; gx += 5) {
     const px = PAD_C + gx * currentScale;
-    ctx.strokeStyle = gx % 10 === 0 ? '#2a3040' : '#222730';
-    ctx.lineWidth = gx % 10 === 0 ? 0.8 : 0.4;
+    ctx.strokeStyle = gx % 10 === 0 ? '#363d4f' : '#2a3040';
+    ctx.lineWidth   = gx % 10 === 0 ? 0.8 : 0.4;
     ctx.beginPath(); ctx.moveTo(px, PAD_C); ctx.lineTo(px, PAD_C + ringH * currentScale); ctx.stroke();
   }
   for (let gy = 0; gy <= ringH; gy += 5) {
     const py = PAD_C + gy * currentScale;
-    ctx.strokeStyle = gy % 10 === 0 ? '#2a3040' : '#222730';
-    ctx.lineWidth = gy % 10 === 0 ? 0.8 : 0.4;
+    ctx.strokeStyle = gy % 10 === 0 ? '#363d4f' : '#2a3040';
+    ctx.lineWidth   = gy % 10 === 0 ? 0.8 : 0.4;
     ctx.beginPath(); ctx.moveTo(PAD_C, py); ctx.lineTo(PAD_C + ringW * currentScale, py); ctx.stroke();
   }
 
@@ -755,6 +755,44 @@ function renderCourse(placed, ringW, ringH, cfg) {
   ctx.strokeStyle = '#4a5468';
   ctx.lineWidth = 2;
   ctx.strokeRect(PAD_C, PAD_C, ringW * currentScale, ringH * currentScale);
+
+  // ── Rulers ────────────────────────────────────────────────────────
+  const stepW = ringW <= 50 ? 5 : 10;
+  const stepH = ringH <= 50 ? 5 : 10;
+  const tickColor   = '#4a5468';
+  const labelColor  = '#6b7589';
+  const accentColor = '#363d4f';
+  ctx.font = '8px Barlow, sans-serif';
+
+  // Left ruler (height axis)
+  for (let ft = 0; ft <= ringH; ft += stepH) {
+    const py = PAD_C + ft * currentScale;
+    const isMajor = ft % (stepH * 2) === 0;
+    ctx.strokeStyle = isMajor ? tickColor : accentColor;
+    ctx.lineWidth   = isMajor ? 1 : 0.5;
+    ctx.beginPath(); ctx.moveTo(PAD_C - (isMajor ? 8 : 4), py); ctx.lineTo(PAD_C, py); ctx.stroke();
+    if (isMajor) {
+      ctx.fillStyle = labelColor; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(ft + 'ft', PAD_C - 10, py);
+    }
+  }
+  ctx.strokeStyle = tickColor; ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.moveTo(PAD_C, PAD_C); ctx.lineTo(PAD_C, PAD_C + ringH * currentScale); ctx.stroke();
+
+  // Bottom ruler (width axis)
+  for (let ft = 0; ft <= ringW; ft += stepW) {
+    const px = PAD_C + ft * currentScale;
+    const isMajor = ft % (stepW * 2) === 0;
+    ctx.strokeStyle = isMajor ? tickColor : accentColor;
+    ctx.lineWidth   = isMajor ? 1 : 0.5;
+    ctx.beginPath(); ctx.moveTo(px, PAD_C + ringH * currentScale); ctx.lineTo(px, PAD_C + ringH * currentScale + (isMajor ? 8 : 4)); ctx.stroke();
+    if (isMajor) {
+      ctx.fillStyle = labelColor; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(ft + 'ft', px, PAD_C + ringH * currentScale + 10);
+    }
+  }
+  ctx.strokeStyle = tickColor; ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.moveTo(PAD_C, PAD_C + ringH * currentScale); ctx.lineTo(PAD_C + ringW * currentScale, PAD_C + ringH * currentScale); ctx.stroke();
 
   // Ring label
   ctx.fillStyle = '#363d4f';
