@@ -463,7 +463,7 @@ function getScale(ringW, ringH) {
   const rect = wrap.getBoundingClientRect();
   const availW = Math.max(300, rect.width  - PAD_C * 2 - 16);
   const availH = Math.max(200, rect.height - PAD_C * 2 - 16);
-  return Math.max(5, Math.min(16, Math.min(availW / ringW, availH / ringH)));
+  return Math.max(5, Math.min(21, Math.min(availW / ringW, availH / ringH)));
 }
 
 // Ring defaults: middle of each class's allowed range
