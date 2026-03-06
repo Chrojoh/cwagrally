@@ -416,13 +416,13 @@ const EX = {
 
 // ── CLASS CONFIG ────────────────────────────────
 const CLASS_CFG = {
-  S:   { name:'Starter Rally',    min:17,max:20, minFromClass:0,  classPrefix:['S'],          leash:true,  zoom:false, qual:70, ring:[1800,3500] },
-  A:   { name:'Advanced Rally',   min:18,max:21, minFromClass:8,  classPrefix:['A'],          leash:false, zoom:false, qual:70, ring:[1800,3500] },
-  P:   { name:'Pro Rally',        min:19,max:22, minFromClass:7,  classPrefix:['P','PR'],     leash:false, zoom:false, qual:70, ring:[2400,4000] },
-  ARF: { name:'ARF',              min:19,max:22, minFromClass:8,  classPrefix:['R','APR'],    leash:false, zoom:false, qual:70, ring:[2400,4000] },
-  Z1:  { name:'Zoom 1',           min:15,max:18, minFromClass:0,  classPrefix:['Z1'],         leash:true,  zoom:true,  qual:70, ring:[1800,3500] },
-  Z15: { name:'Zoom 1.5',         min:15,max:20, minFromClass:6,  classPrefix:['Z15'],        leash:false, zoom:true,  qual:70, ring:[1800,3500] },
-  Z2:  { name:'Zoom 2',           min:17,max:20, minFromClass:8,  classPrefix:['Z2'],         leash:false, zoom:true,  qual:70, ring:[2400,4000] },
+  S:   { name:'Starter Rally',    min:17,max:20, minFromClass:0,  classPrefix:['S'],          leash:true,  zoom:false, qual:70, ring:[1800,3500], minDist:10 }, 
+  A:   { name:'Advanced Rally',   min:18,max:21, minFromClass:8,  classPrefix:['A'],          leash:false, zoom:false, qual:70, ring:[1800,3500], minDist:10 },
+  P:   { name:'Pro Rally',        min:19,max:22, minFromClass:7,  classPrefix:['P','PR'],     leash:false, zoom:false, qual:70, ring:[2400,4000], minDist:10 },
+  ARF: { name:'ARF',              min:19,max:22, minFromClass:8,  classPrefix:['R','APR'],    leash:false, zoom:false, qual:70, ring:[2400,4000], minDist:10 },
+  Z1:  { name:'Zoom 1',           min:15,max:18, minFromClass:0,  classPrefix:['Z1'],         leash:true,  zoom:true,  qual:70, ring:[1800,3500], minDist:8  },
+  Z15: { name:'Zoom 1.5',         min:15,max:20, minFromClass:6,  classPrefix:['Z15'],        leash:false, zoom:true,  qual:70, ring:[1800,3500], minDist:8  },
+  Z2:  { name:'Zoom 2',           min:17,max:20, minFromClass:8,  classPrefix:['Z2'],         leash:false, zoom:true,  qual:70, ring:[2400,4000], minDist:8  },
 };
 
 // Recall pairs
@@ -501,6 +501,7 @@ function selectClass(cls) {
   const d = RING_DEFAULTS[cls];
   document.getElementById('ringW').value = d.w;
   document.getElementById('ringH').value = d.h;
+  document.getElementById('minDist').value = CLASS_CFG[cls].minDist;
   updateRingInfo();
   generate();
 }
@@ -1543,8 +1544,12 @@ function exportPDF() {
 // Generate on load
 window.onload = () => {
   updateRingInfo();
+  document.getElementById('minDist').value = CLASS_CFG[currentClass].minDist;
   autoLoadGithubSigns();
-  requestAnimationFrame(() => requestAnimationFrame(() => generate()));
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    generate();
+    updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
+  }));
   if (window.ResizeObserver) {
     const ro = new ResizeObserver(() => { if (currentCourse.length > 0) redraw(); });
     const wrap = document.getElementById('canvasWrap');
