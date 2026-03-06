@@ -195,7 +195,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
 }
 </style>
 </head>
-<body>
+<body class="light-mode">
 
 <div class="header">
   <div class="header-icon">🐾</div>
@@ -278,7 +278,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
       </div>
       <div class="canvas-actions">
         <button class="toggle-btn active" id="signsToggle" onclick="toggleSigns()" title="Show/hide sign thumbnails on course">🖼 Signs: ON</button>
-        <button class="toggle-btn" id="modeToggle" onclick="toggleMode()" title="Switch light/dark mode">☀ Light Mode</button>
+        <button class="toggle-btn active" id="modeToggle" onclick="toggleMode()" title="Switch light/dark mode">🌙 Dark Mode</button>
         <button class="action-btn" onclick="generate()">↺ Regenerate</button>
         <button class="action-btn" onclick="exportPDF()">⬇ Export PDF</button>
       </div>
@@ -683,7 +683,7 @@ let mouseDidMove = false;
 // ── SIGN IMAGES ──────────────────────────────────────────────────
 const signImages = {}; // keyed by exercise ID, e.g. 'S1', 'A9'
 
-const GITHUB_SIGNS_BASE = 'https://raw.githubusercontent.com/chrojoh/cwagrally/main/Signs/';
+const GITHUB_SIGNS_BASE = 'https://raw.githubusercontent.com/chrojoh/cwagrally/main/signs/';
 const ALL_SIGN_IDS = Object.keys(EX);
 
 function setGithubStatus(icon, msg, color) {
@@ -763,8 +763,9 @@ function redraw() {
 function canvasEvtPx(e) {
   const canvas = document.getElementById('courseCanvas');
   const rect = canvas.getBoundingClientRect();
-  const sx = canvas.width / rect.width, sy = canvas.height / rect.height;
-  return { x: (e.clientX - rect.left) * sx, y: (e.clientY - rect.top) * sy };
+  // canvas.width is dpr-scaled, rect.width is CSS size — divide by CSS size to get logical px
+  return { x: (e.clientX - rect.left) * (canvas.width / (rect.width * (window.devicePixelRatio || 1))), 
+           y: (e.clientY - rect.top)  * (canvas.height / (rect.height * (window.devicePixelRatio || 1))) };
 }
 
 function canvasEvtToFt(e) {
@@ -1133,10 +1134,12 @@ function renderCourse(placed, ringW, ringH, cfg) {
   currentScale = getScale(ringW, ringH);
   const W = ringW * currentScale + PAD_C * 2;
   const H = ringH * currentScale + PAD_C * 2;
-  canvas.width = W; canvas.height = H;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = W * dpr; canvas.height = H * dpr;
   canvas.style.width  = W + 'px';
   canvas.style.height = H + 'px';
   const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
 
   const isLight = document.body.classList.contains('light-mode');
   const canvasBg    = isLight ? '#ffffff' : '#1a1d23';
@@ -1291,7 +1294,7 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
   if (showSigns) {
     const img = signImages[ex.id];
     if (img) {
-      const thumbSize = 34;
+      const thumbSize = 120;
       const gap = 5;
       const tx = cx + r + gap;
       const ty = cy - thumbSize / 2;
