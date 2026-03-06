@@ -1204,9 +1204,9 @@ function renderCourse(placed, ringW, ringH, cfg) {
   ctx.beginPath(); ctx.moveTo(PAD_C, PAD_C + ringH * currentScale); ctx.lineTo(PAD_C + ringW * currentScale, PAD_C + ringH * currentScale); ctx.stroke();
 
   ctx.fillStyle = labelDim;
-  ctx.font = 'bold 11px Barlow Condensed, sans-serif';
+  ctx.font = 'bold 14px Barlow Condensed, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`${ringW}ft \u00d7 ${ringH}ft = ${ringW * ringH} sq ft`, PAD_C + ringW * currentScale / 2, PAD_C - 8);
+  ctx.fillText(`${ringW}ft \u00d7 ${ringH}ft = ${ringW * ringH} sq ft`, PAD_C + ringW * currentScale / 2, PAD_C - 14);
 
   const exercises = placed.filter(p => p.cat !== 'start' && p.cat !== 'finish');
   const allPoints = [placed[0], ...exercises, placed[placed.length-1]];
