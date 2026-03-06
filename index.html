@@ -1546,10 +1546,7 @@ window.onload = () => {
   updateRingInfo();
   document.getElementById('minDist').value = CLASS_CFG[currentClass].minDist;
   autoLoadGithubSigns();
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    generate();
-    updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
-  }));
+  requestAnimationFrame(() => requestAnimationFrame(() => generate()));
   if (window.ResizeObserver) {
     const ro = new ResizeObserver(() => { if (currentCourse.length > 0) redraw(); });
     const wrap = document.getElementById('canvasWrap');
