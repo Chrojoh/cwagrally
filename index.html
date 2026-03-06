@@ -1169,7 +1169,7 @@ function renderCourse(placed, ringW, ringH, cfg) {
     const py = PAD_C + gy * currentScale;
     ctx.strokeStyle = gy % 10 === 0 ? gridMajor : gridMinor;
     ctx.lineWidth   = gy % 10 === 0 ? 0.8 : 0.4;
-    ctx.beginPath(); ctx.moveTo(PAD_C, py); ctx.lineTo(PAD_C + ringH * currentScale, py); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD_C, py); ctx.lineTo(PAD_C + ringW * currentScale, py); ctx.stroke();
   }
 
   // Ring border
@@ -1294,7 +1294,7 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
   if (showSigns) {
     const img = signImages[ex.id];
     if (img) {
-      const thumbSize = 64;
+      const thumbSize = 48;
       const gap = 5;
       const tx = cx + r + gap;
       const ty = cy - thumbSize / 2;
