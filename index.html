@@ -1161,7 +1161,7 @@ function renderCourse(placed, ringW, ringH, cfg) {
   // Grid
   for (let gx = 0; gx <= ringW; gx += 5) {
     const px = PAD_C + gx * currentScale;
-    ctx.strokeStyle = gy % 10 === 0 ? gridMajor : gridMinor;
+    ctx.strokeStyle = gx % 10 === 0 ? gridMajor : gridMinor;
     ctx.lineWidth   = gx % 10 === 0 ? 0.8 : 0.4;
     ctx.beginPath(); ctx.moveTo(px, PAD_C); ctx.lineTo(px, PAD_C + ringH * currentScale); ctx.stroke();
   }
