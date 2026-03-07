@@ -42,31 +42,31 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
 .header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; gap: 14px; }
 .header-icon { font-size: 26px; }
 .header-title { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 900; letter-spacing: 1px; color: var(--gold); }
-.header-sub { font-size: 16px; color: var(--text3); letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
+.header-sub { font-size: 11px; color: var(--text3); letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
 
 /* LAYOUT */
-.main { display: grid; grid-template-columns: 680px 1fr; gap: 0; height: calc(100vh - 57px); overflow: hidden; }
-.sidebar { background: var(--bg2); border-right: 1px solid var(--border); padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; font-size: 16px; }
+.main { display: grid; grid-template-columns: 300px 1fr; gap: 0; height: calc(100vh - 57px); overflow: hidden; }
+.sidebar { background: var(--bg2); border-right: 1px solid var(--border); padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
 .canvas-area { padding: 16px; overflow: hidden; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
 
 /* CONTROLS */
-.section-label { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; letter-spacing: 3px; color: var(--text3); text-transform: uppercase; font-weight: 700; margin-bottom: 8px; }
+.section-label { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; letter-spacing: 3px; color: var(--text3); text-transform: uppercase; font-weight: 700; margin-bottom: 8px; }
 
 .class-btns { display: flex; flex-wrap: wrap; gap: 6px; }
 .cls-btn {
   padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border2);
   background: var(--bg3); color: var(--text2); cursor: pointer;
-  font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1px;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 1px;
   transition: all 0.12s;
 }
 .cls-btn:hover { border-color: var(--gold); color: var(--gold); }
 .cls-btn.active { border-color: var(--gold); background: var(--gold-dim); color: var(--gold); }
 
 .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.opt-group label { font-size: 16px; color: var(--text3); display: block; margin-bottom: 4px; }
+.opt-group label { font-size: 11px; color: var(--text3); display: block; margin-bottom: 4px; }
 .opt-group select, .opt-group input {
   width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: 4px;
-  color: var(--text); padding: 5px 8px; font-size: 16px; font-family: 'Barlow', sans-serif;
+  color: var(--text); padding: 5px 8px; font-size: 12px; font-family: 'Barlow', sans-serif;
 }
 .opt-group input[type=checkbox] { width: auto; margin-right: 6px; }
 .opt-checkbox { display: flex; align-items: center; padding: 8px 0; font-size: 12px; color: var(--text2); }
@@ -83,34 +83,34 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
 .ex-list { flex: 1; }
 .ex-item {
   display: flex; align-items: flex-start; gap: 8px;
-  padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 17px;
+  padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12px;
 }
 .ex-num {
   width: 22px; height: 22px; border-radius: 50%; background: var(--bg3);
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 16px;
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 11px;
   flex-shrink: 0; border: 1px solid var(--border2);
 }
 .ex-text { flex: 1; }
-.ex-id { font-size: 16px; color: var(--text3); }
+.ex-id { font-size: 10px; color: var(--text3); }
 .ex-name { color: var(--text); }
-.ex-flag { font-size: 16px; color: var(--text3); margin-top: 2px; }
+.ex-flag { font-size: 10px; color: var(--text3); margin-top: 2px; }
 .flag-eq { color: #fb923c; } .flag-stat { color: #a78bfa; } .flag-seq { color: #f472b6; }
 
 /* VALIDATION */
 .validation { background: var(--bg3); border-radius: 6px; padding: 10px 12px; border: 1px solid var(--border); }
-.val-item { font-size: 16px; padding: 3px 0; display: flex; align-items: center; gap: 6px; }
+.val-item { font-size: 11px; padding: 3px 0; display: flex; align-items: center; gap: 6px; }
 .val-ok { color: var(--green); } .val-warn { color: var(--gold); } .val-err { color: var(--red); }
 
 /* CANVAS AREA */
 .canvas-header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .canvas-title { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; color: var(--text); }
-.canvas-meta { font-size: 16px; color: var(--text3); }
+.canvas-meta { font-size: 11px; color: var(--text3); }
 .canvas-actions { margin-left: auto; display: flex; gap: 8px; }
 .action-btn {
   padding: 6px 12px; background: var(--bg3); border: 1px solid var(--border2);
   border-radius: 4px; color: var(--text2); cursor: pointer;
-  font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1px;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px;
   transition: all 0.12s;
 }
 .action-btn:hover { border-color: var(--blue); color: var(--blue); }
@@ -118,12 +118,12 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
 /* CANVAS AREA */
 .canvas-header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex-shrink: 0; }
 .canvas-title { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; color: var(--text); }
-.canvas-meta { font-size: 16px; color: var(--text3); }
+.canvas-meta { font-size: 11px; color: var(--text3); }
 .canvas-actions { margin-left: auto; display: flex; gap: 8px; }
 .action-btn {
   padding: 6px 12px; background: var(--bg3); border: 1px solid var(--border2);
   border-radius: 4px; color: var(--text2); cursor: pointer;
-  font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1px;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px;
   transition: all 0.12s;
 }
 .action-btn:hover { border-color: var(--blue); color: var(--blue); }
@@ -133,26 +133,26 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
 #courseCanvas.dragging { cursor: grabbing; }
 
 .legend { display: flex; flex-wrap: wrap; gap: 12px; flex-shrink: 0; }
-.leg-item { display: flex; align-items: center; gap: 6px; font-size: 16px; color: var(--text3); }
+.leg-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text3); }
 .leg-dot { width: 12px; height: 12px; border-radius: 50%; }
 
 /* SIGN UPLOAD */
 .sign-upload-area {
   border: 1px dashed var(--border2); border-radius: 5px;
   padding: 10px; text-align: center; cursor: pointer;
-  color: var(--text3); font-size: 16px; transition: all 0.12s;
+  color: var(--text3); font-size: 11px; transition: all 0.12s;
   background: var(--bg3);
 }
 .sign-upload-area:hover { border-color: var(--gold); color: var(--gold); }
 .sign-upload-area input { display: none; }
-.sign-count { font-size: 16px; color: var(--green); margin-top: 4px; display: none; }
+.sign-count { font-size: 10px; color: var(--green); margin-top: 4px; display: none; }
 .sign-count.visible { display: block; }
 
 /* TOGGLE BUTTONS */
 .toggle-btn {
   padding: 6px 12px; background: var(--bg3); border: 1px solid var(--border2);
   border-radius: 4px; color: var(--text2); cursor: pointer;
-  font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1px;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px;
   transition: all 0.12s; white-space: nowrap;
 }
 .toggle-btn:hover { border-color: var(--gold); color: var(--gold); }
@@ -176,7 +176,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
   display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
 }
 #subModalTitle {
-  font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; color: var(--gold);
+  font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 700; color: var(--gold);
   flex: 1;
 }
 #subModalClose {
@@ -190,7 +190,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
   flex: 1;
 }
 #subModalHint {
-  padding: 8px 16px 12px; font-size: 16px; color: var(--text3);
+  padding: 8px 16px 12px; font-size: 10px; color: var(--text3);
   border-top: 1px solid var(--border);
 }
 </style>
@@ -232,20 +232,20 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
           <select id="randLevel"><option value="low">Low</option><option value="med" selected>Medium</option><option value="high">High</option></select>
         </div>
       </div>
-      <div id="ringInfo" style="font-size:16px;color:var(--text3);padding:4px 0 2px 0;"></div>
+      <div id="ringInfo" style="font-size:11px;color:var(--text3);padding:4px 0 2px 0;"></div>
       <div class="opt-checkbox"><input type="checkbox" id="includeEquip"> Include Equipment (jumps, tunnels, tables)</div>
       <div class="opt-checkbox"><input type="checkbox" id="includeLeavedog" checked> Include Leave Dog exercises</div>
     </div>
 
     <div>
       <div class="section-label">Sign Images</div>
-      <div id="githubSignStatus" style="font-size:16px;padding:7px 10px;border-radius:5px;background:var(--bg3);border:1px solid var(--border);margin-bottom:6px;display:flex;align-items:center;gap:7px;">
+      <div id="githubSignStatus" style="font-size:11px;padding:7px 10px;border-radius:5px;background:var(--bg3);border:1px solid var(--border);margin-bottom:6px;display:flex;align-items:center;gap:7px;">
         <span id="githubSignIcon">⏳</span>
         <span id="githubSignMsg" style="color:var(--text3)">Loading signs from GitHub…</span>
       </div>
       <div class="sign-upload-area" onclick="document.getElementById('signFileInput').click()" style="margin-top:2px;">
         🖼 Override: upload local sign images
-        <div style="font-size:16px;margin-top:3px;color:var(--text3)">Name files to match exercise IDs (e.g. S1.png, A9.png)</div>
+        <div style="font-size:10px;margin-top:3px;color:var(--text3)">Name files to match exercise IDs (e.g. S1.png, A9.png)</div>
         <input type="file" id="signFileInput" multiple accept="image/*" onchange="loadSignImages(this.files)">
       </div>
       <div class="sign-count" id="signCount"></div>
@@ -279,6 +279,9 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
       <div class="canvas-actions">
         <button class="toggle-btn active" id="signsToggle" onclick="toggleSigns()" title="Show/hide sign thumbnails on course">🖼 Signs: ON</button>
         <button class="toggle-btn active" id="modeToggle" onclick="toggleMode()" title="Switch light/dark mode">🌙 Dark Mode</button>
+        <button class="action-btn" onclick="saveCourse()" title="Save course to JSON file">💾 Save</button>
+        <button class="action-btn" onclick="document.getElementById('loadFileInput').click()" title="Load course from JSON file">📂 Load<input type="file" id="loadFileInput" accept=".json" style="display:none" onchange="loadCourse(this)"></button>
+        <button class="action-btn" id="upgradeBtn" onclick="upgradeCourse()" title="Upgrade to next level keeping positions">⬆ Upgrade Level</button>
         <button class="action-btn" onclick="generate()">↺ Regenerate</button>
         <button class="action-btn" onclick="exportPDF()">⬇ Export PDF</button>
       </div>
@@ -416,13 +419,13 @@ const EX = {
 
 // ── CLASS CONFIG ────────────────────────────────
 const CLASS_CFG = {
-  S:   { name:'Starter Rally',    min:17,max:20, minFromClass:0,  classPrefix:['S'],          leash:true,  zoom:false, qual:70, ring:[1800,3500], minDist:10 }, 
-  A:   { name:'Advanced Rally',   min:18,max:21, minFromClass:8,  classPrefix:['A'],          leash:false, zoom:false, qual:70, ring:[1800,3500], minDist:10 },
-  P:   { name:'Pro Rally',        min:19,max:22, minFromClass:7,  classPrefix:['P','PR'],     leash:false, zoom:false, qual:70, ring:[2400,4000], minDist:10 },
-  ARF: { name:'ARF',              min:19,max:22, minFromClass:8,  classPrefix:['R','APR'],    leash:false, zoom:false, qual:70, ring:[2400,4000], minDist:10 },
-  Z1:  { name:'Zoom 1',           min:15,max:18, minFromClass:0,  classPrefix:['Z1'],         leash:true,  zoom:true,  qual:70, ring:[1800,3500], minDist:8  },
-  Z15: { name:'Zoom 1.5',         min:15,max:20, minFromClass:6,  classPrefix:['Z15'],        leash:false, zoom:true,  qual:70, ring:[1800,3500], minDist:8  },
-  Z2:  { name:'Zoom 2',           min:17,max:20, minFromClass:8,  classPrefix:['Z2'],         leash:false, zoom:true,  qual:70, ring:[2400,4000], minDist:8  },
+  S:   { name:'Starter Rally',    min:17,max:20, minFromClass:0,  classPrefix:['S'],          leash:true,  zoom:false, qual:70, ring:[1800,3500] },
+  A:   { name:'Advanced Rally',   min:18,max:21, minFromClass:8,  classPrefix:['A'],          leash:false, zoom:false, qual:70, ring:[1800,3500] },
+  P:   { name:'Pro Rally',        min:19,max:22, minFromClass:7,  classPrefix:['P','PR'],     leash:false, zoom:false, qual:70, ring:[2400,4000] },
+  ARF: { name:'ARF',              min:19,max:22, minFromClass:8,  classPrefix:['R','APR'],    leash:false, zoom:false, qual:70, ring:[2400,4000] },
+  Z1:  { name:'Zoom 1',           min:15,max:18, minFromClass:0,  classPrefix:['Z1'],         leash:true,  zoom:true,  qual:70, ring:[1800,3500] },
+  Z15: { name:'Zoom 1.5',         min:15,max:20, minFromClass:6,  classPrefix:['Z15'],        leash:false, zoom:true,  qual:70, ring:[1800,3500] },
+  Z2:  { name:'Zoom 2',           min:17,max:20, minFromClass:8,  classPrefix:['Z2'],         leash:false, zoom:true,  qual:70, ring:[2400,4000] },
 };
 
 // Recall pairs
@@ -463,7 +466,7 @@ function getScale(ringW, ringH) {
   const rect = wrap.getBoundingClientRect();
   const availW = Math.max(300, rect.width  - PAD_C * 2 - 16);
   const availH = Math.max(200, rect.height - PAD_C * 2 - 16);
-  return Math.max(5, Math.min(21, Math.min(availW / ringW, availH / ringH)));
+  return Math.max(5, Math.min(16, Math.min(availW / ringW, availH / ringH)));
 }
 
 // Ring defaults: middle of each class's allowed range
@@ -501,7 +504,6 @@ function selectClass(cls) {
   const d = RING_DEFAULTS[cls];
   document.getElementById('ringW').value = d.w;
   document.getElementById('ringH').value = d.h;
-  document.getElementById('minDist').value = CLASS_CFG[cls].minDist;
   updateRingInfo();
   generate();
 }
@@ -628,7 +630,7 @@ function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave
 
     for (const ex of avail) {
       // Try placing this exercise with multiple fallback distance relaxations
-      const newPos = tryPlaceExercise(pos, heading, ex.td, placed, ringW, ringH, minDist, randFactor);
+      const newPos = tryPlaceExercise(pos, heading, ex.td, placed, ringW, ringH, minDist, randFactor, ex.cat);
       if (!newPos) continue;
 
       // ── 5. Leave-dog lookahead: make sure a recall CAN fit ────────
@@ -684,7 +686,7 @@ let mouseDidMove = false;
 // ── SIGN IMAGES ──────────────────────────────────────────────────
 const signImages = {}; // keyed by exercise ID, e.g. 'S1', 'A9'
 
-const GITHUB_SIGNS_BASE = 'https://raw.githubusercontent.com/chrojoh/cwagrally/main/Signs/';
+const GITHUB_SIGNS_BASE = 'https://raw.githubusercontent.com/chrojoh/cwagrally/main/signs/';
 const ALL_SIGN_IDS = Object.keys(EX);
 
 function setGithubStatus(icon, msg, color) {
@@ -980,7 +982,7 @@ function openSubstituteModal(idx) {
   list.innerHTML = '';
 
   if (candidates.length === 0) {
-    list.innerHTML = '<div style="color:var(--text3);font-size:16px;padding:12px 0;">No valid substitutes found for this position.</div>';
+    list.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:12px 0;">No valid substitutes found for this position.</div>';
   } else {
     candidates.forEach(c => {
       const color = c.stat ? '#a78bfa' : (c.eq ? '#fb923c' : (c.cat === 'leave' || c.cat === 'recall' ? '#f472b6' : '#4fc3f7'));
@@ -1025,6 +1027,234 @@ function applySubstitute(candidate) {
 
 // Indices of stations that are currently violating the distance rule (for highlight)
 let distViolators = new Set();
+
+// ── LEVEL PROGRESSION ────────────────────────────────────────────
+const LEVEL_ORDER = ['S', 'A', 'P', 'ARF', 'Z1', 'Z15', 'Z2'];
+const LEVEL_NEXT  = { S:'A', A:'P', P:'ARF', Z1:'Z15', Z15:'Z2' };
+
+// ── SAVE COURSE ──────────────────────────────────────────────────
+function saveCourse() {
+  if (!currentCourse || currentCourse.length < 3) {
+    alert('No course to save yet — generate one first.'); return;
+  }
+  const data = {
+    version: 1,
+    cls: currentClass,
+    ringW: parseInt(document.getElementById('ringW').value),
+    ringH: parseInt(document.getElementById('ringH').value),
+    minDist: parseInt(document.getElementById('minDist').value),
+    includeEquip: document.getElementById('includeEquip').checked,
+    includeLeave: document.getElementById('includeLeavedog').checked,
+    course: currentCourse.map(p => ({
+      id: p.id, n: p.n, cat: p.cat, stat: !!p.stat, eq: p.eq || null,
+      seq: p.seq || null, heading: p.heading || 0,
+      pos: { x: +p.pos.x.toFixed(2), y: +p.pos.y.toFixed(2) }
+    }))
+  };
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().slice(0,10);
+  a.href = url; a.download = `CWAGS-${currentClass}-${dateStr}.json`; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+  showToast('💾 Course saved!');
+}
+
+// ── LOAD COURSE ──────────────────────────────────────────────────
+function loadCourse(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.course || !data.cls) throw new Error('Invalid file');
+      // Restore settings
+      currentClass = data.cls;
+      document.querySelectorAll('.cls-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.cls-btn').forEach(b => {
+        if (b.textContent.trim().replace(' ','') === data.cls ||
+            b.onclick?.toString().includes(`'${data.cls}'`)) b.classList.add('active');
+      });
+      // More reliable: match by onclick string
+      document.querySelectorAll('.cls-btn').forEach(b => {
+        const m = b.getAttribute('onclick')?.match(/'(\w+)'/);
+        if (m && m[1] === data.cls) b.classList.add('active');
+        else b.classList.remove('active');
+      });
+      document.getElementById('canvasTitle').textContent = CLASS_CFG[data.cls].name + ' Course';
+      document.getElementById('ringW').value = data.ringW;
+      document.getElementById('ringH').value = data.ringH;
+      document.getElementById('minDist').value = data.minDist || 10;
+      document.getElementById('includeEquip').checked = !!data.includeEquip;
+      document.getElementById('includeLeavedog').checked = data.includeLeave !== false;
+      updateRingInfo();
+      // Restore course
+      currentCourse = data.course.map(p => ({ ...p, pos: { x: p.pos.x, y: p.pos.y } }));
+      redraw();
+      updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
+      showToast('📂 Course loaded!');
+    } catch(err) {
+      alert('Could not load file: ' + err.message);
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ── UPGRADE COURSE TO NEXT LEVEL ─────────────────────────────────
+// Conservative: keep ALL positions. Only swap signs that are outright
+// invalid for the next level, then insert new required signs into the
+// biggest existing gaps. Nothing else moves.
+function upgradeCourse() {
+  if (!currentCourse || currentCourse.length < 3) {
+    alert('No course to upgrade — generate or load one first.'); return;
+  }
+  const nextCls = LEVEL_NEXT[currentClass];
+  if (!nextCls) {
+    showToast('⚠ No next level defined for ' + currentClass); return;
+  }
+  const nextCfg  = CLASS_CFG[nextCls];
+  const includeEquip = document.getElementById('includeEquip').checked;
+  const includeLeave = document.getElementById('includeLeavedog').checked;
+  const minDist  = parseInt(document.getElementById('minDist').value);
+  const ringW    = parseInt(document.getElementById('ringW').value);
+  const ringH    = parseInt(document.getElementById('ringH').value);
+
+  const nextPool     = getPool(nextCls, includeEquip, includeLeave);
+  const nextValidIds = new Set(nextPool.map(e => e.id));
+  const nextOwnIds   = CLASS_OWN_IDS[nextCls] || new Set();
+
+  // Deep copy — positions never move unless we insert
+  let upgraded = currentCourse.map(p => ({ ...p, pos: { ...p.pos } }));
+
+  // Track usage across the whole course
+  const usedIds = {};
+  upgraded.forEach(p => { if (p.cat !== 'start' && p.cat !== 'finish') usedIds[p.id] = (usedIds[p.id]||0)+1; });
+
+  // ── Step 1: Swap only signs that are INVALID for next level ──────
+  // Walk through once; signs already valid stay exactly as-is.
+  let classCount = upgraded.filter(p => nextOwnIds.has(p.id)).length;
+
+  for (let i = 0; i < upgraded.length; i++) {
+    const ex = upgraded[i];
+    if (ex.cat === 'start' || ex.cat === 'finish') continue;
+    if (nextValidIds.has(ex.id)) continue; // ✓ already fine — leave it
+
+    const prevEx = upgraded.slice(0, i).reverse().find(p => p.cat !== 'start');
+    const nextEx = upgraded.slice(i + 1).find(p => p.cat !== 'finish');
+
+    // Temporarily remove this sign from used count so substitutes aren't blocked by it
+    usedIds[ex.id] = Math.max(0, (usedIds[ex.id]||1) - 1);
+    const statCount = upgraded.filter((p,j) => j !== i && p.stat && p.cat !== 'start' && p.cat !== 'finish').length;
+    const maxStat   = Math.floor((upgraded.length - 2) / 3);
+
+    const candidates = nextPool.filter(c => {
+      if (!nextValidIds.has(c.id)) return false;
+      if (!c.mult && (usedIds[c.id]||0) >= 1) return false;
+      if ( c.mult && (usedIds[c.id]||0) >= 2) return false;
+      if (c.stat && statCount >= maxStat) return false;
+      if (nextCfg.zoom && (c.stat || c.cat === 'halt')) return false;
+      if (RECALL_IDS.has(c.id) && (!prevEx || prevEx.cat !== 'leave')) return false;
+      if (prevEx?.cat === 'leave' && !(RECALL_MAP[prevEx.id]||[]).includes(c.id)) return false;
+      if (prevEx && PACE_AFTER[prevEx.id] && !PACE_AFTER[prevEx.id].includes(c.id)) return false;
+      if (nextEx && PACE_AFTER[c.id] && !PACE_AFTER[c.id].includes(nextEx.id)) return false;
+      if (c.cat === 'leave' && nextEx && !(RECALL_MAP[c.id]||[]).includes(nextEx.id)) return false;
+      if (!nextEx && (c.cat === 'leave' || PACE_AFTER[c.id])) return false;
+      return true;
+    });
+
+    // Prefer class-specific when still needed, otherwise pick any valid substitute
+    const preferred = (classCount < nextCfg.minFromClass)
+      ? candidates.filter(c => nextOwnIds.has(c.id))
+      : [];
+    const pick = preferred.length > 0 ? preferred[0] : candidates[0];
+
+    if (pick) {
+      usedIds[pick.id] = (usedIds[pick.id]||0) + 1;
+      if (nextOwnIds.has(pick.id)) classCount++;
+      // Swap sign ID/name/flags — position and heading stay exactly the same
+      upgraded[i] = { ...upgraded[i], id:pick.id, n:pick.n, cat:pick.cat, stat:!!pick.stat, eq:pick.eq||null, seq:pick.seq||null };
+    } else {
+      // No valid substitute found — put back original count, leave sign as flag for judge
+      usedIds[ex.id] = (usedIds[ex.id]||0) + 1;
+    }
+  }
+
+  // ── Step 2: Insert required class-specific signs into LARGEST gaps only ──
+  // Only insert if we're still short on class minimum. Insert into gaps big
+  // enough to fit a new station without violating minDist either side.
+  const stillNeeded = Math.max(0, nextCfg.minFromClass - classCount);
+  if (stillNeeded > 0) {
+    const gaps = [];
+    for (let i = 0; i < upgraded.length - 1; i++) {
+      const d = dist(upgraded[i].pos, upgraded[i+1].pos);
+      if (d >= minDist * 2.2) gaps.push({ i, d });
+    }
+    gaps.sort((a,b) => b.d - a.d); // largest gaps first
+
+    const eligible = nextPool.filter(c =>
+      nextOwnIds.has(c.id) &&
+      !RECALL_IDS.has(c.id) &&
+      c.cat !== 'recall' &&
+      c.cat !== 'leave' &&
+      !PACE_AFTER[c.id] &&
+      (!c.mult ? (usedIds[c.id]||0) < 1 : (usedIds[c.id]||0) < 2)
+    );
+
+    let inserted = 0;
+    for (const gap of gaps) {
+      if (inserted >= stillNeeded) break;
+      const pick = eligible.find(c => (!c.mult ? (usedIds[c.id]||0) < 1 : (usedIds[c.id]||0) < 2));
+      if (!pick) break;
+
+      const from = upgraded[gap.i];
+      const to   = upgraded[gap.i + 1 + inserted]; // account for prior insertions
+      const mid  = {
+        x: Math.max(5, Math.min(ringW-5, (from.pos.x + to.pos.x)/2 + rnd(-2, 2))),
+        y: Math.max(5, Math.min(ringH-5, (from.pos.y + to.pos.y)/2 + rnd(-2, 2)))
+      };
+
+      usedIds[pick.id] = (usedIds[pick.id]||0) + 1;
+      upgraded.splice(gap.i + 1 + inserted, 0, {
+        id: pick.id, n: pick.n, cat: pick.cat, stat: !!pick.stat,
+        eq: pick.eq||null, seq: pick.seq||null,
+        heading: from.heading || 0, pos: mid
+      });
+      inserted++;
+    }
+  }
+
+  // ── Step 3: Switch class UI ───────────────────────────────────────
+  currentClass = nextCls;
+  document.querySelectorAll('.cls-btn').forEach(b => {
+    const m = b.getAttribute('onclick')?.match(/'(\w+)'/);
+    if (m) b.classList.toggle('active', m[1] === nextCls);
+  });
+  document.getElementById('canvasTitle').textContent = nextCfg.name + ' Course';
+  document.getElementById('minDist').value = nextCfg.minDist || 10;
+  updateRingInfo();
+
+  currentCourse = upgraded;
+  redraw();
+  updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
+
+  const swapped  = currentCourse.filter(p => p.cat !== 'start' && p.cat !== 'finish' && nextOwnIds.has(p.id)).length;
+  showToast(`⬆ Upgraded to ${nextCfg.name} — ${stillNeeded > 0 ? stillNeeded + ' signs inserted, ' : ''}positions preserved`);
+}
+
+// ── TOAST HELPER ─────────────────────────────────────────────────
+function showToast(msg) {
+  const old = document.getElementById('cwags-toast');
+  if (old) old.remove();
+  const tip = document.createElement('div');
+  tip.id = 'cwags-toast';
+  tip.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#21262f;border:1px solid #4a5468;color:#e8eaf0;padding:10px 18px;border-radius:6px;font-size:13px;z-index:999;box-shadow:0 4px 20px #0006;pointer-events:none;';
+  tip.textContent = msg;
+  document.body.appendChild(tip);
+  setTimeout(() => tip.remove(), 3000);
+}
 
 function showDistanceWarning(violatingIndices) {
   distViolators = new Set(violatingIndices);
@@ -1077,20 +1307,30 @@ function generate() {
   updateSidebar(placed, cls, cfg);
 }
 
-function tryPlaceExercise(pos, heading, turnDelta, placed, ringW, ringH, minDist, randFactor) {
+function tryPlaceExercise(pos, heading, turnDelta, placed, ringW, ringH, minDist, randFactor, exCat) {
   const margin = 4;
-  // Try progressively wider jitter; if still failing, relax minDist slightly
-  const passes = [
+  // For jumps and tunnels, require straight approach — minimal jitter
+  const isEquip = exCat === 'equip';
+  const passes = isEquip ? [
+    { jitter: 8,  slack: 0 },
+    { jitter: 15, slack: 0 },
+    { jitter: 25, slack: minDist * 0.1 },
+  ] : [
     { jitter: randFactor * 50, slack: 0 },
     { jitter: 70,               slack: 0 },
     { jitter: 120,              slack: 0 },
-    { jitter: 180,              slack: minDist * 0.15 }, // relax spacing slightly
+    { jitter: 180,              slack: minDist * 0.15 },
   ];
+  // For 180° turns, project forward using the OUTGOING heading so the next
+  // station actually appears in the reversed direction
+  const effectiveHeading = Math.abs(turnDelta) === 180
+    ? normalizeAngle(heading + turnDelta)
+    : heading;
   for (const { jitter, slack } of passes) {
     const effectiveMin = minDist - slack;
     for (let t = 0; t < 20; t++) {
-      const distance = rnd(minDist, minDist + 14);
-      const angle = heading + rnd(-jitter, jitter);
+      const distance = rnd(minDist, minDist + (isEquip ? 20 : 14));
+      const angle = effectiveHeading + rnd(-jitter, jitter);
       const v = vecFromHeading(angle);
       const np = { x: pos.x + v.x * distance, y: pos.y + v.y * distance };
       if (np.x < margin || np.x > ringW - margin) continue;
@@ -1144,8 +1384,8 @@ function renderCourse(placed, ringW, ringH, cfg) {
 
   const isLight = document.body.classList.contains('light-mode');
   const canvasBg    = isLight ? '#ffffff' : '#1a1d23';
-  const gridMajor   = isLight ? '#a0aabe' : '#4a5468';
-  const gridMinor   = isLight ? '#c8cedd' : '#363d4f';
+  const gridMajor   = isLight ? '#d8dce8' : '#363d4f';
+  const gridMinor   = isLight ? '#eceef5' : '#2a3040';
   const ringBorder  = isLight ? '#5a6890' : '#4a5468';
   const tickColor   = isLight ? '#8896b0' : '#4a5468';
   const labelColor  = isLight ? '#5a6480' : '#6b7589';
@@ -1170,7 +1410,7 @@ function renderCourse(placed, ringW, ringH, cfg) {
     const py = PAD_C + gy * currentScale;
     ctx.strokeStyle = gy % 10 === 0 ? gridMajor : gridMinor;
     ctx.lineWidth   = gy % 10 === 0 ? 0.8 : 0.4;
-    ctx.beginPath(); ctx.moveTo(PAD_C, py); ctx.lineTo(PAD_C + ringW * currentScale, py); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD_C, py); ctx.lineTo(PAD_C + ringH * currentScale, py); ctx.stroke();
   }
 
   // Ring border
@@ -1204,9 +1444,9 @@ function renderCourse(placed, ringW, ringH, cfg) {
   ctx.beginPath(); ctx.moveTo(PAD_C, PAD_C + ringH * currentScale); ctx.lineTo(PAD_C + ringW * currentScale, PAD_C + ringH * currentScale); ctx.stroke();
 
   ctx.fillStyle = labelDim;
-  ctx.font = 'bold 14px Barlow Condensed, sans-serif';
+  ctx.font = 'bold 11px Barlow Condensed, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`${ringW}ft \u00d7 ${ringH}ft = ${ringW * ringH} sq ft`, PAD_C + ringW * currentScale / 2, PAD_C - 14);
+  ctx.fillText(`${ringW}ft \u00d7 ${ringH}ft = ${ringW * ringH} sq ft`, PAD_C + ringW * currentScale / 2, PAD_C - 8);
 
   const exercises = placed.filter(p => p.cat !== 'start' && p.cat !== 'finish');
   const allPoints = [placed[0], ...exercises, placed[placed.length-1]];
@@ -1287,7 +1527,7 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
 
   // Number
   ctx.fillStyle = color;
-  ctx.font = `bold ${num >= 10 ? '10' : '13'}px Arial, sans-serif`;
+  ctx.font = `bold ${num >= 10 ? '9' : '11'}px Barlow Condensed, sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(num, cx, cy);
 
@@ -1544,7 +1784,6 @@ function exportPDF() {
 // Generate on load
 window.onload = () => {
   updateRingInfo();
-  document.getElementById('minDist').value = CLASS_CFG[currentClass].minDist;
   autoLoadGithubSigns();
   requestAnimationFrame(() => requestAnimationFrame(() => generate()));
   if (window.ResizeObserver) {
