@@ -1322,16 +1322,15 @@ function tryPlaceExercise(pos, heading, turnDelta, placed, ringW, ringH, minDist
     { jitter: 120,              slack: 0 },
     { jitter: 180,              slack: minDist * 0.15 },
   ];
-  // For 180° turns, project forward using the OUTGOING heading so the next
-  // station actually appears in the reversed direction
-  const effectiveHeading = Math.abs(turnDelta) === 180
-    ? normalizeAngle(heading + turnDelta)
-    : heading;
+  // Always project from the OUTGOING heading so the next station
+  // actually appears in the direction the dog will be travelling after the turn.
+  // For small jitter moves (bear left/right ~45°) we still honour the turn.
+  const outHeading = normalizeAngle(heading + turnDelta);
   for (const { jitter, slack } of passes) {
     const effectiveMin = minDist - slack;
     for (let t = 0; t < 20; t++) {
       const distance = rnd(minDist, minDist + (isEquip ? 20 : 14));
-      const angle = effectiveHeading + rnd(-jitter, jitter);
+      const angle = outHeading + rnd(-jitter, jitter);
       const v = vecFromHeading(angle);
       const np = { x: pos.x + v.x * distance, y: pos.y + v.y * distance };
       if (np.x < margin || np.x > ringW - margin) continue;
