@@ -832,9 +832,14 @@ document.addEventListener('DOMContentLoaded', () => {
             badIdx.push(i); badIdx.push(i + 1);
           }
         }
+        recalcHeadings(currentCourse);
         redraw();
         updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
         showDistanceWarning([...new Set(badIdx)]);
+      } else {
+        recalcHeadings(currentCourse);
+        redraw();
+        updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
       }
     } else {
       // It was a click, not a drag — open substitute modal for exercise stations
@@ -880,9 +885,14 @@ document.addEventListener('DOMContentLoaded', () => {
             badIdx.push(i); badIdx.push(i + 1);
           }
         }
+        recalcHeadings(currentCourse);
         redraw();
         updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
         showDistanceWarning([...new Set(badIdx)]);
+      } else {
+        recalcHeadings(currentCourse);
+        redraw();
+        updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
       }
     }
     dragIdx = -1;
@@ -1008,6 +1018,7 @@ function applySubstitute(candidate) {
     seq: candidate.seq,
   };
   closeSubstituteModal();
+  recalcHeadings(currentCourse);
   redraw();
   updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
 }
@@ -1079,6 +1090,7 @@ function loadCourse(input) {
       updateRingInfo();
       // Restore course
       currentCourse = data.course.map(p => ({ ...p, pos: { x: p.pos.x, y: p.pos.y } }));
+      recalcHeadings(currentCourse);
       redraw();
       updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
       showToast('📂 Course loaded!');
@@ -1224,6 +1236,7 @@ function upgradeCourse() {
   updateRingInfo();
 
   currentCourse = upgraded;
+  recalcHeadings(currentCourse);
   redraw();
   updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
 
@@ -1290,6 +1303,7 @@ function generate() {
   }
 
   currentCourse = placed;
+  recalcHeadings(currentCourse);
   renderCourse(placed, ringW, ringH, cfg);
   updateSidebar(placed, cls, cfg);
 }
@@ -1340,8 +1354,31 @@ function findFinishPos(pos, heading, placed, ringW, ringH, minDist) {
     const tooClose = placed.some(p => dist(fp, p.pos) < minDist - 2);
     if (!tooClose) return fp;
   }
-  // absolute fallback: somewhere near last exercise
   return { x: Math.min(ringW-5, Math.max(5, pos.x + 6)), y: Math.min(ringH-5, Math.max(5, pos.y - 6)) };
+}
+
+// ── RECALC HEADINGS ───────────────────────────────────────────────
+// After any drag, load, or substitute, re-derive every station's
+// incoming heading from the actual path geometry, then apply each
+// sign's td to get the outgoing heading for the next station.
+// heading = compass degrees, 0=North(up), clockwise positive.
+function recalcHeadings(course) {
+  if (!course || course.length < 2) return;
+  for (let i = 0; i < course.length; i++) {
+    if (i === 0) {
+      // Start: heading is the direction toward station 1
+      if (course.length > 1) {
+        const dx = course[1].pos.x - course[0].pos.x;
+        const dy = course[1].pos.y - course[0].pos.y;
+        course[0].heading = normalizeAngle(Math.atan2(dx, -dy) * 180 / Math.PI);
+      }
+    } else {
+      // Derive incoming heading from actual vector from previous station
+      const dx = course[i].pos.x - course[i-1].pos.x;
+      const dy = course[i].pos.y - course[i-1].pos.y;
+      course[i].heading = normalizeAngle(Math.atan2(dx, -dy) * 180 / Math.PI);
+    }
+  }
 }
 
 // ════════════════════════════════════════════════
@@ -1514,31 +1551,53 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
 
   // Number
   ctx.fillStyle = color;
-  ctx.font = `bold ${num >= 10 ? '9' : '11'}px Barlow Condensed, sans-serif`;
+  ctx.font = `bold ${num >= 10 ? '10' : '13'}px Arial, sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(num, cx, cy);
 
-  // Sign thumbnail — only if showSigns is on
+  // Sign thumbnail — rotated to face the incoming heading
   if (showSigns) {
     const img = signImages[ex.id];
     if (img) {
       const thumbSize = 64;
       const gap = 5;
-      const tx = cx + r + gap;
-      const ty = cy - thumbSize / 2;
+
+      // The sign always sits to the handler's right = 90° clockwise from incoming heading
+      // Sign face points toward incoming heading (handler reads it as they approach)
+      const inHeadRad = ((ex.heading || 0) * Math.PI) / 180;
+
+      // Place sign to the right of the path (90° clockwise from heading)
+      const rightAngle = inHeadRad + Math.PI / 2;
+      const signDist = r + gap + thumbSize / 2;
+      const scx = cx + Math.sin(rightAngle) * signDist;
+      const scy = cy - Math.cos(rightAngle) * signDist;
+
+      ctx.save();
+      ctx.translate(scx, scy);
+      // Rotate so the sign face points along the incoming heading
+      ctx.rotate(inHeadRad);
+
+      const hw = thumbSize / 2, hh = thumbSize / 2;
+      // White background
       ctx.fillStyle = '#ffffff';
-      ctx.beginPath(); ctx.roundRect(tx - 1, ty - 1, thumbSize + 2, thumbSize + 2, 3); ctx.fill();
+      ctx.beginPath();
+      ctx.roundRect(-hw - 1, -hh - 1, thumbSize + 2, thumbSize + 2, 3);
+      ctx.fill();
       ctx.strokeStyle = color; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.roundRect(tx - 1, ty - 1, thumbSize + 2, thumbSize + 2, 3); ctx.stroke();
+      ctx.stroke();
+
+      // Draw image centered
       const aspect = img.naturalWidth / img.naturalHeight;
       let dw = thumbSize, dh = thumbSize;
       if (aspect > 1) dh = thumbSize / aspect;
       else dw = thumbSize * aspect;
-      ctx.drawImage(img, tx + (thumbSize - dw) / 2, ty + (thumbSize - dh) / 2, dw, dh);
+      ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+
+      ctx.restore();
     }
   }
 
-  // Label below circle
+  // Label below circle (not rotated)
   ctx.fillStyle = labelColor;
   ctx.font = '7px Barlow, sans-serif';
   ctx.textBaseline = 'top'; ctx.textAlign = 'center';
