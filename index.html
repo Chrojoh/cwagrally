@@ -2098,13 +2098,33 @@ function updateSidebar(placed, cls, cfg) {
   setVal('v-seq', seqNote, seqOk ? 'ok' : 'err');
   const minD = parseInt(document.getElementById('minDist').value);
   const allPoints = [placed[0], ...exercises, placed[placed.length - 1]];
-  let minFound = Infinity;
+  let minFound = Infinity, closestPair = null;
   for (let i = 0; i < allPoints.length - 1; i++) {
     const d = dist(allPoints[i].pos, allPoints[i + 1].pos);
-    if (d < minFound) minFound = d;
+    if (d < minFound) { minFound = d; closestPair = i; }
   }
   const distOk = minFound >= minD;
-  setVal('v-dist', allPoints.length < 2 ? `Min ${minD}ft enforced` : `Closest consecutive: ${minFound.toFixed(1)}ft (min ${minD}ft)`, distOk ? 'ok' : 'err');
+
+  // Keep canvas highlights in sync with sidebar validation at all times
+  if (!distOk && closestPair !== null) {
+    distViolators = new Set([closestPair, closestPair + 1]);
+    redraw();
+  } else {
+    if (distViolators.size > 0) { distViolators = new Set(); redraw(); }
+  }
+
+  // Build message that names the two stations so judge knows exactly where to look
+  let distMsg;
+  if (allPoints.length < 2) {
+    distMsg = `Min ${minD}ft enforced`;
+  } else if (!distOk && closestPair !== null) {
+    const aNum = closestPair === 0 ? 'Start' : `#${closestPair}`;
+    const bNum = closestPair + 1 >= allPoints.length - 1 ? 'Finish' : `#${closestPair + 1}`;
+    distMsg = `${aNum} & ${bNum}: ${minFound.toFixed(1)}ft — need ${minD}ft`;
+  } else {
+    distMsg = `Closest: ${minFound.toFixed(1)}ft (min ${minD}ft) ✓`;
+  }
+  setVal('v-dist', distMsg, distOk ? 'ok' : 'err');
   document.getElementById('canvasMeta').textContent = `${count} exercises · ${cfg.leash ? 'On or Off Leash' : 'Off Leash'} · QQ: ${cfg.qual}+ pts · Ring: ${parseInt(document.getElementById('ringW').value)*parseInt(document.getElementById('ringH').value)} sq ft`;
 }
 
@@ -2138,7 +2158,8 @@ function showDistanceWarning(violatingIndices) {
   tip.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#21262f;border:1px solid #ff5252;color:#ff5252;padding:8px 16px;border-radius:6px;font-size:12px;z-index:999;box-shadow:0 4px 20px #0006;pointer-events:none;';
   tip.textContent = '⚠ Too close — move the highlighted station(s) further apart.';
   document.body.appendChild(tip);
-  setTimeout(() => { tip.remove(); distViolators = new Set(); redraw(); }, 3000);
+  setTimeout(() => { tip.remove(); }, 4000);
+  // distViolators stays set — cleared next time validation runs clean
 }
 
 // ════════════════════════════════════════════════
