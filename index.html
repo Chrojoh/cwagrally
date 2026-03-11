@@ -383,22 +383,22 @@ const EX = {
   A12: { n:'Finish Right',        td:0,    stat:false,mult:false, eq:null,   seq:'from front',    cls:['A','P','ARF'],                     cat:'front'  },
   A13: { n:'Finish Left',         td:0,    stat:false,mult:false, eq:null,   seq:'from front',    cls:['A','P','ARF'],                     cat:'front'  },
   A14: { n:'Halt–Leave Dog',      td:0,    stat:true, mult:true,  eq:null,   seq:'→recall',       cls:['A','P','ARF','Z15','Z2'],          cat:'leave'  },
-  A15: { n:'Turn–Down,Sit,Front', td:180,  stat:false,mult:false, eq:null,   seq:'after leave',   cls:['A','P','ARF'],                     cat:'recall' },
-  A16: { n:'Turn–Call Front',     td:180,  stat:false,mult:false, eq:null,   seq:'after leave',   cls:['A','P','ARF'],                     cat:'recall' },
-  A17: { n:'Call to Heel',        td:0,    stat:false,mult:false, eq:null,   seq:null,            cls:['A','P','ARF','Z15','Z2'],          cat:'front'  },
+  A15: { n:'Turn–Down,Sit,Front', td:180,  stat:true, mult:false, eq:null,   seq:'after leave',   cls:['A','P','ARF'],                     cat:'recall' },
+  A16: { n:'Turn–Call Front',     td:180,  stat:true, mult:false, eq:null,   seq:'after leave',   cls:['A','P','ARF'],                     cat:'recall' },
+  A17: { n:'Call to Heel Fwd',    td:0,    stat:false,mult:false, eq:null,   seq:'after leave',   cls:['A','P','ARF','Z15','Z2'],          cat:'recall' },
   A18: { n:'Return to Dog',       td:180,  stat:false,mult:false, eq:null,   seq:'after leave',   cls:['A','P','ARF'],                     cat:'recall' },
-  A19: { n:'Handler About Turn Fwd',td:180,stat:false,mult:false, eq:null,   seq:'from front',    cls:['A','P','ARF','Z15','Z2'],          cat:'front'  },
-  A20: { n:'Halt–Stand',          td:0,    stat:true, mult:false, eq:null,   seq:null,            cls:['A','P','ARF'],                     cat:'halt'   },
+  A19: { n:'Handler About Turn Fwd',td:180,stat:false,mult:false, eq:null,   seq:null,            cls:['A','P','ARF','Z2'],                cat:'move'   },
+  A20: { n:'Down',                td:0,    stat:false,mult:false, eq:null,   seq:null,            cls:['A','P','ARF'],                     cat:'move'   },
   A21: { n:'Zig Zag Right',       td:0,    stat:false,mult:false, eq:null,   seq:null,            cls:['A','P','ARF','Z15','Z2'],          cat:'move'   },
   A22: { n:'Zig Zag Left',        td:0,    stat:false,mult:false, eq:null,   seq:null,            cls:['A','P','ARF','Z15','Z2'],          cat:'move'   },
-  A23: { n:'Stand–Walk Around',   td:0,    stat:false,mult:false, eq:null,   seq:null,            cls:['A','P','ARF','Z15','Z2'],          cat:'front'  },
-  A24: { n:'Stand–Leave Dog',     td:0,    stat:true, mult:true,  eq:null,   seq:'→recall',       cls:['A','P','ARF','Z15','Z2'],          cat:'leave'  },
+  A23: { n:'Stand–Walk Around',   td:0,    stat:true, mult:false, eq:null,   seq:null,            cls:['A','P','ARF','Z15','Z2'],          cat:'front'  },
+  A24: { n:'Stand–Leave Dog',     td:0,    stat:true, mult:false, eq:null,   seq:'→recall',       cls:['A','P','ARF','Z15','Z2'],          cat:'leave'  },
   // ── PRO ──────────────────────────────────────
-  P1:  { n:'L Turn–Back 2 Steps', td:-90,  stat:false,mult:true,  eq:null,   seq:null,            cls:['P','ARF','Z2'],                    cat:'turn'   },
-  P2:  { n:'R Turn–Back 2 Steps', td:90,   stat:false,mult:true,  eq:null,   seq:null,            cls:['P','ARF','Z2'],                    cat:'turn'   },
+  P1:  { n:'L Turn–Back 2 Steps', td:-90,  stat:false,mult:false, eq:null,   seq:null,            cls:['P','ARF','Z2'],                    cat:'turn'   },
+  P2:  { n:'R Turn–Back 2 Steps', td:90,   stat:false,mult:false, eq:null,   seq:null,            cls:['P','ARF','Z2'],                    cat:'turn'   },
   // Double Left About: two 180° turns = net 0°, exits same direction
   PR3: { n:'Double Left About',   td:0,    stat:false,mult:false, eq:null,   seq:null,            cls:['P','ARF','Z15','Z2'],              cat:'turn'   },
-  PR4: { n:'Heel Back 3 Steps',   td:0,    stat:false,mult:true,  eq:null,   seq:null,            cls:['P','ARF','Z2'],                    cat:'move'   },
+  PR4: { n:'Heel Back 3 Steps',   td:0,    stat:false,mult:false, eq:null,   seq:null,            cls:['P','ARF','Z2'],                    cat:'move'   },
   PR6: { n:'Moving Stand–Wk Around',td:0,  stat:false,mult:false, eq:null,   seq:null,            cls:['P','ARF','Z2'],                    cat:'move'   },
   PR7: { n:'Moving Stand–Leave Dog',td:0,  stat:false,mult:true,  eq:null,   seq:'→recall',       cls:['P','ARF','Z2'],                    cat:'leave'  },
   PR8: { n:'Moving Down–Leave Dog',td:0,   stat:false,mult:true,  eq:null,   seq:'→recall',       cls:['P','ARF','Z2'],                    cat:'leave'  },
@@ -406,11 +406,14 @@ const EX = {
   P10: { n:'Off-Set Figure 8 (Pro)',td:0,  stat:false,mult:false, eq:'cone', seq:null,            cls:['P','ARF','Z2'],                    cat:'cone'   },
   P11: { n:'Halt–180° Pivot Lt',  td:180,  stat:true, mult:false, eq:null,   seq:null,            cls:['P','ARF'],                         cat:'halt'   },
   P12: { n:'Halt–Step Right',     td:0,    stat:true, mult:false, eq:null,   seq:null,            cls:['P','ARF'],                         cat:'halt'   },
-  P13: { n:'Finish/Fwd L or R',   td:0,    stat:false,mult:false, eq:null,   seq:'from front',    cls:['P','ARF'],                         cat:'front'  },
-  P14: { n:'Turn–Drop on Recall', td:180,  stat:false,mult:false, eq:null,   seq:'after leave',   cls:['P','ARF'],                         cat:'recall' },
-  P15: { n:'Turn–Down,Sit,Front', td:180,  stat:false,mult:false, eq:null,   seq:'after leave',   cls:['P','ARF'],                         cat:'recall' },
-  P17: { n:'Turn–Call to Heel–Halt',td:180,stat:false,mult:false, eq:null,   seq:'after leave',   cls:['P','ARF'],                         cat:'recall' },
+  P13: { n:'Finish/Fwd L or R',   td:0,    stat:false,mult:true,  eq:null,   seq:'from front',    cls:['P','ARF'],                         cat:'front'  },
+  P14: { n:'Turn–Drop on Recall', td:180,  stat:true, mult:false, eq:null,   seq:'after leave',   cls:['P','ARF'],                         cat:'recall' },
+  P15: { n:'Turn–Down,Sit,Front', td:180,  stat:true, mult:false, eq:null,   seq:'after leave',   cls:['P','ARF'],                         cat:'recall' },
+  P17: { n:'Turn–Call to Heel–Halt',td:180,stat:true, mult:false, eq:null,   seq:'after leave',   cls:['P','ARF'],                         cat:'recall' },
   P18: { n:'Turn–Call to Heel–Fwd',td:180, stat:false,mult:false, eq:null,   seq:'after leave',   cls:['P','ARF','Z2'],                    cat:'recall' },
+  P5:  { n:'Halt–Sit–Down–Sit',  td:0,    stat:true, mult:false, eq:null,   seq:null,            cls:['P','Z2'],                          cat:'halt'   },
+  P16: { n:'Turn–Down,Sit,Heel', td:180,  stat:true, mult:false, eq:null,   seq:'after leave',   cls:['P','ARF'],                         cat:'recall' },
+  P21: { n:'Stand–Leave Running',td:180,  stat:false,mult:false, eq:null,   seq:'→recall',       cls:['P'],                               cat:'leave'  },
   PR19:{ n:'Lateral Side-Step Rt',td:0,    stat:false,mult:false, eq:null,   seq:null,            cls:['P','ARF','Z2'],                    cat:'move'   },
   PR20:{ n:'Lateral Side-Step Lt',td:0,    stat:false,mult:false, eq:null,   seq:null,            cls:['P','ARF','Z2'],                    cat:'move'   },
   PR22:{ n:'Broad Jump',          td:0,    stat:false,mult:false, eq:'jump', seq:null,            cls:['P','ARF','Z2'],                    cat:'equip'  },
@@ -441,10 +444,11 @@ const CLASS_CFG = {
 };
 
 const RECALL_MAP = {
-  A14: ['A15','A16','A18'], A24: ['A15','A16','A18'],
-  PR7: ['P14','P15','P17','P18','R5'], PR8: ['P14','P15','P17','P18','R5'],
+  A14: ['A15','A16','A17','A18'], A24: ['A15','A16','A17','A18'],
+  PR7: ['P14','P15','P16','P17','P18','R5'], PR8: ['P14','P15','P16','P17','P18','R5'],
+  P21: ['P14','P15','P16','P17','P18'],
 };
-const RECALL_IDS = new Set(['A15','A16','A18','A19','P14','P15','P17','P18','R5']);
+const RECALL_IDS = new Set(['A15','A16','A17','A18','A19','P14','P15','P16','P17','P18','R5']);
 const PACE_AFTER = { S18:['S20','S19'], S19:['S20','S18'], A8:['S20','S18'] };
 
 // Signs that should render IN FRONT of handler (direction-change signs per C-WAGS rules)
@@ -468,10 +472,10 @@ let pendingNestCourse = null; // the fully resolved course to apply
 const CLASS_OWN_IDS = {
   S:   new Set(Object.keys(EX).filter(id => EX[id].cls[0] === 'S')),
   A:   new Set(['A1','A2','A3','A4','A5','A6','A7','A8','A9','A10','A11','A12','A13','A14','A15','A16','A17','A18','A19','A20','A21','A22','A23','A24']),
-  P:   new Set(['P1','P2','PR3','PR4','P5','PR6','PR7','PR8','P9','P10','P11','P12','P13','P14','P15','P17','P18','PR19','PR20','PR22']),
+  P:   new Set(['P1','P2','PR3','PR4','P5','PR6','PR7','PR8','P9','P10','P11','P12','P13','P14','P15','P16','P17','P18','P21','PR19','PR20','PR22']),
   ARF: new Set(['R1','R2','R5','APR9','R10','R11','R13','R14','R15','R16','R18','R21']),
   Z1:  new Set([]),
-  Z15: new Set(['A9','A10','A11','PR3','A17','A18','A19','A21','A22','A23','A24','R2']),
+  Z15: new Set(['A9','A10','A11','PR3','A17','A18','A21','A22','A23','A24','R2']),
   Z2:  new Set(['P1','P2','PR4','PR6','PR7','PR8','P9','P10','P18','PR22','R5','R10','PR19','PR20','R16']),
 };
 
