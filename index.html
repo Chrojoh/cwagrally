@@ -1486,11 +1486,16 @@ function autoLoadGithubSigns() {
   const total = ALL_SIGN_IDS.length;
   setGithubStatus('⏳', `Checking GitHub for ${total} signs…`, 'var(--text3)');
 
-  // Load START and FINISH sign images (always, independent of signs toggle)
+  // Load START and FINISH sign images — always shown regardless of signs toggle
   ['START', 'FINISH'].forEach(id => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = () => { signImages[id] = img; if (currentCourse.length > 0) redraw(); };
+    img.onload = () => {
+      signImages[id] = img;
+      // Always redraw when these load — they show even when signs toggle is OFF
+      if (currentCourse.length > 0) redraw();
+    };
+    img.onerror = () => { console.warn('Could not load sign image:', id); };
     img.src = GITHUB_SIGNS_BASE + id + '.png';
   });
 
@@ -1612,36 +1617,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dragIdx < 0) return;
     canvas.classList.remove('dragging');
     if (mouseDidMove) {
-      const minD = parseInt(document.getElementById('minDist').value);
-      const idx  = dragIdx;
-
-      // Only check the two segments CONNECTED to the dragged station.
-      // This lets the judge fix one violation at a time without being
-      // trapped — the old code checked the whole course and snapped back
-      // to a position that was itself already violating.
-      const prev = idx > 0                          ? currentCourse[idx - 1] : null;
-      const next = idx < currentCourse.length - 1  ? currentCourse[idx + 1] : null;
-      const toPrev = prev ? dist(currentCourse[idx].pos, prev.pos) : Infinity;
-      const toNext = next ? dist(currentCourse[idx].pos, next.pos) : Infinity;
-      const localViolation = (toPrev < minD) || (toNext < minD);
-
-      if (localViolation) {
-        // New position makes THIS station's own connections worse — snap back
-        currentCourse[idx].pos = { ...dragStartFt };
-        // Highlight only the segments that are still broken after snap-back
-        const allPoints = currentCourse;
-        const badIdx = [];
-        for (let i = 0; i < allPoints.length - 1; i++) {
-          if (dist(allPoints[i].pos, allPoints[i + 1].pos) < minD) {
-            badIdx.push(i); badIdx.push(i + 1);
-          }
-        }
-        recalcHeadings(currentCourse); redraw(); updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
-        if (badIdx.length) showDistanceWarning([...new Set(badIdx)]);
-      } else {
-        // Move accepted — other existing violations elsewhere are not this drag's problem
-        recalcHeadings(currentCourse); redraw(); updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
-      }
+      // No snap-back — accept wherever the judge dropped the station.
+      // The validation panel already highlights too-close segments in red
+      // and clears the highlight automatically once spacing is fixed.
+      recalcHeadings(currentCourse);
+      redraw();
+      updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
     } else {
       const idx = dragIdx;
       const clicked = currentCourse[idx];
@@ -1674,9 +1655,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const next = idx < currentCourse.length - 1 ? currentCourse[idx + 1] : null;
       const toPrev = prev ? dist(currentCourse[idx].pos, prev.pos) : Infinity;
       const toNext = next ? dist(currentCourse[idx].pos, next.pos) : Infinity;
-      if ((toPrev < minD) || (toNext < minD)) {
-        currentCourse[idx].pos = { ...dragStartFt };
-      }
+      // No snap-back — accept position, validation will highlight violations
       recalcHeadings(currentCourse); redraw(); updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
     }
     dragIdx = -1;
@@ -1925,11 +1904,6 @@ function renderCourse(placed, ringW, ringH, cfg) {
     drawArrow(ctx, from.x, from.y, to.x, to.y, isViolating ? arrowViol : arrowNorm, isViolating ? lineW + 1 : lineW);
   }
 
-  // Build list of all exercise canvas positions (excluding start/finish) for overlap detection
-  const allExCanvasPos = placed
-    .filter(p => p.cat !== 'start' && p.cat !== 'finish')
-    .map(p => toCanvas(p.pos));
-
   // Exercise nodes — ci is the course array index (used for nest status lookup)
   let exOrdinal = 0;
   for (let ci = 0; ci < placed.length; ci++) {
@@ -1937,12 +1911,9 @@ function renderCourse(placed, ringW, ringH, cfg) {
     if (ex.cat === 'start' || ex.cat === 'finish') continue;
     exOrdinal++;
     const cp = toCanvas(ex.pos);
-    // nestStatusByIdx is keyed by course array index (ci), not ordinal
     const nestStatus = nestPreviewData ? (nestStatusByIdx[ci] || null) : null;
     const nestToName = nestPreviewData ? (nestSwapToByIdx[ci] || null) : null;
-    // Pass all OTHER exercise positions so overlap detection can exclude self
-    const othersPos = allExCanvasPos.filter((_, idx) => idx !== exOrdinal - 1);
-    drawExercise(ctx, cp.x, cp.y, exOrdinal, ex, distViolators.has(exOrdinal), nodeFill, labelColor, isLight, nestStatus, nestToName, othersPos);
+    drawExercise(ctx, cp.x, cp.y, exOrdinal, ex, distViolators.has(exOrdinal), nodeFill, labelColor, isLight, nestStatus, nestToName);
   }
 
   // Start / Finish
@@ -1976,7 +1947,7 @@ function drawArrow(ctx, x1, y1, x2, y2, color, width) {
   ctx.closePath(); ctx.fill();
 }
 
-function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isLight, nestStatus, nestToName, allCanvasPositions) {
+function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isLight, nestStatus, nestToName) {
   const r = 13;
   // Normal color logic
   const normalColor = ex.stat ? '#a78bfa' : (ex.eq ? '#fb923c' : (ex.cat === 'leave' || ex.cat === 'recall' ? '#f472b6' : (isLight ? '#1a6bb5' : '#4fc3f7')));
@@ -1988,21 +1959,18 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
   if (nestStatus === 'unresolved') ringColor = '#ff5252';
   const strokeW = isLight ? 2.5 : 2;
 
-  // ── Detect overlap: is any OTHER station within 2r px of this one? ────
-  // If so, push the number to the RIGHT of the direction of travel so both
-  // numbers stay legible. "Right" = 90° clockwise from incoming heading.
-  const overlapThresh = r * 2.2;
-  const hasOverlap = allCanvasPositions.some(p => p !== null &&
-    Math.hypot(p.x - cx, p.y - cy) < overlapThresh
-  );
+  // ── Number placement ──────────────────────────────────────────────────
+  // Numbers go to the RIGHT of travel — same side as the sign, like road signs.
+  // A dashed leader line connects the bubble back to the station dot.
+  const numBubbleR = num >= 10 ? 11 : 12;
+  const numOffset  = r + 18 + numBubbleR;   // ~44px from dot centre — well clear
+  let numX = cx, numY = cy;
+  let leftRad = 0;
 
-  let numX = cx, numY = cy;  // default: centre of circle
-  if (hasOverlap && ex.heading != null) {
-    // Offset number to handler's right of travel direction
-    const rightRad = ((ex.heading + 90) * Math.PI) / 180;
-    const offset = r + 8;
-    numX = cx + Math.sin(rightRad) * offset;
-    numY = cy - Math.cos(rightRad) * offset;
+  if (ex.heading != null) {
+    leftRad = ((ex.heading + 90) * Math.PI) / 180;  // RIGHT of travel (handler's right = sign side)
+    numX = cx + Math.sin(leftRad) * numOffset;
+    numY = cy - Math.cos(leftRad) * numOffset;
   }
 
   // Violation glow
@@ -2024,21 +1992,33 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
     ctx.setLineDash([3, 2]); ctx.stroke(); ctx.setLineDash([]);
   }
 
-  // Circle fill
+  // Thin connector line — starts at circle EDGE (not centre) to avoid overlap
+  if (ex.heading != null) {
+    const edgeX = cx + Math.sin(leftRad) * r;
+    const edgeY = cy - Math.cos(leftRad) * r;
+    const bubbleEdgeX = numX - Math.sin(leftRad) * numBubbleR;
+    const bubbleEdgeY = numY + Math.cos(leftRad) * numBubbleR;
+    ctx.beginPath(); ctx.moveTo(edgeX, edgeY); ctx.lineTo(bubbleEdgeX, bubbleEdgeY);
+    ctx.strokeStyle = nestStatus ? ringColor : normalColor;
+    ctx.lineWidth = 0.9; ctx.globalAlpha = 0.35;
+    ctx.setLineDash([2, 2]); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
+  }
+
+  // Circle fill (position dot) — drawn after connector so dot sits on top
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.fillStyle = nodeFill; ctx.fill();
   ctx.strokeStyle = ringColor; ctx.lineWidth = nestStatus ? strokeW + 1 : strokeW; ctx.stroke();
 
-  // Number — at centre normally, or offset right if overlapping
+  // Number bubble — solid fill so it always reads over grid/arrows
+  ctx.beginPath(); ctx.arc(numX, numY, numBubbleR, 0, Math.PI * 2);
+  ctx.fillStyle = nodeFill; ctx.fill();
+  ctx.strokeStyle = nestStatus ? ringColor : normalColor;
+  ctx.lineWidth = isLight ? 2 : 1.8; ctx.stroke();
+
   ctx.fillStyle = nestStatus ? ringColor : normalColor;
-  ctx.font = `bold ${num >= 10 ? '10' : '13'}px Arial, sans-serif`;
+  ctx.font = `bold ${num >= 10 ? '10' : '12'}px Arial, sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  if (hasOverlap) {
-    // Draw a tiny white halo behind the number so it reads over the arrow/circle
-    ctx.strokeStyle = isLight ? 'rgba(255,255,255,0.9)' : 'rgba(26,29,35,0.85)';
-    ctx.lineWidth = 3; ctx.lineJoin = 'round';
-    ctx.strokeText(num, numX, numY);
-  }
   ctx.fillText(num, numX, numY);
 
   // Sign thumbnail — smaller than before, same placement rules
@@ -2102,14 +2082,13 @@ function drawStartFinish(ctx, cx, cy, label, color, nodeFill, isLight, heading) 
   const imgId = label === 'S' ? 'START' : 'FINISH';
   const img = signImages[imgId];
 
-  if (img) {
-    // Use sign image — same size as exercise thumbnails
-    const thumbSize = Math.round(Math.max(28, Math.min(52, currentScale * 3.2)));
+  if (img && img.complete && img.naturalWidth > 0) {
+    // Sign image available — draw it upright (no rotation; these are rectangular labels)
+    const thumbSize = Math.round(Math.max(32, Math.min(58, currentScale * 3.6)));
     const hw = thumbSize / 2;
-    const inHeadRad = ((heading || 0) * Math.PI) / 180;
     ctx.save();
     ctx.translate(cx, cy);
-    ctx.rotate(inHeadRad);
+    // No rotation — Start/Finish signs are read right-side-up on the course map
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     if (ctx.roundRect) ctx.roundRect(-hw - 1, -hw - 1, thumbSize + 2, thumbSize + 2, 4);
@@ -2124,7 +2103,11 @@ function drawStartFinish(ctx, cx, cy, label, color, nodeFill, isLight, heading) 
     ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
     ctx.restore();
   } else {
-    // Fallback: circle with S / F letter
+    // Fallback circle — also schedule a redraw after a moment in case image is still loading
+    if (!img || !img.complete) {
+      clearTimeout(window._sfReloadTimer);
+      window._sfReloadTimer = setTimeout(() => { if (currentCourse.length > 0) redraw(); }, 800);
+    }
     const strokeW = isLight ? 3.5 : 3;
     ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2);
     ctx.fillStyle = nodeFill; ctx.fill();
@@ -2236,7 +2219,7 @@ function showDistanceWarning(violatingIndices) {
   const tip = document.createElement('div');
   tip.id = 'dist-warn-tip';
   tip.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#21262f;border:1px solid #ff5252;color:#ff5252;padding:8px 16px;border-radius:6px;font-size:12px;z-index:999;box-shadow:0 4px 20px #0006;pointer-events:none;';
-  tip.textContent = '⚠ Too close — move the highlighted station(s) further apart.';
+  tip.textContent = '⚠ Stations too close — keep moving them apart to clear the red highlight.';
   document.body.appendChild(tip);
   setTimeout(() => { tip.remove(); }, 4000);
   // distViolators stays set — cleared next time validation runs clean
