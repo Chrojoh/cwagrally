@@ -563,136 +563,224 @@ function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
 }
 
 function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave, randFactor) {
-  const pool = getPool(cls, includeEquip, includeLeave);
+  const pool    = getPool(cls, includeEquip, includeLeave);
   if (pool.length < 5) return null;
 
-  const target = rndInt(cfg.min, cfg.max);
-  const maxStationary = Math.floor(target / 3);
-  const placed = [];
-  let heading = 0;
-  let pos = { x: ringW * (0.4 + Math.random() * 0.2), y: ringH - 8 };
-  let stationaryCount = 0;
-  const usedIds = {};
-  let needsFollowBy = null;
-  let lastCat = null;
-  let classCount = 0;
-  const ownIds = CLASS_OWN_IDS[cls] || new Set();
-  placed.push({ id:'START', n:'Start', pos:{...pos}, heading, cat:'start' });
-  let stuckCount = 0;
+  const target  = rndInt(cfg.min, cfg.max);
+  const ownIds  = CLASS_OWN_IDS[cls] || new Set();
+  const MARGIN  = 7;   // feet from ring edge
 
-  // Track last N turn deltas to avoid consecutive heavy reversals
-  const recentTds = [];
-
-  while (placed.length - 1 < target) {
-    if (stuckCount > 60) return null;
-
-    let avail = pool.filter(ex => {
-      if (needsFollowBy) return needsFollowBy.includes(ex.id);
-      if (RECALL_IDS.has(ex.id) && lastCat !== 'leave') return false;
-      if (ex.stat && stationaryCount >= maxStationary) return false;
-      if (!ex.mult && (usedIds[ex.id] || 0) >= 1) return false;
-      if (ex.mult && (usedIds[ex.id] || 0) >= 2) return false;
-      if (cfg.zoom && (ex.stat || ex.cat === 'halt')) return false;
-      return true;
-    });
-
-    if (!needsFollowBy) {
-      const remaining = target - (placed.length - 1);
-      const needed = cfg.minFromClass - classCount;
-      if (needed > 0) {
-        const clsAvail = avail.filter(ex => ownIds.has(ex.id));
-        if (clsAvail.length > 0 && needed >= remaining * 0.4) avail = clsAvail;
-        else if (clsAvail.length > 0 && Math.random() < 0.55) avail = clsAvail;
-      }
-    }
-
-    if (avail.length === 0) { stuckCount++; continue; }
-
-    // ── Wall avoidance ─────────────────────────────────────────────
-    const room = wallRoom(pos, heading, ringW, ringH, minDist + 1);
-    if (room < minDist + 4 && !needsFollowBy) {
-      const turners = avail.filter(ex => {
-        const newH = normalizeAngle(heading + ex.td);
-        return wallRoom(pos, newH, ringW, ringH, minDist + 1) > room + 4;
-      });
-      if (turners.length > 0) avail = turners;
-    }
-
-    // ── Consecutive heavy-turn limiter ─────────────────────────────
-    // If the last 2 exercises were both heavy turns (|td|>=90°), strongly prefer
-    // something straight or gentle next so the path can flow forward.
-    // Only apply this as a preference (not a hard block) so we never get stuck.
-    if (!needsFollowBy && recentTds.length >= 2) {
-      const bothHeavy = recentTds.slice(-2).every(t => Math.abs(t) >= 90);
-      if (bothHeavy) {
-        const gentler = avail.filter(ex => Math.abs(ex.td) < 90);
-        if (gentler.length > 0) avail = gentler;
-      }
-    }
-
-    // ── Path-crossing prevention ───────────────────────────────────
-    // After picking a candidate position, reject it if the new segment
-    // (pos → newPos) crosses any existing segment in the placed path.
-    // Uses 2D line-segment intersection test.
-
-    shuffle(avail);
-    let placed_one = false;
-
-    for (const ex of avail) {
-      const newPos = tryPlaceExercise(pos, heading, ex.td, placed, ringW, ringH, minDist, randFactor, ex.cat);
-      if (!newPos) continue;
-
-      // Path-crossing check: reject if new segment crosses any existing segment
-      if (placed.length >= 2) {
-        const ax = pos.x, ay = pos.y, bx = newPos.x, by = newPos.y;
-        let crosses = false;
-        for (let si = 0; si < placed.length - 2; si++) {
-          const cx = placed[si].pos.x,   cy = placed[si].pos.y;
-          const dx = placed[si+1].pos.x, dy = placed[si+1].pos.y;
-          if (segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy)) {
-            crosses = true; break;
-          }
-        }
-        if (crosses) continue;
-      }
-
-      if (ex.cat === 'leave') {
-        const recallOptions = RECALL_MAP[ex.id] || [];
-        const recallPool = pool.filter(r => recallOptions.includes(r.id));
-        const recallPos = tryPlaceExercise(newPos, normalizeAngle(heading + ex.td), 180,
-          [...placed, {pos: newPos, cat:'ex'}], ringW, ringH, minDist * 0.8, 0.6);
-        if (!recallPos && recallPool.length > 0) continue;
-      }
-
-      placed.push({ id:ex.id, n:ex.n, pos:newPos, heading, cat:ex.cat, stat:ex.stat, eq:ex.eq, seq:ex.seq });
-      heading = normalizeAngle(heading + ex.td);
-      if (ex.stat) stationaryCount++;
-      usedIds[ex.id] = (usedIds[ex.id] || 0) + 1;
-      lastCat = ex.cat;
-      pos = newPos;
-      if (ownIds.has(ex.id)) classCount++;
-      stuckCount = 0;
-
-      if (PACE_AFTER[ex.id]) needsFollowBy = PACE_AFTER[ex.id];
-      else if (ex.cat === 'leave') needsFollowBy = RECALL_MAP[ex.id] || null;
-      else needsFollowBy = null;
-
-      recentTds.push(ex.td);
-      if (recentTds.length > 3) recentTds.shift();
-
-      placed_one = true;
-      break;
-    }
-
-    if (!placed_one) stuckCount++;
+  // ── Helpers ───────────────────────────────────────────────────────────
+  // Compass heading A→B on the canvas (0=North=up, 90=East=right, clockwise+)
+  function headingBetween(a, b) {
+    return normalizeAngle(Math.atan2(b.x - a.x, -(b.y - a.y)) * 180 / Math.PI);
+  }
+  // Signed angle difference from→to in -180..+180
+  function angleDiff(from, to) {
+    let d = ((to - from) % 360 + 360) % 360;
+    if (d > 180) d -= 360;
+    return d;
   }
 
-  if (cfg.minFromClass > 0 && classCount < cfg.minFromClass) return null;
+  // ══════════════════════════════════════════════════════════════════════
+  // PHASE 1 — Route skeleton
+  //
+  // Like the turtle program: draw the path in pencil FIRST,
+  // then decide what sign belongs at each turn.
+  //
+  // We lay waypoints in a boustrophedon (lawnmower) pattern across the ring
+  // so the path naturally covers the whole space without crossing itself.
+  // A controlled random jitter inside each cell adds variety.
+  // ══════════════════════════════════════════════════════════════════════
+  function buildWaypoints(n) {
+    // How many columns to use?  Wider rings get one more column.
+    const cols  = ringW >= 65 ? 4 : 3;
+    const rows  = Math.ceil((n + 1) / cols) + 1;
+    const cellW = (ringW - MARGIN * 2) / cols;
+    const cellH = (ringH - MARGIN * 2) / rows;
 
-  const finPos = findFinishPos(pos, heading, placed, ringW, ringH, minDist);
-  placed.push({ id:'FINISH', n:'Finish', pos:finPos, heading, cat:'finish' });
-  return placed;
+    // Build the serpentine zone centres, bottom-to-top, alternating left/right
+    const zones = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const col = (r % 2 === 0) ? c : (cols - 1 - c);
+        zones.push({
+          x: MARGIN + (col + 0.5) * cellW,
+          y: MARGIN + ((rows - 1 - r) + 0.5) * cellH   // row 0 = bottom
+        });
+      }
+    }
+
+    // Start: near bottom-centre, inside the first zone with jitter
+    const start = {
+      x: ringW * (0.3 + Math.random() * 0.4),
+      y: ringH - MARGIN - rnd(1, 4)
+    };
+    const pts = [start];
+
+    // Pick n waypoints from zones starting at index 1 (skip zone closest to start)
+    let zi = 1;
+    for (let i = 0; i < n; i++, zi++) {
+      const zone = zones[zi % zones.length];
+
+      // Jitter: smaller = more regular, larger = more varied
+      // Keep jitter < 40% of cell so boustrophedon order is preserved
+      const jx = cellW * 0.35 * (Math.random() * 2 - 1) * randFactor;
+      const jy = cellH * 0.35 * (Math.random() * 2 - 1) * randFactor;
+
+      let cand = {
+        x: Math.max(MARGIN, Math.min(ringW - MARGIN, zone.x + jx)),
+        y: Math.max(MARGIN, Math.min(ringH - MARGIN, zone.y + jy))
+      };
+
+      // Enforce minimum distance from previous waypoint
+      const prev = pts[pts.length - 1];
+      const d    = Math.hypot(cand.x - prev.x, cand.y - prev.y);
+      if (d < minDist) {
+        // Push candidate away from prev along the same bearing
+        const ang = Math.atan2(cand.y - prev.y, cand.x - prev.x);
+        cand = {
+          x: Math.max(MARGIN, Math.min(ringW - MARGIN, prev.x + Math.cos(ang) * (minDist + 3))),
+          y: Math.max(MARGIN, Math.min(ringH - MARGIN, prev.y + Math.sin(ang) * (minDist + 3)))
+        };
+      }
+
+      pts.push(cand);
+    }
+    return pts;
+    // Returns [start, wp1 … wpN]  — length = n+1
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // PHASE 2 — Compute required td at each waypoint
+  //
+  // Turtle is AT waypoint[i], having just walked from waypoint[i-1].
+  //   incoming = direction walked to get here
+  //   outgoing = direction needed to reach waypoint[i+1]
+  //   required_td = angleDiff(incoming, outgoing)
+  //
+  // Then pick the sign whose .td is closest to required_td.
+  // ══════════════════════════════════════════════════════════════════════
+
+  // Pick the best matching sign for a given required turn delta.
+  // Respects all class/sequence/duplicate/stationary rules.
+  // tolerance: how many degrees off td can be.
+  function pickSign(reqTd, usedIds, stationaryCount, maxStat, lastCat, needsFollowBy, classCount, tolerance) {
+    let candidates = pool.filter(ex => {
+      if (needsFollowBy)                                  return needsFollowBy.includes(ex.id);
+      if (RECALL_IDS.has(ex.id) && lastCat !== 'leave')  return false;
+      if (ex.stat && stationaryCount >= maxStat)          return false;
+      if (!ex.mult && (usedIds[ex.id] || 0) >= 1)        return false;
+      if ( ex.mult && (usedIds[ex.id] || 0) >= 2)        return false;
+      if (cfg.zoom && (ex.stat || ex.cat === 'halt'))     return false;
+      // Must match required turn within tolerance
+      return Math.abs(angleDiff(reqTd, ex.td)) <= tolerance;
+    });
+
+    if (candidates.length === 0) return null;
+
+    // Bias toward class-specific signs when we still need them
+    const stillNeeded = cfg.minFromClass - classCount;
+    if (!needsFollowBy && stillNeeded > 0) {
+      const cls_ = candidates.filter(ex => ownIds.has(ex.id));
+      if (cls_.length > 0) candidates = cls_;
+    }
+
+    // Sort by td closeness + small random noise for variety
+    candidates.sort((a, b) =>
+      (Math.abs(angleDiff(reqTd, a.td)) + Math.random() * 8) -
+      (Math.abs(angleDiff(reqTd, b.td)) + Math.random() * 8)
+    );
+    return candidates[0];
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // PHASE 3 — Assemble the course
+  //
+  // Try up to MAX_ATTEMPTS different waypoint layouts.
+  // Each layout gives a different set of required turns → different signs.
+  // ══════════════════════════════════════════════════════════════════════
+  const MAX_ATTEMPTS = 6;
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const wps = buildWaypoints(target);
+    // wps[0]         = start position
+    // wps[1..target] = exercise positions (target points)
+
+    const placed        = [];
+    let stationaryCount = 0;
+    const usedIds       = {};
+    let lastCat         = null;
+    let classCount      = 0;
+    let needsFollowBy   = null;
+    const maxStat       = Math.floor(target / 3);
+    let ok              = true;
+
+    // Push START with incoming heading toward first exercise
+    const startHeading = headingBetween(wps[0], wps[1]);
+    placed.push({ id:'START', n:'Start', pos:{...wps[0]}, heading:startHeading, cat:'start' });
+
+    for (let i = 1; i <= target; i++) {
+      const wp     = wps[i];
+      const prevWp = wps[i - 1];
+      const nextWp = wps[i + 1] || null;
+
+      // Turtle's current facing = direction it just walked
+      const incomingHeading = headingBetween(prevWp, wp);
+
+      // Direction it needs to walk next
+      const outgoingHeading = nextWp ? headingBetween(wp, nextWp) : incomingHeading;
+
+      // Turn delta needed at this waypoint
+      const requiredTd = needsFollowBy ? 0 : angleDiff(incomingHeading, outgoingHeading);
+
+      // Try to match a sign, widening tolerance if needed
+      let sign = null;
+      for (const tol of [35, 55, 80, 180]) {
+        sign = pickSign(requiredTd, usedIds, stationaryCount, maxStat, lastCat, needsFollowBy, classCount, tol);
+        if (sign) break;
+      }
+
+      if (!sign) { ok = false; break; }
+
+      // ── Store station with its CORRECT incoming heading ──────────
+      placed.push({
+        id:      sign.id,
+        n:       sign.n,
+        pos:     { x: wp.x, y: wp.y },
+        heading: incomingHeading,     // direction handler is travelling when they arrive
+        cat:     sign.cat,
+        stat:    !!sign.stat,
+        eq:      sign.eq  || null,
+        seq:     sign.seq || null,
+      });
+
+      // ── Update running state ──────────────────────────────────────
+      if (sign.stat) stationaryCount++;
+      usedIds[sign.id] = (usedIds[sign.id] || 0) + 1;
+      lastCat           = sign.cat;
+      if (ownIds.has(sign.id)) classCount++;
+
+      if      (PACE_AFTER[sign.id])    needsFollowBy = PACE_AFTER[sign.id];
+      else if (sign.cat === 'leave')   needsFollowBy = RECALL_MAP[sign.id] || null;
+      else                             needsFollowBy = null;
+    }
+
+    if (!ok) continue;
+    if (cfg.minFromClass > 0 && classCount < cfg.minFromClass) continue;
+
+    // ── Finish ────────────────────────────────────────────────────
+    const lastWp      = wps[target];
+    const lastHeading = headingBetween(wps[target - 1], lastWp);
+    const finPos      = findFinishPos(lastWp, lastHeading, placed, ringW, ringH, minDist);
+    placed.push({ id:'FINISH', n:'Finish', pos:finPos, heading:lastHeading, cat:'finish' });
+
+    return placed;
+  }
+
+  return null; // all attempts failed — outer loop will retry with relaxed settings
 }
+
 
 function tryPlaceExercise(pos, heading, turnDelta, placed, ringW, ringH, minDist, randFactor, exCat) {
   const margin = 4;
@@ -806,6 +894,7 @@ function generate() {
   }
 
   currentCourse = placed;
+  recalcHeadings(currentCourse);   // ensure headings match actual geometry
   renderCourse(placed, ringW, ringH, cfg);
   updateSidebar(placed, cls, cfg);
 }
