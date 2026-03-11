@@ -500,12 +500,13 @@ function wallRoom(pos, heading, ringW, ringH, margin=5) {
 }
 
 function getPool(cls, includeEquip, includeLeave) {
-  return Object.entries(EX).filter(([id, ex]) => {
+  const arr = Object.entries(EX).filter(([id, ex]) => {
     if (!ex.cls.includes(cls)) return false;
     if (!includeEquip && ex.eq && ex.eq !== 'cone') return false;
     if (!includeLeave && (ex.cat === 'leave' || RECALL_IDS.has(id))) return false;
     return true;
   }).map(([id, ex]) => ({ id, ...ex }));
+  return shuffle(arr);  // shuffle every call so sign selection varies each generation
 }
 
 function getScale(ringW, ringH) {
@@ -596,79 +597,151 @@ function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave
   // so the path naturally covers the whole space without crossing itself.
   // A controlled random jitter inside each cell adds variety.
   // ══════════════════════════════════════════════════════════════════════
+  // buildWaypoints — coverage-aware segment walk
+  //
+  // Divides the ring into a coarse grid of zones. Tracks how many stations
+  // have landed in each zone. When choosing a turn direction, strongly
+  // prefers headings that point toward under-visited zones — ensuring the
+  // path spreads across the whole ring rather than clustering.
+  //
+  // Step size is calibrated so the full path actually fills the ring:
+  //   usableArea / n gives the area per station; sqrt of that ≈ natural spacing.
+  // ══════════════════════════════════════════════════════════════════════
   function buildWaypoints(n) {
-    // ── Grid sizing ──────────────────────────────────────────────────────
-    // Goal: cell dimensions both ≥ minDist so consecutive stations fit naturally.
-    //
-    // Strategy:
-    //   • Start with rows derived from ring height (how many minDist strips fit)
-    //   • Then compute cols needed to seat n stations across those rows
-    //   • This keeps both cellW and cellH close to minDist rather than making
-    //     one dimension tiny (the old bug: 8-row grid had cellH = 4.5 ft!)
+    const M   = MARGIN;
+    const xLo = M, xHi = ringW - M;
+    const yLo = M, yHi = ringH - M;
+    const usableW = xHi - xLo;
+    const usableH = yHi - yLo;
 
-    const usableW = ringW - MARGIN * 2;
-    const usableH = ringH - MARGIN * 2;
+    // ── Step size: fill the ring naturally ──────────────────────────────
+    // sqrt(usableArea / n) gives the spacing if stations were in a perfect grid.
+    // Use 85–110% of that so the path uses the whole ring without being rigid.
+    const naturalStep = Math.sqrt((usableW * usableH) / n);
+    const STEP = Math.max(minDist + 1, naturalStep * rnd(0.85, 1.1));
 
-    // How many rows can fit vertically with ≥minDist row height?
-    const rows = Math.max(3, Math.min(6, Math.floor(usableH / (minDist * 1.05))));
-    // Enough columns to seat all n stations (one per cell), plus 1 spare
-    const cols = Math.max(3, Math.ceil(n / rows) + 1);
-
-    const cellW = usableW / cols;
-    const cellH = usableH / rows;
-
-    // ── Boustrophedon (lawnmower) zone centres ───────────────────────────
-    // Row 0 = bottom, alternates L→R, R→L each row.
-    // This produces a path that covers the whole ring without crossing itself.
-    const zones = [];
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const col = (r % 2 === 0) ? c : (cols - 1 - c);
-        zones.push({
-          x: MARGIN + (col + 0.5) * cellW,
-          y: MARGIN + ((rows - 1 - r) + 0.5) * cellH,   // row 0 = bottom
-          rowBand: { lo: MARGIN + (rows - 1 - r) * cellH,
-                     hi: MARGIN + (rows - r) * cellH }
-        });
-      }
+    function uvec(deg) {
+      const r = deg * Math.PI / 180;
+      return { x: Math.sin(r), y: -Math.cos(r) };
+    }
+    function clamp(p) {
+      return { x: Math.max(xLo, Math.min(xHi, p.x)), y: Math.max(yLo, Math.min(yHi, p.y)) };
+    }
+    function stepsToWall(pos, uv) {
+      let t = 9999;
+      if (uv.x >  0.01) t = Math.min(t, (xHi - pos.x) / uv.x);
+      if (uv.x < -0.01) t = Math.min(t, (pos.x - xLo) / (-uv.x));
+      if (uv.y >  0.01) t = Math.min(t, (yHi - pos.y) / uv.y);
+      if (uv.y < -0.01) t = Math.min(t, (pos.y - yLo) / (-uv.y));
+      return Math.max(0, t / STEP);
     }
 
-    // ── Start: just inside the ring, near bottom-centre ─────────────────
-    const start = {
-      x: MARGIN + usableW * (0.3 + Math.random() * 0.4),
-      y: ringH - MARGIN - rnd(0.5, 2)
-    };
-    const pts = [start];
+    // ── Coverage grid (4 cols × 3 rows = 12 zones) ─────────────────────
+    const GX = 4, GY = 3;
+    const coverage = Array.from({ length: GX * GY }, () => 0);
 
-    // ── Place n waypoints, one per zone ─────────────────────────────────
-    let zi = 1;
-    for (let i = 0; i < n; i++, zi++) {
-      const zone = zones[zi % zones.length];
+    function zoneOf(p) {
+      const gx = Math.floor((p.x - xLo) / usableW * GX);
+      const gy = Math.floor((p.y - yLo) / usableH * GY);
+      return Math.max(0, Math.min(GX - 1, gx)) + Math.max(0, Math.min(GY - 1, gy)) * GX;
+    }
+    function markZone(p) { coverage[zoneOf(p)]++; }
 
-      // Jitter: at most 38% of cell in each axis — stations cannot jump row bands
-      const jx = cellW  * 0.38 * (Math.random() * 2 - 1) * (0.3 + randFactor * 0.7);
-      const jy = cellH  * 0.38 * (Math.random() * 2 - 1) * (0.3 + randFactor * 0.7);
-
-      // Clamp to this zone's row band so boustrophedon order is never broken
-      let cand = {
-        x: Math.max(MARGIN, Math.min(ringW - MARGIN, zone.x + jx)),
-        y: Math.max(zone.rowBand.lo + 0.5, Math.min(zone.rowBand.hi - 0.5, zone.y + jy))
+    // Centre of a coverage zone (for bias scoring)
+    function zoneCentre(zi) {
+      const gx = zi % GX, gy = Math.floor(zi / GX);
+      return {
+        x: xLo + (gx + 0.5) * usableW / GX,
+        y: yLo + (gy + 0.5) * usableH / GY
       };
+    }
 
-      // Enforce minimum distance from previous waypoint by pushing outward
-      const prev = pts[pts.length - 1];
-      const d    = Math.hypot(cand.x - prev.x, cand.y - prev.y);
-      if (d < minDist) {
-        const ang = Math.atan2(cand.y - prev.y, cand.x - prev.x);
-        cand = {
-          x: Math.max(MARGIN, Math.min(ringW - MARGIN, prev.x + Math.cos(ang) * (minDist + 2))),
-          y: Math.max(zone.rowBand.lo + 0.5, Math.min(zone.rowBand.hi - 0.5,
-               prev.y + Math.sin(ang) * (minDist + 2)))
-        };
+    // ── Turn options: standard C-WAGS td values ─────────────────────────
+    const TURN_OPTIONS = [90, -90, 180, 45, -45, 135, -135];
+    const headings8    = [0, 45, 90, 135, 180, 225, 270, 315];
+
+    // ── Score a candidate heading for how well it moves toward empty space ─
+    // Higher = better (fewer stations in that direction's zones)
+    function coverageScore(pos, deg) {
+      const uv = uvec(deg);
+      let score = 0;
+      // Sample 3 lookahead positions along this heading and reward empty zones
+      for (let s = 1; s <= 3; s++) {
+        const lp = clamp({ x: pos.x + uv.x * STEP * s, y: pos.y + uv.y * STEP * s });
+        score += (1 / (1 + coverage[zoneOf(lp)]));
+      }
+      return score;
+    }
+
+    // ── Start: near a random edge, heading inward ───────────────────────
+    // Starting at an edge forces the path to cross the ring rather than
+    // folding in the middle.
+    const edge = Math.floor(Math.random() * 4); // 0=top 1=right 2=bottom 3=left
+    let startX, startY, initHeading;
+    if (edge === 0) { startX = rnd(xLo+2, xHi-2); startY = yLo + rnd(1,4); initHeading = rnd(100, 260); }
+    else if (edge === 1) { startX = xHi - rnd(1,4); startY = rnd(yLo+2, yHi-2); initHeading = rnd(190, 350); }
+    else if (edge === 2) { startX = rnd(xLo+2, xHi-2); startY = yHi - rnd(1,4); initHeading = rnd(-80, 80); }
+    else { startX = xLo + rnd(1,4); startY = rnd(yLo+2, yHi-2); initHeading = rnd(10, 170); }
+    // Snap to nearest 45° heading
+    let heading = headings8[Math.round(normalizeAngle(initHeading) / 45) % 8];
+
+    const pts = [{ x: startX, y: startY }];
+    markZone(pts[0]);
+
+    let placed = 0, safety = 0;
+
+    while (placed < n && safety++ < n * 8) {
+      const pos = pts[pts.length - 1];
+      const uv  = uvec(heading);
+      const room = stepsToWall(pos, uv);
+
+      // Run length: 2–5, capped by wall room and stations remaining
+      const runMax = Math.min(5, Math.floor(room), n - placed);
+      const runMin = Math.min(2, runMax);
+
+      if (runMax < 1) {
+        // No room — turn toward emptiest available direction immediately
+        const best = headings8
+          .filter(h => stepsToWall(pos, uvec(h)) >= 1)
+          .sort((a, b) => coverageScore(pos, b) - coverageScore(pos, a));
+        if (!best.length) break;
+        heading = best[0];
+        continue;
       }
 
-      pts.push(cand);
+      const runLen = rndInt(runMin, runMax);
+
+      // Walk the run
+      for (let s = 0; s < runLen && placed < n; s++) {
+        const base = pts[pts.length - 1];
+        const perp = { x: -uv.y, y: uv.x };
+        const j    = STEP * 0.10 * (Math.random() * 2 - 1) * (0.3 + randFactor * 0.7);
+        const next = clamp({ x: base.x + uv.x * STEP + perp.x * j, y: base.y + uv.y * STEP + perp.y * j });
+        if (Math.hypot(next.x - base.x, next.y - base.y) < minDist) continue;
+        pts.push(next);
+        markZone(next);
+        placed++;
+      }
+
+      if (placed >= n) break;
+
+      // ── Turn: score every valid heading by coverage bias ──────────────
+      // Filter to headings that are legal turns from this direction AND have room.
+      // Then sort by coverage score (most empty space wins), with small random noise.
+      const cur = pts[pts.length - 1];
+      const validTurns = TURN_OPTIONS.map(t => normalizeAngle(heading + t))
+        .filter(h => stepsToWall(cur, uvec(h)) >= 1);
+
+      if (!validTurns.length) break;
+
+      // Score + noise so ties resolve randomly
+      validTurns.sort((a, b) =>
+        (coverageScore(cur, b) + Math.random() * 0.3) -
+        (coverageScore(cur, a) + Math.random() * 0.3)
+      );
+      heading = validTurns[0];
     }
+
     return pts;
   }
 
@@ -707,10 +780,12 @@ function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave
       if (cls_.length > 0) candidates = cls_;
     }
 
-    // Sort by td closeness + small random noise for variety
+    // Shuffle first so ties resolve differently every generation,
+    // then sort by td closeness + generous random noise for real variety.
+    shuffle(candidates);
     candidates.sort((a, b) =>
-      (Math.abs(angleDiff(reqTd, a.td)) + Math.random() * 8) -
-      (Math.abs(angleDiff(reqTd, b.td)) + Math.random() * 8)
+      (Math.abs(angleDiff(reqTd, a.td)) + Math.random() * 22) -
+      (Math.abs(angleDiff(reqTd, b.td)) + Math.random() * 22)
     );
     return candidates[0];
   }
@@ -721,10 +796,14 @@ function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave
   // Try up to MAX_ATTEMPTS different waypoint layouts.
   // Each layout gives a different set of required turns → different signs.
   // ══════════════════════════════════════════════════════════════════════
-  const MAX_ATTEMPTS = 6;
+  const MAX_ATTEMPTS = 12;  // more attempts since segment-walk occasionally gets boxed in
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const wps = buildWaypoints(target);
+
+    // Segment-walk may return fewer points than needed if it got boxed in — skip
+    if (wps.length < target + 1) continue;
+
     // wps[0]         = start position
     // wps[1..target] = exercise positions (target points)
 
@@ -741,10 +820,30 @@ function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave
     const startHeading = headingBetween(wps[0], wps[1]);
     placed.push({ id:'START', n:'Start', pos:{...wps[0]}, heading:startHeading, cat:'start' });
 
+    // Cone/equip signs need runway — the sign marker sits at the entry point
+    // but the dog travels through 15–25ft of cones/jump before reaching the next station.
+    // Enforce a larger gap after any cone or equip sign.
+    const EQUIP_MIN = 20;  // ft — minimum to NEXT station after cone/equip sign
+    let lastSignCat = null;
+
     for (let i = 1; i <= target; i++) {
-      const wp     = wps[i];
+      let wp     = wps[i];
       const prevWp = wps[i - 1];
       const nextWp = wps[i + 1] || null;
+
+      // If the previous sign was a cone or equipment exercise, push this waypoint
+      // further away so the dog has room to complete the obstacle before arriving here.
+      if ((lastSignCat === 'cone' || lastSignCat === 'equip') && i < target) {
+        const d = Math.hypot(wp.x - prevWp.x, wp.y - prevWp.y);
+        if (d < EQUIP_MIN) {
+          const ang = Math.atan2(wp.y - prevWp.y, wp.x - prevWp.x);
+          wp = {
+            x: Math.max(MARGIN, Math.min(ringW - MARGIN, prevWp.x + Math.cos(ang) * EQUIP_MIN)),
+            y: Math.max(MARGIN, Math.min(ringH - MARGIN, prevWp.y + Math.sin(ang) * EQUIP_MIN))
+          };
+          wps[i] = wp;  // update in-place so subsequent headings recalc correctly
+        }
+      }
 
       // Turtle's current facing = direction it just walked
       const incomingHeading = headingBetween(prevWp, wp);
@@ -780,6 +879,7 @@ function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave
       if (sign.stat) stationaryCount++;
       usedIds[sign.id] = (usedIds[sign.id] || 0) + 1;
       lastCat           = sign.cat;
+      lastSignCat       = sign.cat;   // tracked for cone/equip spacing
       if (ownIds.has(sign.id)) classCount++;
 
       if      (PACE_AFTER[sign.id])    needsFollowBy = PACE_AFTER[sign.id];
@@ -1468,6 +1568,20 @@ function autoLoadGithubSigns() {
   let attempted = 0, loaded = 0;
   const total = ALL_SIGN_IDS.length;
   setGithubStatus('⏳', `Checking GitHub for ${total} signs…`, 'var(--text3)');
+
+  // Load START and FINISH sign images — always shown regardless of signs toggle
+  ['START', 'FINISH'].forEach(id => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      signImages[id] = img;
+      // Always redraw when these load — they show even when signs toggle is OFF
+      if (currentCourse.length > 0) redraw();
+    };
+    img.onerror = () => { console.warn('Could not load sign image:', id); };
+    img.src = GITHUB_SIGNS_BASE + id + '.png';
+  });
+
   ALL_SIGN_IDS.forEach(id => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -1586,36 +1700,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dragIdx < 0) return;
     canvas.classList.remove('dragging');
     if (mouseDidMove) {
-      const minD = parseInt(document.getElementById('minDist').value);
-      const idx  = dragIdx;
-
-      // Only check the two segments CONNECTED to the dragged station.
-      // This lets the judge fix one violation at a time without being
-      // trapped — the old code checked the whole course and snapped back
-      // to a position that was itself already violating.
-      const prev = idx > 0                          ? currentCourse[idx - 1] : null;
-      const next = idx < currentCourse.length - 1  ? currentCourse[idx + 1] : null;
-      const toPrev = prev ? dist(currentCourse[idx].pos, prev.pos) : Infinity;
-      const toNext = next ? dist(currentCourse[idx].pos, next.pos) : Infinity;
-      const localViolation = (toPrev < minD) || (toNext < minD);
-
-      if (localViolation) {
-        // New position makes THIS station's own connections worse — snap back
-        currentCourse[idx].pos = { ...dragStartFt };
-        // Highlight only the segments that are still broken after snap-back
-        const allPoints = currentCourse;
-        const badIdx = [];
-        for (let i = 0; i < allPoints.length - 1; i++) {
-          if (dist(allPoints[i].pos, allPoints[i + 1].pos) < minD) {
-            badIdx.push(i); badIdx.push(i + 1);
-          }
-        }
-        recalcHeadings(currentCourse); redraw(); updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
-        if (badIdx.length) showDistanceWarning([...new Set(badIdx)]);
-      } else {
-        // Move accepted — other existing violations elsewhere are not this drag's problem
-        recalcHeadings(currentCourse); redraw(); updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
-      }
+      // No snap-back — accept wherever the judge dropped the station.
+      // The validation panel already highlights too-close segments in red
+      // and clears the highlight automatically once spacing is fixed.
+      recalcHeadings(currentCourse);
+      redraw();
+      updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
     } else {
       const idx = dragIdx;
       const clicked = currentCourse[idx];
@@ -1648,9 +1738,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const next = idx < currentCourse.length - 1 ? currentCourse[idx + 1] : null;
       const toPrev = prev ? dist(currentCourse[idx].pos, prev.pos) : Infinity;
       const toNext = next ? dist(currentCourse[idx].pos, next.pos) : Infinity;
-      if ((toPrev < minD) || (toNext < minD)) {
-        currentCourse[idx].pos = { ...dragStartFt };
-      }
+      // No snap-back — accept position, validation will highlight violations
       recalcHeadings(currentCourse); redraw(); updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
     }
     dragIdx = -1;
@@ -1847,7 +1935,7 @@ function renderCourse(placed, ringW, ringH, cfg) {
     const py = PAD_C + gy * currentScale;
     ctx.strokeStyle = gy % 10 === 0 ? gridMajor : gridMinor;
     ctx.lineWidth   = gy % 10 === 0 ? 0.8 : 0.4;
-    ctx.beginPath(); ctx.moveTo(PAD_C, py); ctx.lineTo(PAD_C + ringH * currentScale, py); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD_C, py); ctx.lineTo(PAD_C + ringW * currentScale, py); ctx.stroke();
   }
   ctx.strokeStyle = ringBorder; ctx.lineWidth = isLight ? 3 : 2;
   ctx.strokeRect(PAD_C, PAD_C, ringW * currentScale, ringH * currentScale);
@@ -1906,7 +1994,6 @@ function renderCourse(placed, ringW, ringH, cfg) {
     if (ex.cat === 'start' || ex.cat === 'finish') continue;
     exOrdinal++;
     const cp = toCanvas(ex.pos);
-    // nestStatusByIdx is keyed by course array index (ci), not ordinal
     const nestStatus = nestPreviewData ? (nestStatusByIdx[ci] || null) : null;
     const nestToName = nestPreviewData ? (nestSwapToByIdx[ci] || null) : null;
     drawExercise(ctx, cp.x, cp.y, exOrdinal, ex, distViolators.has(exOrdinal), nodeFill, labelColor, isLight, nestStatus, nestToName);
@@ -1914,9 +2001,9 @@ function renderCourse(placed, ringW, ringH, cfg) {
 
   // Start / Finish
   const startPt = toCanvas(placed[0].pos);
-  drawStartFinish(ctx, startPt.x, startPt.y, 'S', '#f0a500', nodeFill, isLight);
+  drawStartFinish(ctx, startPt.x, startPt.y, 'S', '#f0a500', nodeFill, isLight, placed[0].heading);
   const finPt = toCanvas(placed[placed.length - 1].pos);
-  drawStartFinish(ctx, finPt.x, finPt.y, 'F', '#f0a500', nodeFill, isLight);
+  drawStartFinish(ctx, finPt.x, finPt.y, 'F', '#f0a500', nodeFill, isLight, placed[placed.length-1].heading);
 
   ctx.fillStyle = titleColor; ctx.font = 'bold 14px Barlow Condensed, sans-serif'; ctx.textAlign = 'left';
   ctx.fillText(cfg.name.toUpperCase() + ' COURSE' + (nestPreviewData ? ' — NESTING PREVIEW' : ''), PAD_C, PAD_C - 16);
@@ -1945,17 +2032,15 @@ function drawArrow(ctx, x1, y1, x2, y2, color, width) {
 
 function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isLight, nestStatus, nestToName) {
   const r = 13;
-  // Normal color logic
   const normalColor = ex.stat ? '#a78bfa' : (ex.eq ? '#fb923c' : (ex.cat === 'leave' || ex.cat === 'recall' ? '#f472b6' : (isLight ? '#1a6bb5' : '#4fc3f7')));
-  // Nesting overrides border color
   let ringColor = normalColor;
-  if (nestStatus === 'keep')   ringColor = '#2dd4a0';
-  if (nestStatus === 'swap')   ringColor = '#fb923c';
-  if (nestStatus === 'insert') ringColor = '#4fc3f7';
-  if (nestStatus === 'unresolved') ringColor = '#ff5252';
+  if (nestStatus === 'keep')       ringColor = '#2dd4a0';
+  else if (nestStatus === 'swap')  ringColor = '#fb923c';
+  else if (nestStatus === 'insert')ringColor = '#4fc3f7';
+  else if (nestStatus === 'unresolved') ringColor = '#ff5252';
   const strokeW = isLight ? 2.5 : 2;
 
-  // Violation glow
+  // ── Violation glow ────────────────────────────────────────────────────
   if (highlight) {
     ctx.beginPath(); ctx.arc(cx, cy, r + 6, 0, Math.PI * 2);
     ctx.fillStyle = isLight ? 'rgba(217,48,37,0.12)' : 'rgba(255,82,82,0.18)'; ctx.fill();
@@ -1963,98 +2048,107 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
     ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
   }
 
-  // Nesting outer ring for swap/keep/insert
+  // ── Nesting outer ring ────────────────────────────────────────────────
   if (nestStatus) {
     ctx.beginPath(); ctx.arc(cx, cy, r + 5, 0, Math.PI * 2);
-    if (nestStatus === 'keep')   ctx.fillStyle = 'rgba(45,212,160,0.12)';
-    else if (nestStatus === 'swap') ctx.fillStyle = 'rgba(251,146,60,0.15)';
-    else ctx.fillStyle = 'rgba(79,195,247,0.12)';
+    ctx.fillStyle = nestStatus === 'keep' ? 'rgba(45,212,160,0.12)' :
+                    nestStatus === 'swap' ? 'rgba(251,146,60,0.15)' : 'rgba(79,195,247,0.12)';
     ctx.fill();
     ctx.strokeStyle = ringColor; ctx.lineWidth = 2;
     ctx.setLineDash([3, 2]); ctx.stroke(); ctx.setLineDash([]);
   }
 
-  // Circle fill
+  // ── Position dot ──────────────────────────────────────────────────────
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.fillStyle = nodeFill; ctx.fill();
   ctx.strokeStyle = ringColor; ctx.lineWidth = nestStatus ? strokeW + 1 : strokeW; ctx.stroke();
 
-  // Number
-  ctx.fillStyle = nestStatus ? ringColor : normalColor;
-  ctx.font = `bold ${num >= 10 ? '10' : '13'}px Arial, sans-serif`;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(num, cx, cy);
+  // ── Compact strip layout: ⬤ [SIGN] 7  ─────────────────────────────────
+  // Sign sits immediately to the right of the dot (screen-right, upright, no rotation).
+  // Number is plain bold text just past the sign's right edge.
+  // No bubble, no connector line — clean and space-saving.
+  const thumbSize = Math.round(Math.max(26, Math.min(46, currentScale * 2.8)));
+  const gap = 5;                                    // px between dot edge and sign left edge
+  const signX = cx + r + gap + thumbSize / 2;       // sign centre X
+  const signY = cy;                                  // sign centre Y (same as dot)
 
-  // Sign thumbnail — position depends on type
   if (showSigns) {
     const img = signImages[ex.id];
     if (img) {
-      const thumbSize = Math.round(Math.max(40, Math.min(72, currentScale * 4.5)));
-      const gap = 4;
-      const inHeadRad = ((ex.heading || 0) * Math.PI) / 180;
-
-      let signDist, scx, scy;
-      if (SIGN_IN_FRONT.has(ex.id)) {
-        // Direction-change signs: place IN FRONT (along incoming heading direction)
-        const frontDist = r + gap + thumbSize / 2;
-        scx = cx + Math.sin(inHeadRad) * frontDist;
-        scy = cy - Math.cos(inHeadRad) * frontDist;
-      } else {
-        // All other signs: handler's RIGHT (90° clockwise from incoming heading)
-        const rightAngle = inHeadRad + Math.PI / 2;
-        signDist = r + gap + thumbSize / 2;
-        scx = cx + Math.sin(rightAngle) * signDist;
-        scy = cy - Math.cos(rightAngle) * signDist;
-      }
-
-      // Draw sign rotated to face direction of travel (incoming heading)
       const hw = thumbSize / 2;
-      ctx.save();
-      ctx.translate(scx, scy);
-      ctx.rotate(inHeadRad);           // sign face points along incoming heading
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(-hw - 1, -hw - 1, thumbSize + 2, thumbSize + 2, 3);
-      else ctx.rect(-hw - 1, -hw - 1, thumbSize + 2, thumbSize + 2);
-      ctx.fill();
-      ctx.strokeStyle = ringColor; ctx.lineWidth = nestStatus ? 2.5 : 1.5;
-      ctx.stroke();
       const aspect = img.naturalWidth / img.naturalHeight;
       let dw = thumbSize, dh = thumbSize;
       if (aspect > 1) dh = thumbSize / aspect;
       else dw = thumbSize * aspect;
-      ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
-      ctx.restore();
 
-      // If swap preview: show "→ NewName" label below thumbnail (in screen coords)
+      // White backing, coloured border
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(signX - hw - 1, signY - hw - 1, thumbSize + 2, thumbSize + 2, 3);
+      else ctx.rect(signX - hw - 1, signY - hw - 1, thumbSize + 2, thumbSize + 2);
+      ctx.fill();
+      ctx.strokeStyle = ringColor; ctx.lineWidth = nestStatus ? 2 : 1.5; ctx.stroke();
+      ctx.drawImage(img, signX - dw / 2, signY - dh / 2, dw, dh);
+
       if (nestStatus === 'swap' && nestToName) {
-        ctx.fillStyle = '#fb923c';
-        ctx.font = 'bold 8px Barlow, sans-serif';
+        ctx.fillStyle = '#fb923c'; ctx.font = 'bold 8px Barlow, sans-serif';
         ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-        ctx.fillText('→ ' + nestToName.substring(0, 16), scx, scy + thumbSize / 2 + 10);
+        ctx.fillText('→ ' + nestToName.substring(0, 14), signX, signY + thumbSize / 2 + 3);
       }
     }
   }
 
-  // Label below circle
-  ctx.fillStyle = nestStatus ? ringColor : labelColor;
-  ctx.font = '7px Barlow, sans-serif';
-  ctx.textBaseline = 'top'; ctx.textAlign = 'center';
-  const shortName = ex.n.length > 14 ? ex.n.substring(0, 13) + '…' : ex.n;
-  ctx.fillText(shortName, cx, cy + r + 3);
+  // ── Station number — plain bold text to the right of the sign ─────────
+  // No circle/bubble. Drawn last so always on top.
+  const numX = cx + r + gap + thumbSize + gap + 2;  // right of sign + small pad
+  const numY = cy;
+  ctx.fillStyle = nestStatus ? ringColor : normalColor;
+  ctx.font = `bold ${num >= 10 ? '11' : '13'}px Arial, sans-serif`;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(num, numX, numY);
   ctx.textBaseline = 'alphabetic';
 }
 
-function drawStartFinish(ctx, cx, cy, label, color, nodeFill, isLight) {
-  const strokeW = isLight ? 3.5 : 3;
-  ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2);
-  ctx.fillStyle = nodeFill; ctx.fill();
-  ctx.strokeStyle = color; ctx.lineWidth = strokeW; ctx.stroke();
-  ctx.fillStyle = color;
-  ctx.font = 'bold 14px Barlow Condensed, sans-serif';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(label, cx, cy);
-  ctx.textBaseline = 'alphabetic';
+function drawStartFinish(ctx, cx, cy, label, color, nodeFill, isLight, heading) {
+  const imgId = label === 'S' ? 'START' : 'FINISH';
+  const img = signImages[imgId];
+
+  if (img && img.complete && img.naturalWidth > 0) {
+    // Sign image available — draw it upright (no rotation; these are rectangular labels)
+    const thumbSize = Math.round(Math.max(32, Math.min(58, currentScale * 3.6)));
+    const hw = thumbSize / 2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    // No rotation — Start/Finish signs are read right-side-up on the course map
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(-hw - 1, -hw - 1, thumbSize + 2, thumbSize + 2, 4);
+    else ctx.rect(-hw - 1, -hw - 1, thumbSize + 2, thumbSize + 2);
+    ctx.fill();
+    ctx.strokeStyle = color; ctx.lineWidth = isLight ? 2.5 : 2;
+    ctx.stroke();
+    const aspect = img.naturalWidth / img.naturalHeight;
+    let dw = thumbSize, dh = thumbSize;
+    if (aspect > 1) dh = thumbSize / aspect;
+    else dw = thumbSize * aspect;
+    ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+    ctx.restore();
+  } else {
+    // Fallback circle — also schedule a redraw after a moment in case image is still loading
+    if (!img || !img.complete) {
+      clearTimeout(window._sfReloadTimer);
+      window._sfReloadTimer = setTimeout(() => { if (currentCourse.length > 0) redraw(); }, 800);
+    }
+    const strokeW = isLight ? 3.5 : 3;
+    ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+    ctx.fillStyle = nodeFill; ctx.fill();
+    ctx.strokeStyle = color; ctx.lineWidth = strokeW; ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.font = 'bold 14px Barlow Condensed, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(label, cx, cy);
+    ctx.textBaseline = 'alphabetic';
+  }
 }
 
 // ════════════════════════════════════════════════
@@ -2156,7 +2250,7 @@ function showDistanceWarning(violatingIndices) {
   const tip = document.createElement('div');
   tip.id = 'dist-warn-tip';
   tip.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#21262f;border:1px solid #ff5252;color:#ff5252;padding:8px 16px;border-radius:6px;font-size:12px;z-index:999;box-shadow:0 4px 20px #0006;pointer-events:none;';
-  tip.textContent = '⚠ Too close — move the highlighted station(s) further apart.';
+  tip.textContent = '⚠ Stations too close — keep moving them apart to clear the red highlight.';
   document.body.appendChild(tip);
   setTimeout(() => { tip.remove(); }, 4000);
   // distViolators stays set — cleared next time validation runs clean
