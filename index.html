@@ -366,8 +366,8 @@ const EX = {
   S32: { n:'Bear Right',          td:45,   stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn'   },
   S33: { n:'Bear Left',           td:-45,  stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn'   },
   // Ribbon Right/Left: 270° sweep around a cone, net exit: Right→exits going left (-90°), Left→exits going right (+90°)
-  S34: { n:'Ribbon Right',        td:-90,  stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn',  footprint:'15x15' },
-  S35: { n:'Ribbon Left',         td:90,   stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn',  footprint:'15x15' },
+  S34: { n:'Ribbon Right',        td:-135, stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn',  footprint:'15x15' },
+  S35: { n:'Ribbon Left',         td:135,  stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn',  footprint:'15x15' },
   // ── ADVANCED ─────────────────────────────────
   A1:  { n:'Halt–Pivot Lt–Halt',  td:-90,  stat:true, mult:false, eq:null,   seq:null,            cls:['A','P','ARF'],                     cat:'halt'   },
   A2:  { n:'Halt–Pivot Lt–Fwd',   td:-90,  stat:true, mult:false, eq:null,   seq:null,            cls:['A','P','ARF'],                     cat:'halt'   },
@@ -644,18 +644,30 @@ function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave
 function tryPlaceExercise(pos, heading, turnDelta, placed, ringW, ringH, minDist, randFactor, exCat) {
   const margin = 4;
   const isEquip = exCat === 'equip';
-  // Jitter = angular spread around the intended outgoing heading.
-  // Keep it tight so the placed path actually reflects the td turn.
-  // Fallback passes widen slightly but stay under 90° so turns remain readable.
+
+  // How much of a real turn does this exercise make?
+  // Normalise to 0-180 so +90 and -90 are both "90° turn"
+  const absTurn = Math.min(Math.abs(turnDelta) % 360, 360 - Math.abs(turnDelta) % 360);
+  // For exercises with a meaningful direction change (≥30°), cap jitter tightly
+  // so the placed path visually reflects the turn.
+  // e.g. Left Turn (90°): max jitter 30° → next station is clearly to the left
+  //      About Turn (180°): max jitter 20° → next station is clearly behind
+  //      Bear (45°): max jitter 40° → gentle curve still visible
+  //      Straight (0°): full jitter allowed for variety
+  const maxJitter = absTurn >= 150 ? 20   // about turns — very tight
+                  : absTurn >= 80  ? 30   // 90° turns (left/right) — tight
+                  : absTurn >= 40  ? 40   // ribbon/bear — moderate
+                  : 90;                   // straight exercises — full freedom
+
   const passes = isEquip ? [
     { jitter: 8,  slack: 0 },
     { jitter: 15, slack: 0 },
     { jitter: 25, slack: minDist * 0.1 },
   ] : [
-    { jitter: randFactor * 40, slack: 0 },   // pass 1: tight preferred placement
-    { jitter: 50,               slack: 0 },   // pass 2: moderate fallback
-    { jitter: 75,               slack: 0 },   // pass 3: wider fallback
-    { jitter: 90,               slack: minDist * 0.12 }, // pass 4: last resort, max 90° spread
+    { jitter: Math.min(randFactor * 30, maxJitter * 0.5), slack: 0 },        // pass 1: tight
+    { jitter: Math.min(maxJitter * 0.7, maxJitter),       slack: 0 },        // pass 2: medium
+    { jitter: maxJitter,                                   slack: 0 },        // pass 3: full allowed
+    { jitter: maxJitter,                                   slack: minDist * 0.12 }, // pass 4: relax spacing only
   ];
   const outHeading = normalizeAngle(heading + turnDelta);
   for (const { jitter, slack } of passes) {
@@ -676,16 +688,28 @@ function tryPlaceExercise(pos, heading, turnDelta, placed, ringW, ringH, minDist
 }
 
 function findFinishPos(pos, heading, placed, ringW, ringH, minDist) {
-  for (let t = 0; t < 60; t++) {
-    const angle = rnd(0, 360);
-    const d = rnd(minDist, minDist + 12);
-    const v = vecFromHeading(angle);
-    const fp = { x: pos.x + v.x * d, y: pos.y + v.y * d };
-    if (fp.x < 5 || fp.x > ringW - 5 || fp.y < 5 || fp.y > ringH - 5) continue;
-    const tooClose = placed.some(p => dist(fp, p.pos) < minDist - 2);
-    if (!tooClose) return fp;
+  // Three passes: ideal clearance → meets minimum → absolute last resort
+  const attempts = [
+    { dMin: minDist + 4, dMax: minDist + 18, clearance: minDist },
+    { dMin: minDist + 2, dMax: minDist + 14, clearance: minDist },
+    { dMin: minDist,     dMax: minDist + 10, clearance: minDist - 1 },
+  ];
+  for (const { dMin, dMax, clearance } of attempts) {
+    for (let t = 0; t < 40; t++) {
+      const angle = rnd(0, 360);
+      const d = rnd(dMin, dMax);
+      const v = vecFromHeading(angle);
+      const fp = { x: pos.x + v.x * d, y: pos.y + v.y * d };
+      if (fp.x < 5 || fp.x > ringW - 5 || fp.y < 5 || fp.y > ringH - 5) continue;
+      if (!placed.some(p => dist(fp, p.pos) < clearance)) return fp;
+    }
   }
-  return { x: Math.min(ringW-5, Math.max(5, pos.x + 6)), y: Math.min(ringH-5, Math.max(5, pos.y - 6)) };
+  // Absolute fallback: push along current heading at minimum distance
+  const v = vecFromHeading(heading);
+  return {
+    x: Math.min(ringW - 5, Math.max(5, pos.x + v.x * (minDist + 6))),
+    y: Math.min(ringH - 5, Math.max(5, pos.y + v.y * (minDist + 6)))
+  };
 }
 
 function recalcHeadings(course) {
