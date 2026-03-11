@@ -630,15 +630,18 @@ function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave
 function tryPlaceExercise(pos, heading, turnDelta, placed, ringW, ringH, minDist, randFactor, exCat) {
   const margin = 4;
   const isEquip = exCat === 'equip';
+  // Jitter = angular spread around the intended outgoing heading.
+  // Keep it tight so the placed path actually reflects the td turn.
+  // Fallback passes widen slightly but stay under 90° so turns remain readable.
   const passes = isEquip ? [
     { jitter: 8,  slack: 0 },
     { jitter: 15, slack: 0 },
     { jitter: 25, slack: minDist * 0.1 },
   ] : [
-    { jitter: randFactor * 50, slack: 0 },
-    { jitter: 70,               slack: 0 },
-    { jitter: 120,              slack: 0 },
-    { jitter: 180,              slack: minDist * 0.15 },
+    { jitter: randFactor * 40, slack: 0 },   // pass 1: tight preferred placement
+    { jitter: 50,               slack: 0 },   // pass 2: moderate fallback
+    { jitter: 75,               slack: 0 },   // pass 3: wider fallback
+    { jitter: 90,               slack: minDist * 0.12 }, // pass 4: last resort, max 90° spread
   ];
   const outHeading = normalizeAngle(heading + turnDelta);
   for (const { jitter, slack } of passes) {
@@ -1529,14 +1532,15 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
         scy = cy - Math.cos(rightAngle) * signDist;
       }
 
-      ctx.save();
-      ctx.translate(scx, scy);
-      ctx.rotate(inHeadRad);
+      // Signs always render upright — no rotation. The printed arrows/text
+      // on sign images are designed for their natural orientation.
+      // Position (scx, scy) already places the sign to the handler's right
+      // or directly in front per C-WAGS rules. No ctx.save/restore needed.
       const hw = thumbSize / 2;
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(-hw - 1, -hw - 1, thumbSize + 2, thumbSize + 2, 3);
-      else ctx.rect(-hw - 1, -hw - 1, thumbSize + 2, thumbSize + 2);
+      if (ctx.roundRect) ctx.roundRect(scx - hw - 1, scy - hw - 1, thumbSize + 2, thumbSize + 2, 3);
+      else ctx.rect(scx - hw - 1, scy - hw - 1, thumbSize + 2, thumbSize + 2);
       ctx.fill();
       ctx.strokeStyle = ringColor; ctx.lineWidth = nestStatus ? 2.5 : 1.5;
       ctx.stroke();
@@ -1544,8 +1548,7 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
       let dw = thumbSize, dh = thumbSize;
       if (aspect > 1) dh = thumbSize / aspect;
       else dw = thumbSize * aspect;
-      ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
-      ctx.restore();
+      ctx.drawImage(img, scx - dw / 2, scy - dh / 2, dw, dh);
 
       // If swap preview: show "→ NewName" label below thumbnail
       if (nestStatus === 'swap' && nestToName) {
