@@ -316,10 +316,10 @@ const EX = {
   // ── STARTER ──────────────────────────────────
   S1:  { n:'Right Turn',          td:90,   stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn'   },
   S2:  { n:'Left Turn',           td:-90,  stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn'   },
-  // 270° Right: dog turns right 270° (3/4 circle), NET heading change = +90° (exits heading right)
-  S3:  { n:'270° Right',          td:90,   stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn',  footprint:'12x8' },
-  // 270° Left: dog turns left 270° (3/4 circle), NET heading change = -90° (exits heading left)
-  S4:  { n:'270° Left',           td:-90,  stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn',  footprint:'12x8' },
+  // 270° Right: turns right (CW) ¾ circle → net heading change = -90° (same exit as a left turn)
+  S3:  { n:'270° Right',          td:-90,  stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn',  footprint:'12x8' },
+  // 270° Left: turns left (CCW) ¾ circle → net heading change = +90° (same exit as a right turn)
+  S4:  { n:'270° Left',           td:90,   stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn',  footprint:'12x8' },
   S5:  { n:'Halt–Pivot Rt–Halt',  td:90,   stat:true, mult:false, eq:null,   seq:null,            cls:['S','A','P','ARF'],                 cat:'halt'   },
   S6:  { n:'Halt–Pivot Rt–Fwd',   td:90,   stat:true, mult:false, eq:null,   seq:null,            cls:['S','A','P','ARF'],                 cat:'halt'   },
   S7:  { n:'Right About Turn',    td:180,  stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn'   },
