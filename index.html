@@ -15,11 +15,8 @@
   --text: #e8eaf0; --text2: #9aa3b5; --text3: #6b7589;
   --starter: #2dd4a0; --advanced: #4fc3f7; --pro: #a78bfa; --arf: #fb923c; --zoom: #f472b6;
   --canvas-bg: #1a1d23;
-  --canvas-grid-major: #363d4f; --canvas-grid-minor: #2a3040;
-  --canvas-border: #4a5468; --canvas-tick: #4a5468; --canvas-label: #6b7589; --canvas-label2: #363d4f;
-  --canvas-title: #e8eaf0;
   --node-fill: #1a1d23;
-  --arrow-normal: #4fc3f7; --arrow-alpha: 55;
+  --arrow-normal: #4fc3f7;
 }
 body.light-mode {
   --bg: #f0f2f7; --bg2: #ffffff; --bg3: #e8eaf0;
@@ -29,91 +26,57 @@ body.light-mode {
   --red: #d93025; --blue: #0277b5;
   --text: #1a1d23; --text2: #3d4558; --text3: #6b7589;
   --canvas-bg: #ffffff;
-  --canvas-grid-major: #d8dce8; --canvas-grid-minor: #eceef5;
-  --canvas-border: #8896b0; --canvas-tick: #8896b0; --canvas-label: #5a6480; --canvas-label2: #c0c8d8;
-  --canvas-title: #1a1d23;
   --node-fill: #ffffff;
-  --arrow-normal: #1a6bb5; --arrow-alpha: cc;
+  --arrow-normal: #1a6bb5;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-serif; min-height: 100vh; }
 
-/* HEADER */
 .header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; gap: 14px; }
 .header-icon { font-size: 26px; }
 .header-title { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 900; letter-spacing: 1px; color: var(--gold); }
 .header-sub { font-size: 16px; color: var(--text3); letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
 
-/* LAYOUT */
 .main { display: grid; grid-template-columns: 680px 1fr; gap: 0; height: calc(100vh - 57px); overflow: hidden; }
 .sidebar { background: var(--bg2); border-right: 1px solid var(--border); padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; font-size: 16px; }
 .canvas-area { padding: 16px; overflow: hidden; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
 
-/* CONTROLS */
 .section-label { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; letter-spacing: 3px; color: var(--text3); text-transform: uppercase; font-weight: 700; margin-bottom: 8px; }
 
 .class-btns { display: flex; flex-wrap: wrap; gap: 6px; }
-.cls-btn {
-  padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border2);
-  background: var(--bg3); color: var(--text2); cursor: pointer;
-  font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1px;
-  transition: all 0.12s;
-}
+.cls-btn { padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border2); background: var(--bg3); color: var(--text2); cursor: pointer; font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1px; transition: all 0.12s; }
 .cls-btn:hover { border-color: var(--gold); color: var(--gold); }
 .cls-btn.active { border-color: var(--gold); background: var(--gold-dim); color: var(--gold); }
 
 .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .opt-group label { font-size: 16px; color: var(--text3); display: block; margin-bottom: 4px; }
-.opt-group select, .opt-group input {
-  width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: 4px;
-  color: var(--text); padding: 5px 8px; font-size: 16px; font-family: 'Barlow', sans-serif;
-}
+.opt-group select, .opt-group input { width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; color: var(--text); padding: 5px 8px; font-size: 16px; font-family: 'Barlow', sans-serif; }
 .opt-group input[type=checkbox] { width: auto; margin-right: 6px; }
 .opt-checkbox { display: flex; align-items: center; padding: 8px 0; font-size: 16px; color: var(--text2); }
 
-.generate-btn {
-  width: 100%; padding: 12px; background: var(--gold); color: #1a1d23;
-  border: none; border-radius: 5px; cursor: pointer;
-  font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 900; letter-spacing: 2px;
-  text-transform: uppercase; transition: background 0.12s;
-}
+.generate-btn { width: 100%; padding: 12px; background: var(--gold); color: #1a1d23; border: none; border-radius: 5px; cursor: pointer; font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; transition: background 0.12s; }
 .generate-btn:hover { background: var(--gold2); }
 
-/* EXERCISE LIST */
 .ex-list { flex: 1; }
-.ex-item {
-  display: flex; align-items: flex-start; gap: 8px;
-  padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 16px;
-}
-.ex-num {
-  width: 28px; height: 28px; border-radius: 50%; background: var(--bg3);
-  display: flex; align-items: center; justify-content: center;
-  font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 16px;
-  flex-shrink: 0; border: 1px solid var(--border2);
-}
+.ex-item { display: flex; align-items: flex-start; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 16px; }
+.ex-num { width: 28px; height: 28px; border-radius: 50%; background: var(--bg3); display: flex; align-items: center; justify-content: center; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 16px; flex-shrink: 0; border: 1px solid var(--border2); }
 .ex-text { flex: 1; }
 .ex-id { font-size: 14px; color: var(--text3); }
 .ex-name { color: var(--text); font-size: 16px; }
 .ex-flag { font-size: 14px; color: var(--text3); margin-top: 2px; }
 .flag-eq { color: #fb923c; } .flag-stat { color: #a78bfa; } .flag-seq { color: #f472b6; }
 
-/* VALIDATION */
 .validation { background: var(--bg3); border-radius: 6px; padding: 10px 12px; border: 1px solid var(--border); }
 .val-item { font-size: 15px; padding: 4px 0; display: flex; align-items: center; gap: 6px; }
 .val-ok { color: var(--green); } .val-warn { color: var(--gold); } .val-err { color: var(--red); }
 
-/* CANVAS AREA */
 .canvas-header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex-shrink: 0; }
 .canvas-title { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; color: var(--text); }
 .canvas-meta { font-size: 16px; color: var(--text3); }
 .canvas-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
-.action-btn {
-  padding: 6px 12px; background: var(--bg3); border: 1px solid var(--border2);
-  border-radius: 4px; color: var(--text2); cursor: pointer;
-  font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1px;
-  transition: all 0.12s;
-}
+.action-btn { padding: 6px 12px; background: var(--bg3); border: 1px solid var(--border2); border-radius: 4px; color: var(--text2); cursor: pointer; font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1px; transition: all 0.12s; }
 .action-btn:hover { border-color: var(--blue); color: var(--blue); }
+.action-btn.nest-active { border-color: #fb923c; background: rgba(251,146,60,0.12); color: #fb923c; }
 
 .canvas-wrap { flex: 1; overflow: auto; min-height: 0; display: flex; align-items: center; justify-content: center; background: var(--bg3); }
 #courseCanvas { border: 1px solid var(--border); border-radius: 6px; display: block; cursor: crosshair; }
@@ -123,63 +86,52 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
 .leg-item { display: flex; align-items: center; gap: 6px; font-size: 15px; color: var(--text3); }
 .leg-dot { width: 12px; height: 12px; border-radius: 50%; }
 
-/* SIGN UPLOAD */
-.sign-upload-area {
-  border: 1px dashed var(--border2); border-radius: 5px;
-  padding: 10px; text-align: center; cursor: pointer;
-  color: var(--text3); font-size: 15px; transition: all 0.12s;
-  background: var(--bg3);
-}
+.sign-upload-area { border: 1px dashed var(--border2); border-radius: 5px; padding: 10px; text-align: center; cursor: pointer; color: var(--text3); font-size: 15px; transition: all 0.12s; background: var(--bg3); }
 .sign-upload-area:hover { border-color: var(--gold); color: var(--gold); }
 .sign-upload-area input { display: none; }
 .sign-count { font-size: 15px; color: var(--green); margin-top: 4px; display: none; }
 .sign-count.visible { display: block; }
 
-/* TOGGLE BUTTONS */
-.toggle-btn {
-  padding: 6px 12px; background: var(--bg3); border: 1px solid var(--border2);
-  border-radius: 4px; color: var(--text2); cursor: pointer;
-  font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1px;
-  transition: all 0.12s; white-space: nowrap;
-}
+.toggle-btn { padding: 6px 12px; background: var(--bg3); border: 1px solid var(--border2); border-radius: 4px; color: var(--text2); cursor: pointer; font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1px; transition: all 0.12s; white-space: nowrap; }
 .toggle-btn:hover { border-color: var(--gold); color: var(--gold); }
 .toggle-btn.active { border-color: var(--gold); background: var(--gold-dim); color: var(--gold); }
 
 /* SUBSTITUTE MODAL */
-#subModal {
-  display: none; position: fixed; inset: 0; z-index: 1000;
-  align-items: center; justify-content: center;
-  background: rgba(0,0,0,0.65);
-}
-#subModalBox {
-  background: var(--bg2); border: 1px solid var(--border2);
-  border-radius: 8px; width: 420px; max-height: 80vh;
-  display: flex; flex-direction: column;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
-}
-#subModalHeader {
-  padding: 14px 16px 10px;
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
-}
-#subModalTitle {
-  font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 700; color: var(--gold);
-  flex: 1;
-}
-#subModalClose {
-  background: none; border: none; color: var(--text3); font-size: 20px;
-  cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0;
-}
+#subModal { display: none; position: fixed; inset: 0; z-index: 1000; align-items: center; justify-content: center; background: rgba(0,0,0,0.65); }
+#subModalBox { background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; width: 420px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 8px 40px rgba(0,0,0,0.5); }
+#subModalHeader { padding: 14px 16px 10px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+#subModalTitle { font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 700; color: var(--gold); flex: 1; }
+#subModalClose { background: none; border: none; color: var(--text3); font-size: 20px; cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0; }
 #subModalClose:hover { color: var(--text); }
-#subModalList {
-  overflow-y: auto; padding: 10px 12px;
-  display: flex; flex-direction: column; gap: 6px;
-  flex: 1;
-}
-#subModalHint {
-  padding: 8px 16px 12px; font-size: 14px; color: var(--text3);
-  border-top: 1px solid var(--border);
-}
+#subModalList { overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+#subModalHint { padding: 8px 16px 12px; font-size: 14px; color: var(--text3); border-top: 1px solid var(--border); }
+
+/* NESTING MODAL */
+#nestModal { display: none; position: fixed; inset: 0; z-index: 1000; align-items: center; justify-content: center; background: rgba(0,0,0,0.65); }
+#nestModalBox { background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; width: 480px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 8px 40px rgba(0,0,0,0.5); }
+#nestModalHeader { padding: 14px 16px 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+#nestModalTitle { font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 700; color: #fb923c; }
+#nestModalClose { background: none; border: none; color: var(--text3); font-size: 20px; cursor: pointer; padding: 0 2px; line-height: 1; }
+#nestModalClose:hover { color: var(--text); }
+#nestModalBody { overflow-y: auto; padding: 14px 16px; flex: 1; display: flex; flex-direction: column; gap: 12px; }
+#nestModalFooter { padding: 10px 16px 14px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+.nest-summary { display: flex; gap: 10px; flex-wrap: wrap; }
+.nest-stat { background: var(--bg3); border-radius: 6px; padding: 8px 12px; flex: 1; min-width: 90px; text-align: center; border: 1px solid var(--border); }
+.nest-stat-num { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 900; }
+.nest-stat-lbl { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.nest-change-list { display: flex; flex-direction: column; gap: 4px; max-height: 280px; overflow-y: auto; }
+.nest-change-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 5px; font-size: 14px; border: 1px solid var(--border); }
+.nest-keep { border-color: #2dd4a0; background: rgba(45,212,160,0.06); }
+.nest-swap { border-color: #fb923c; background: rgba(251,146,60,0.06); }
+.nest-insert { border-color: #4fc3f7; background: rgba(79,195,247,0.06); }
+.apply-btn { padding: 8px 18px; background: #fb923c; color: #1a1d23; border: none; border-radius: 5px; cursor: pointer; font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 900; letter-spacing: 1px; }
+.apply-btn:hover { background: #e8832a; }
+.cancel-btn { padding: 8px 14px; background: var(--bg3); border: 1px solid var(--border2); border-radius: 5px; cursor: pointer; color: var(--text2); font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; }
+.cancel-btn:hover { border-color: var(--red); color: var(--red); }
+
+/* NESTING LEGEND BANNER */
+#nestBanner { display: none; background: rgba(251,146,60,0.1); border: 1px solid #fb923c; border-radius: 5px; padding: 6px 12px; font-size: 14px; color: #fb923c; align-items: center; gap: 10px; flex-shrink: 0; }
+#nestBanner.visible { display: flex; }
 </style>
 </head>
 <body class="light-mode">
@@ -193,9 +145,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
 </div>
 
 <div class="main">
-  <!-- SIDEBAR -->
   <div class="sidebar">
-
     <div>
       <div class="section-label">Class</div>
       <div class="class-btns">
@@ -253,10 +203,8 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
       <div class="section-label">Course Exercises (<span id="exCount">0</span>)</div>
       <div class="ex-list" id="exList"></div>
     </div>
-
   </div>
 
-  <!-- CANVAS AREA -->
   <div class="canvas-area">
     <div class="canvas-header">
       <div>
@@ -264,14 +212,26 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
         <div class="canvas-meta" id="canvasMeta">Select a class and click Generate</div>
       </div>
       <div class="canvas-actions">
-        <button class="toggle-btn active" id="signsToggle" onclick="toggleSigns()" title="Show/hide sign thumbnails on course">🖼 Signs: ON</button>
-        <button class="toggle-btn active" id="modeToggle" onclick="toggleMode()" title="Switch light/dark mode">🌙 Dark Mode</button>
-        <button class="action-btn" onclick="saveCourse()" title="Save course to JSON file">💾 Save</button>
-        <button class="action-btn" onclick="document.getElementById('loadFileInput').click()" title="Load course from JSON file">📂 Load<input type="file" id="loadFileInput" accept=".json" style="display:none" onchange="loadCourse(this)"></button>
-        <button class="action-btn" id="upgradeBtn" onclick="upgradeCourse()" title="Upgrade to next level keeping positions">⬆ Upgrade Level</button>
+        <button class="toggle-btn active" id="signsToggle" onclick="toggleSigns()">🖼 Signs: ON</button>
+        <button class="toggle-btn active" id="modeToggle" onclick="toggleMode()">🌙 Dark Mode</button>
+        <button class="action-btn" onclick="saveCourse()">💾 Save</button>
+        <button class="action-btn" onclick="document.getElementById('loadFileInput').click()">📂 Load<input type="file" id="loadFileInput" accept=".json" style="display:none" onchange="loadCourse(this)"></button>
+        <button class="action-btn" id="nestBtn" onclick="openNestModal()" title="Nest this course layout to a different class — keep all positions, swap only the signs that must change">🔀 Nest Level</button>
         <button class="action-btn" onclick="generate()">↺ Regenerate</button>
         <button class="action-btn" onclick="exportPDF()">⬇ Export PDF</button>
       </div>
+    </div>
+
+    <!-- Nesting preview banner -->
+    <div id="nestBanner">
+      <span>🔀 <strong>Nest Preview:</strong></span>
+      <span id="nestBannerMsg">Showing changes needed</span>
+      <span style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+        <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#2dd4a0;display:inline-block;"></span>Keep</span>
+        <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#fb923c;display:inline-block;"></span>Swap</span>
+        <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#4fc3f7;display:inline-block;"></span>Insert</span>
+        <button class="cancel-btn" style="padding:3px 10px;font-size:13px;" onclick="clearNestPreview()">✕ Clear</button>
+      </span>
     </div>
 
     <div class="canvas-wrap" id="canvasWrap">
@@ -300,130 +260,182 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
   </div>
 </div>
 
+<!-- NESTING MODAL -->
+<div id="nestModal" onclick="if(event.target===this)closeNestModal()">
+  <div id="nestModalBox">
+    <div id="nestModalHeader">
+      <div id="nestModalTitle">🔀 Nest Course to New Level</div>
+      <button id="nestModalClose" onclick="closeNestModal()">✕</button>
+    </div>
+    <div id="nestModalBody">
+      <div style="font-size:14px;color:var(--text2);line-height:1.5;">
+        Keep all sign positions exactly where they are. Only the signs that <em>must</em> change for the new class will be swapped — everything else stays put. Judges get the minimum physical work.
+      </div>
+      <div>
+        <div class="section-label" style="margin-bottom:6px;">Target Class</div>
+        <div class="class-btns" id="nestClassBtns">
+          <button class="cls-btn" onclick="selectNestTarget('S')">Starter</button>
+          <button class="cls-btn" onclick="selectNestTarget('A')">Advanced</button>
+          <button class="cls-btn" onclick="selectNestTarget('P')">Pro</button>
+          <button class="cls-btn" onclick="selectNestTarget('ARF')">ARF</button>
+          <button class="cls-btn" onclick="selectNestTarget('Z1')">Zoom 1</button>
+          <button class="cls-btn" onclick="selectNestTarget('Z15')">Zoom 1.5</button>
+          <button class="cls-btn" onclick="selectNestTarget('Z2')">Zoom 2</button>
+        </div>
+      </div>
+      <div id="nestAnalysisArea" style="display:none;">
+        <div class="section-label" style="margin-bottom:6px;">Change Summary</div>
+        <div class="nest-summary" id="nestSummary"></div>
+        <div style="margin-top:10px;font-size:13px;font-weight:700;color:var(--text3);margin-bottom:4px;">SIGN-BY-SIGN PLAN</div>
+        <div class="nest-change-list" id="nestChangeList"></div>
+      </div>
+      <div id="nestNoCourse" style="font-size:14px;color:var(--text3);text-align:center;padding:20px 0;display:none;">Generate or load a course first.</div>
+    </div>
+    <div id="nestModalFooter">
+      <button class="cancel-btn" onclick="closeNestModal()">Cancel</button>
+      <button class="cancel-btn" id="nestPreviewBtn" onclick="previewNesting()" style="display:none;">👁 Preview on Canvas</button>
+      <button class="apply-btn" id="nestApplyBtn" onclick="applyNesting()" style="display:none;">✅ Apply Nesting</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ════════════════════════════════════════════════
 // EXERCISE DATABASE
-// td = turn delta degrees (+ clockwise / right, - counter-clockwise / left)
-// stat = stationary, mult = multiple allowed, eq = equipment, seq = sequence note
-// cls = array of class codes
+// td = net turn delta degrees (+ clockwise/right, - counter-clockwise/left)
+//   0°   = straight ahead
+//  90°   = right turn (clockwise)
+// 180°   = about face (U-turn)
+// -90°   = left turn (counter-clockwise), equiv. 270° normalized
+//
+// SIGN PLACEMENT: Per C-WAGS rules, signs are placed to the handler's
+// RIGHT of the path of travel (except direction-change signs which go
+// directly in front). Thumbnails rotate to face the incoming heading.
 // ════════════════════════════════════════════════
 const EX = {
   // ── STARTER ──────────────────────────────────
-  S1:  { n:'Right Turn',         td:90,   stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn' },
-  S2:  { n:'Left Turn',          td:-90,  stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn' },
-  S3:  { n:'270° Right',         td:270,  stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn' },
-  S4:  { n:'270° Left',          td:-270, stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn' },
-  S5:  { n:'Halt–Pivot Rt–Halt', td:90,   stat:true, mult:false, eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'halt' },
-  S6:  { n:'Halt–Pivot Rt–Fwd',  td:90,   stat:true, mult:false, eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'halt' },
-  S7:  { n:'Right About Turn',   td:180,  stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn' },
-  S8:  { n:'About U Turn',       td:180,  stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn' },
-  S9:  { n:'Halt–Stand',         td:0,    stat:true, mult:false, eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'halt' },
-  S10: { n:'Halt–Down',          td:0,    stat:true, mult:false, eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'halt' },
-  S11: { n:'Halt–Walk Around',   td:0,    stat:true, mult:false, eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'halt' },
-  S12: { n:'Halt–Down–Wk Around',td:0,    stat:true, mult:false, eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'halt' },
-  S13: { n:'Halt–1,2,3 Steps Fwd',td:0,  stat:true, mult:false, eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'halt' },
-  S14: { n:'Call Front',         td:0,    stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'front' },
-  S15: { n:'Forward Right',      td:0,    stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'front' },
-  S16: { n:'Forward Left',       td:0,    stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'front' },
-  S17: { n:'1,2,3 Steps Back',   td:0,    stat:false,mult:false, eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'front' },
-  S18: { n:'Slow',               td:0,    stat:false,mult:true,  eq:null,   seq:'→Normal/Fast', cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'pace' },
-  S19: { n:'Fast',               td:0,    stat:false,mult:true,  eq:null,   seq:'→Normal/Slow', cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'pace' },
-  S20: { n:'Normal',             td:0,    stat:false,mult:true,  eq:null,   seq:'after Slow/Fast', cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'pace' },
-  S21: { n:'Moving Side Step Rt',td:45,   stat:false,mult:false, eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'move' },
-  S22: { n:'Zig',                td:0,    stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'move' },
-  S23: { n:'360° Right',         td:0,    stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'circle' },
-  S24: { n:'360° Left',          td:0,    stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'circle' },
-  S25: { n:'Serpentine',         td:0,    stat:false,mult:true,  eq:'cone', seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'cone' },
-  S26: { n:'Straight Figure 8',  td:0,    stat:false,mult:false, eq:'cone', seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'cone' },
-  S27: { n:'Spiral Right',       td:0,    stat:false,mult:false, eq:'cone', seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'cone' },
-  S28: { n:'Spiral Left',        td:0,    stat:false,mult:false, eq:'cone', seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'cone' },
-  S29: { n:'Cone Figure 8',      td:0,    stat:false,mult:true,  eq:'cone', seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'cone' },
-  S30: { n:'Halt',               td:0,    stat:true, mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF'],                 cat:'halt' },
-  S31: { n:'Zag',                td:0,    stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'move' },
-  S32: { n:'Bear Right',         td:45,   stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn' },
-  S33: { n:'Bear Left',          td:-45,  stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn' },
-  S34: { n:'Ribbon Right',       td:225,  stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn' },
-  S35: { n:'Ribbon Left',        td:-225, stat:false,mult:true,  eq:null,   seq:null,       cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn' },
+  S1:  { n:'Right Turn',          td:90,   stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn'   },
+  S2:  { n:'Left Turn',           td:-90,  stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn'   },
+  // 270° Right: dog turns right 270° (3/4 circle), NET heading change = +90° (exits heading right)
+  S3:  { n:'270° Right',          td:90,   stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn',  footprint:'12x8' },
+  // 270° Left: dog turns left 270° (3/4 circle), NET heading change = -90° (exits heading left)
+  S4:  { n:'270° Left',           td:-90,  stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn',  footprint:'12x8' },
+  S5:  { n:'Halt–Pivot Rt–Halt',  td:90,   stat:true, mult:false, eq:null,   seq:null,            cls:['S','A','P','ARF'],                 cat:'halt'   },
+  S6:  { n:'Halt–Pivot Rt–Fwd',   td:90,   stat:true, mult:false, eq:null,   seq:null,            cls:['S','A','P','ARF'],                 cat:'halt'   },
+  S7:  { n:'Right About Turn',    td:180,  stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn'   },
+  S8:  { n:'About U Turn',        td:180,  stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn'   },
+  S9:  { n:'Halt–Stand',          td:0,    stat:true, mult:false, eq:null,   seq:null,            cls:['S','A','P','ARF'],                 cat:'halt'   },
+  S10: { n:'Halt–Down',           td:0,    stat:true, mult:false, eq:null,   seq:null,            cls:['S','A','P','ARF'],                 cat:'halt'   },
+  S11: { n:'Halt–Walk Around',    td:0,    stat:true, mult:false, eq:null,   seq:null,            cls:['S','A','P','ARF'],                 cat:'halt'   },
+  S12: { n:'Halt–Down–Wk Around', td:0,    stat:true, mult:false, eq:null,   seq:null,            cls:['S','A','P','ARF'],                 cat:'halt'   },
+  S13: { n:'Halt–1,2,3 Steps Fwd',td:0,   stat:true, mult:false, eq:null,   seq:null,            cls:['S','A','P','ARF'],                 cat:'halt'   },
+  S14: { n:'Call Front',          td:0,    stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF'],                 cat:'front'  },
+  S15: { n:'Forward Right',       td:0,    stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF'],                 cat:'front'  },
+  S16: { n:'Forward Left',        td:0,    stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF'],                 cat:'front'  },
+  S17: { n:'1,2,3 Steps Back',    td:0,    stat:false,mult:false, eq:null,   seq:null,            cls:['S','A','P','ARF'],                 cat:'front'  },
+  S18: { n:'Slow',                td:0,    stat:false,mult:true,  eq:null,   seq:'→Normal/Fast',  cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'pace'   },
+  S19: { n:'Fast',                td:0,    stat:false,mult:true,  eq:null,   seq:'→Normal/Slow',  cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'pace'   },
+  S20: { n:'Normal',              td:0,    stat:false,mult:true,  eq:null,   seq:'after Slow/Fast',cls:['S','A','P','ARF','Z1','Z15','Z2'],cat:'pace'   },
+  // Moving Side Step Right: td=0 — handler steps right then continues same direction (exit=entry)
+  S21: { n:'Moving Side Step Rt', td:0,    stat:false,mult:false, eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'move'   },
+  S22: { n:'Zig',                 td:0,    stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'move'   },
+  S23: { n:'360° Right',          td:0,    stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'circle' },
+  S24: { n:'360° Left',           td:0,    stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'circle' },
+  S25: { n:'Serpentine',          td:0,    stat:false,mult:true,  eq:'cone', seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'cone'   },
+  S26: { n:'Straight Figure 8',   td:0,    stat:false,mult:false, eq:'cone', seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'cone'   },
+  S27: { n:'Spiral Right',        td:0,    stat:false,mult:false, eq:'cone', seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'cone'   },
+  S28: { n:'Spiral Left',         td:0,    stat:false,mult:false, eq:'cone', seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'cone'   },
+  S29: { n:'Cone Figure 8',       td:0,    stat:false,mult:true,  eq:'cone', seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'cone'   },
+  S30: { n:'Halt',                td:0,    stat:true, mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF'],                 cat:'halt'   },
+  S31: { n:'Zag',                 td:0,    stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'move'   },
+  // Bear Right/Left: gentle 45° offset, sign in front, td≈45° but exit is mostly straight
+  S32: { n:'Bear Right',          td:45,   stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn'   },
+  S33: { n:'Bear Left',           td:-45,  stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn'   },
+  // Ribbon Right/Left: 270° sweep around a cone, net exit: Right→exits going left (-90°), Left→exits going right (+90°)
+  S34: { n:'Ribbon Right',        td:-90,  stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn',  footprint:'15x15' },
+  S35: { n:'Ribbon Left',         td:90,   stat:false,mult:true,  eq:null,   seq:null,            cls:['S','A','P','ARF','Z1','Z15','Z2'], cat:'turn',  footprint:'15x15' },
   // ── ADVANCED ─────────────────────────────────
-  A1:  { n:'Halt–Pivot Lt–Halt', td:-90,  stat:true, mult:false, eq:null,   seq:null,       cls:['A','P','ARF'],                     cat:'halt' },
-  A2:  { n:'Halt–Pivot Lt–Fwd',  td:-90,  stat:true, mult:false, eq:null,   seq:null,       cls:['A','P','ARF'],                     cat:'halt' },
-  A3:  { n:'Left About Turn',    td:180,  stat:false,mult:false, eq:null,   seq:null,       cls:['A','P','ARF','Z1','Z15','Z2'],     cat:'turn' },
-  A4:  { n:'Halt–180° Pivot Rt–Fwd',td:180,stat:true,mult:false,eq:null,   seq:null,       cls:['A','P','ARF'],                     cat:'halt' },
-  A5:  { n:'Halt–Stand–Sit',     td:0,    stat:true, mult:false, eq:null,   seq:null,       cls:['A','P','ARF'],                     cat:'halt' },
-  A6:  { n:'Halt–Stand–Down',    td:0,    stat:true, mult:false, eq:null,   seq:null,       cls:['A','P','ARF'],                     cat:'halt' },
-  A7:  { n:'Halt–Down–Sit',      td:0,    stat:true, mult:false, eq:null,   seq:null,       cls:['A','P','ARF'],                     cat:'halt' },
-  A8:  { n:'Halt–Fast From Sit', td:0,    stat:true, mult:false, eq:null,   seq:'→Normal/Slow', cls:['A','P','ARF'],                 cat:'halt' },
-  A9:  { n:'Jump',               td:0,    stat:false,mult:true,  eq:'jump', seq:null,       cls:['A','P','ARF','Z15','Z2'],          cat:'equip' },
-  A10: { n:'Off-Set Figure 8',   td:0,    stat:false,mult:false, eq:'cone', seq:null,       cls:['A','P','ARF','Z15','Z2'],          cat:'cone' },
-  A11: { n:'Cloverleaf Fig 8',   td:0,    stat:false,mult:false, eq:'cone', seq:null,       cls:['A','P','ARF','Z15','Z2'],          cat:'cone' },
-  A12: { n:'Finish Right',       td:0,    stat:false,mult:false, eq:null,   seq:'from front', cls:['A','P','ARF'],                   cat:'front' },
-  A13: { n:'Finish Left',        td:0,    stat:false,mult:false, eq:null,   seq:'from front', cls:['A','P','ARF'],                   cat:'front' },
-  A14: { n:'Halt–Leave Dog',     td:0,    stat:true, mult:true,  eq:null,   seq:'→recall',  cls:['A','P','ARF','Z15','Z2'],          cat:'leave' },
-  A15: { n:'Turn–Down,Sit,Front',td:180,  stat:false,mult:false, eq:null,   seq:'after leave', cls:['A','P','ARF'],                  cat:'recall' },
-  A16: { n:'Turn–Call Front',    td:180,  stat:false,mult:false, eq:null,   seq:'after leave', cls:['A','P','ARF'],                  cat:'recall' },
-  A17: { n:'Call to Heel',       td:0,    stat:false,mult:false, eq:null,   seq:null,       cls:['A','P','ARF','Z15','Z2'],          cat:'front' },
-  A18: { n:'Return to Dog',      td:180,  stat:false,mult:false, eq:null,   seq:'after leave', cls:['A','P','ARF'],                  cat:'recall' },
-  A19: { n:'Handler About Turn Fwd',td:180,stat:false,mult:false,eq:null,   seq:'from front', cls:['A','P','ARF','Z15','Z2'],        cat:'front' },
-  A20: { n:'Halt–Stand',         td:0,    stat:true, mult:false, eq:null,   seq:null,       cls:['A','P','ARF'],                     cat:'halt' },
-  A21: { n:'Zig Zag Right',      td:0,    stat:false,mult:false, eq:null,   seq:null,       cls:['A','P','ARF','Z15','Z2'],          cat:'move' },
-  A22: { n:'Zig Zag Left',       td:0,    stat:false,mult:false, eq:null,   seq:null,       cls:['A','P','ARF','Z15','Z2'],          cat:'move' },
-  A23: { n:'Stand–Walk Around',  td:0,    stat:false,mult:false, eq:null,   seq:null,       cls:['A','P','ARF','Z15','Z2'],          cat:'front' },
-  A24: { n:'Stand–Leave Dog',    td:0,    stat:true, mult:true,  eq:null,   seq:'→recall',  cls:['A','P','ARF','Z15','Z2'],          cat:'leave' },
+  A1:  { n:'Halt–Pivot Lt–Halt',  td:-90,  stat:true, mult:false, eq:null,   seq:null,            cls:['A','P','ARF'],                     cat:'halt'   },
+  A2:  { n:'Halt–Pivot Lt–Fwd',   td:-90,  stat:true, mult:false, eq:null,   seq:null,            cls:['A','P','ARF'],                     cat:'halt'   },
+  A3:  { n:'Left About Turn',     td:180,  stat:false,mult:false, eq:null,   seq:null,            cls:['A','P','ARF','Z1','Z15','Z2'],     cat:'turn'   },
+  A4:  { n:'Halt–180° Pivot Rt',  td:180,  stat:true, mult:false, eq:null,   seq:null,            cls:['A','P','ARF'],                     cat:'halt'   },
+  A5:  { n:'Halt–Stand–Sit',      td:0,    stat:true, mult:false, eq:null,   seq:null,            cls:['A','P','ARF'],                     cat:'halt'   },
+  A6:  { n:'Halt–Stand–Down',     td:0,    stat:true, mult:false, eq:null,   seq:null,            cls:['A','P','ARF'],                     cat:'halt'   },
+  A7:  { n:'Halt–Down–Sit',       td:0,    stat:true, mult:false, eq:null,   seq:null,            cls:['A','P','ARF'],                     cat:'halt'   },
+  A8:  { n:'Halt–Fast From Sit',  td:0,    stat:true, mult:false, eq:null,   seq:'→Normal/Slow',  cls:['A','P','ARF'],                     cat:'halt'   },
+  A9:  { n:'Jump',                td:0,    stat:false,mult:true,  eq:'jump', seq:null,            cls:['A','P','ARF','Z15','Z2'],          cat:'equip'  },
+  A10: { n:'Off-Set Figure 8',    td:0,    stat:false,mult:false, eq:'cone', seq:null,            cls:['A','P','ARF','Z15','Z2'],          cat:'cone'   },
+  A11: { n:'Cloverleaf Fig 8',    td:0,    stat:false,mult:false, eq:'cone', seq:null,            cls:['A','P','ARF','Z15','Z2'],          cat:'cone'   },
+  A12: { n:'Finish Right',        td:0,    stat:false,mult:false, eq:null,   seq:'from front',    cls:['A','P','ARF'],                     cat:'front'  },
+  A13: { n:'Finish Left',         td:0,    stat:false,mult:false, eq:null,   seq:'from front',    cls:['A','P','ARF'],                     cat:'front'  },
+  A14: { n:'Halt–Leave Dog',      td:0,    stat:true, mult:true,  eq:null,   seq:'→recall',       cls:['A','P','ARF','Z15','Z2'],          cat:'leave'  },
+  A15: { n:'Turn–Down,Sit,Front', td:180,  stat:false,mult:false, eq:null,   seq:'after leave',   cls:['A','P','ARF'],                     cat:'recall' },
+  A16: { n:'Turn–Call Front',     td:180,  stat:false,mult:false, eq:null,   seq:'after leave',   cls:['A','P','ARF'],                     cat:'recall' },
+  A17: { n:'Call to Heel',        td:0,    stat:false,mult:false, eq:null,   seq:null,            cls:['A','P','ARF','Z15','Z2'],          cat:'front'  },
+  A18: { n:'Return to Dog',       td:180,  stat:false,mult:false, eq:null,   seq:'after leave',   cls:['A','P','ARF'],                     cat:'recall' },
+  A19: { n:'Handler About Turn Fwd',td:180,stat:false,mult:false, eq:null,   seq:'from front',    cls:['A','P','ARF','Z15','Z2'],          cat:'front'  },
+  A20: { n:'Halt–Stand',          td:0,    stat:true, mult:false, eq:null,   seq:null,            cls:['A','P','ARF'],                     cat:'halt'   },
+  A21: { n:'Zig Zag Right',       td:0,    stat:false,mult:false, eq:null,   seq:null,            cls:['A','P','ARF','Z15','Z2'],          cat:'move'   },
+  A22: { n:'Zig Zag Left',        td:0,    stat:false,mult:false, eq:null,   seq:null,            cls:['A','P','ARF','Z15','Z2'],          cat:'move'   },
+  A23: { n:'Stand–Walk Around',   td:0,    stat:false,mult:false, eq:null,   seq:null,            cls:['A','P','ARF','Z15','Z2'],          cat:'front'  },
+  A24: { n:'Stand–Leave Dog',     td:0,    stat:true, mult:true,  eq:null,   seq:'→recall',       cls:['A','P','ARF','Z15','Z2'],          cat:'leave'  },
   // ── PRO ──────────────────────────────────────
-  P1:  { n:'L Turn–Back 2 Steps',td:-90,  stat:false,mult:true,  eq:null,   seq:null,       cls:['P','ARF','Z2'],                    cat:'turn' },
-  P2:  { n:'R Turn–Back 2 Steps',td:90,   stat:false,mult:true,  eq:null,   seq:null,       cls:['P','ARF','Z2'],                    cat:'turn' },
-  PR3: { n:'Double Left About',  td:0,    stat:false,mult:false, eq:null,   seq:null,       cls:['P','ARF','Z15','Z2'],              cat:'turn' },
-  PR4: { n:'Heel Back 3 Steps',  td:0,    stat:false,mult:true,  eq:null,   seq:null,       cls:['P','ARF','Z2'],                    cat:'move' },
-  PR6: { n:'Moving Stand–Walk Around',td:0,stat:false,mult:false,eq:null,  seq:null,       cls:['P','ARF','Z2'],                    cat:'move' },
-  PR7: { n:'Moving Stand–Leave Dog',td:0, stat:false,mult:true,  eq:null,   seq:'→recall',  cls:['P','ARF','Z2'],                    cat:'leave' },
-  PR8: { n:'Moving Down–Leave Dog',td:0,  stat:false,mult:true,  eq:null,   seq:'→recall',  cls:['P','ARF','Z2'],                    cat:'leave' },
-  P9:  { n:'Jump (Pro)',         td:0,    stat:false,mult:true,  eq:'jump', seq:null,       cls:['P','ARF','Z2'],                    cat:'equip' },
-  P10: { n:'Off-Set Figure 8 (Pro)',td:0, stat:false,mult:false, eq:'cone', seq:null,       cls:['P','ARF','Z2'],                    cat:'cone' },
-  P11: { n:'Halt–180° Pivot Lt', td:180,  stat:true, mult:false, eq:null,   seq:null,       cls:['P','ARF'],                         cat:'halt' },
-  P12: { n:'Halt–Step Right',    td:0,    stat:true, mult:false, eq:null,   seq:null,       cls:['P','ARF'],                         cat:'halt' },
-  P13: { n:'Finish/Fwd L or R',  td:0,    stat:false,mult:false, eq:null,   seq:'from front', cls:['P','ARF'],                       cat:'front' },
-  P14: { n:'Turn–Drop on Recall',td:180,  stat:false,mult:false, eq:null,   seq:'after leave', cls:['P','ARF'],                      cat:'recall' },
-  P15: { n:'Turn–Down,Sit,Front',td:180,  stat:false,mult:false, eq:null,   seq:'after leave', cls:['P','ARF'],                      cat:'recall' },
-  P17: { n:'Turn–Call to Heel–Halt',td:180,stat:false,mult:false,eq:null,  seq:'after leave', cls:['P','ARF'],                      cat:'recall' },
-  P18: { n:'Turn–Call to Heel–Fwd',td:180,stat:false,mult:false, eq:null,   seq:'after leave', cls:['P','ARF','Z2'],                 cat:'recall' },
-  PR19:{ n:'Lateral Side-Step Rt',td:0,   stat:false,mult:false, eq:null,   seq:null,       cls:['P','ARF','Z2'],                    cat:'move' },
-  PR20:{ n:'Lateral Side-Step Lt',td:0,   stat:false,mult:false, eq:null,   seq:null,       cls:['P','ARF','Z2'],                    cat:'move' },
-  PR22:{ n:'Broad Jump',         td:0,    stat:false,mult:false, eq:'jump', seq:null,       cls:['P','ARF','Z2'],                    cat:'equip' },
+  P1:  { n:'L Turn–Back 2 Steps', td:-90,  stat:false,mult:true,  eq:null,   seq:null,            cls:['P','ARF','Z2'],                    cat:'turn'   },
+  P2:  { n:'R Turn–Back 2 Steps', td:90,   stat:false,mult:true,  eq:null,   seq:null,            cls:['P','ARF','Z2'],                    cat:'turn'   },
+  // Double Left About: two 180° turns = net 0°, exits same direction
+  PR3: { n:'Double Left About',   td:0,    stat:false,mult:false, eq:null,   seq:null,            cls:['P','ARF','Z15','Z2'],              cat:'turn'   },
+  PR4: { n:'Heel Back 3 Steps',   td:0,    stat:false,mult:true,  eq:null,   seq:null,            cls:['P','ARF','Z2'],                    cat:'move'   },
+  PR6: { n:'Moving Stand–Wk Around',td:0,  stat:false,mult:false, eq:null,   seq:null,            cls:['P','ARF','Z2'],                    cat:'move'   },
+  PR7: { n:'Moving Stand–Leave Dog',td:0,  stat:false,mult:true,  eq:null,   seq:'→recall',       cls:['P','ARF','Z2'],                    cat:'leave'  },
+  PR8: { n:'Moving Down–Leave Dog',td:0,   stat:false,mult:true,  eq:null,   seq:'→recall',       cls:['P','ARF','Z2'],                    cat:'leave'  },
+  P9:  { n:'Jump (Pro)',          td:0,    stat:false,mult:true,  eq:'jump', seq:null,            cls:['P','ARF','Z2'],                    cat:'equip'  },
+  P10: { n:'Off-Set Figure 8 (Pro)',td:0,  stat:false,mult:false, eq:'cone', seq:null,            cls:['P','ARF','Z2'],                    cat:'cone'   },
+  P11: { n:'Halt–180° Pivot Lt',  td:180,  stat:true, mult:false, eq:null,   seq:null,            cls:['P','ARF'],                         cat:'halt'   },
+  P12: { n:'Halt–Step Right',     td:0,    stat:true, mult:false, eq:null,   seq:null,            cls:['P','ARF'],                         cat:'halt'   },
+  P13: { n:'Finish/Fwd L or R',   td:0,    stat:false,mult:false, eq:null,   seq:'from front',    cls:['P','ARF'],                         cat:'front'  },
+  P14: { n:'Turn–Drop on Recall', td:180,  stat:false,mult:false, eq:null,   seq:'after leave',   cls:['P','ARF'],                         cat:'recall' },
+  P15: { n:'Turn–Down,Sit,Front', td:180,  stat:false,mult:false, eq:null,   seq:'after leave',   cls:['P','ARF'],                         cat:'recall' },
+  P17: { n:'Turn–Call to Heel–Halt',td:180,stat:false,mult:false, eq:null,   seq:'after leave',   cls:['P','ARF'],                         cat:'recall' },
+  P18: { n:'Turn–Call to Heel–Fwd',td:180, stat:false,mult:false, eq:null,   seq:'after leave',   cls:['P','ARF','Z2'],                    cat:'recall' },
+  PR19:{ n:'Lateral Side-Step Rt',td:0,    stat:false,mult:false, eq:null,   seq:null,            cls:['P','ARF','Z2'],                    cat:'move'   },
+  PR20:{ n:'Lateral Side-Step Lt',td:0,    stat:false,mult:false, eq:null,   seq:null,            cls:['P','ARF','Z2'],                    cat:'move'   },
+  PR22:{ n:'Broad Jump',          td:0,    stat:false,mult:false, eq:'jump', seq:null,            cls:['P','ARF','Z2'],                    cat:'equip'  },
   // ── ARF ──────────────────────────────────────
-  R1:  { n:'Halt–Step Left–Halt',td:0,    stat:true, mult:false, eq:null,   seq:'right-side only', cls:['ARF'],                     cat:'halt' },
-  R2:  { n:'Dog Circle Right',   td:0,    stat:false,mult:false, eq:null,   seq:null,       cls:['ARF','Z15','Z2'],                  cat:'circle' },
-  R5:  { n:'Turn Face Dog–3 Steps Fwd',td:180,stat:false,mult:false,eq:null,seq:'after leave',cls:['ARF'],                          cat:'recall' },
-  APR9:{ n:'Jump (ARF)',         td:0,    stat:false,mult:true,  eq:'jump', seq:null,       cls:['ARF'],                             cat:'equip' },
-  R10: { n:'Tunnel',             td:0,    stat:false,mult:true,  eq:'tunnel',seq:null,      cls:['ARF','Z2'],                        cat:'equip' },
-  R11: { n:'Table',              td:0,    stat:false,mult:false, eq:'table',seq:null,       cls:['ARF'],                             cat:'equip' },
-  R13: { n:'R About Turn SS',    td:180,  stat:false,mult:false, eq:null,   seq:null,       cls:['ARF'],                             cat:'turn' },
-  R14: { n:'L U-About Turn SS',  td:180,  stat:false,mult:false, eq:null,   seq:null,       cls:['ARF'],                             cat:'turn' },
-  R15: { n:'Turn Away SS',       td:180,  stat:false,mult:false, eq:null,   seq:null,       cls:['ARF'],                             cat:'turn' },
-  R16: { n:'Turn In SS x2',      td:180,  stat:false,mult:false, eq:null,   seq:null,       cls:['ARF','Z2'],                        cat:'turn' },
-  R18: { n:'Pause Box',          td:0,    stat:false,mult:false, eq:'table',seq:null,       cls:['ARF'],                             cat:'equip' },
-  R21: { n:'Send Out Around',    td:0,    stat:false,mult:false, eq:'cone', seq:null,       cls:['ARF'],                             cat:'equip' },
+  R1:  { n:'Halt–Step Left–Halt', td:0,    stat:true, mult:false, eq:null,   seq:'right-side only',cls:['ARF'],                           cat:'halt'   },
+  R2:  { n:'Dog Circle Right',    td:0,    stat:false,mult:false, eq:null,   seq:null,            cls:['ARF','Z15','Z2'],                  cat:'circle' },
+  R5:  { n:'Turn Face Dog–3 Steps Fwd',td:180,stat:false,mult:false,eq:null, seq:'after leave',   cls:['ARF'],                            cat:'recall' },
+  APR9:{ n:'Jump (ARF)',          td:0,    stat:false,mult:true,  eq:'jump', seq:null,            cls:['ARF'],                             cat:'equip'  },
+  R10: { n:'Tunnel',              td:0,    stat:false,mult:true,  eq:'tunnel',seq:null,           cls:['ARF','Z2'],                        cat:'equip'  },
+  R11: { n:'Table',               td:0,    stat:false,mult:false, eq:'table',seq:null,            cls:['ARF'],                             cat:'equip'  },
+  R13: { n:'R About Turn SS',     td:180,  stat:false,mult:false, eq:null,   seq:null,            cls:['ARF'],                             cat:'turn'   },
+  R14: { n:'L U-About Turn SS',   td:180,  stat:false,mult:false, eq:null,   seq:null,            cls:['ARF'],                             cat:'turn'   },
+  R15: { n:'Turn Away SS',        td:180,  stat:false,mult:false, eq:null,   seq:null,            cls:['ARF'],                             cat:'turn'   },
+  R16: { n:'Turn In SS x2',       td:180,  stat:false,mult:false, eq:null,   seq:null,            cls:['ARF','Z2'],                        cat:'turn'   },
+  R18: { n:'Pause Box',           td:0,    stat:false,mult:false, eq:'table',seq:null,            cls:['ARF'],                             cat:'equip'  },
+  R21: { n:'Send Out Around',     td:0,    stat:false,mult:false, eq:'cone', seq:null,            cls:['ARF'],                             cat:'equip'  },
 };
 
 // ── CLASS CONFIG ────────────────────────────────
 const CLASS_CFG = {
-  S:   { name:'Starter Rally',    min:17,max:20, minFromClass:0,  classPrefix:['S'],          leash:true,  zoom:false, qual:70, ring:[1800,3500] },
-  A:   { name:'Advanced Rally',   min:18,max:21, minFromClass:8,  classPrefix:['A'],          leash:false, zoom:false, qual:70, ring:[1800,3500] },
-  P:   { name:'Pro Rally',        min:19,max:22, minFromClass:7,  classPrefix:['P','PR'],     leash:false, zoom:false, qual:70, ring:[2400,4000] },
-  ARF: { name:'ARF',              min:19,max:22, minFromClass:8,  classPrefix:['R','APR'],    leash:false, zoom:false, qual:70, ring:[2400,4000] },
-  Z1:  { name:'Zoom 1',           min:15,max:18, minFromClass:0,  classPrefix:['Z1'],         leash:true,  zoom:true,  qual:70, ring:[1800,3500] },
-  Z15: { name:'Zoom 1.5',         min:15,max:20, minFromClass:6,  classPrefix:['Z15'],        leash:false, zoom:true,  qual:70, ring:[1800,3500] },
-  Z2:  { name:'Zoom 2',           min:17,max:20, minFromClass:8,  classPrefix:['Z2'],         leash:false, zoom:true,  qual:70, ring:[2400,4000] },
+  S:   { name:'Starter Rally',  min:17,max:20, minFromClass:0,  classPrefix:['S'],      leash:true,  zoom:false, qual:70, ring:[1800,3500] },
+  A:   { name:'Advanced Rally', min:18,max:21, minFromClass:8,  classPrefix:['A'],      leash:false, zoom:false, qual:70, ring:[1800,3500] },
+  P:   { name:'Pro Rally',      min:19,max:22, minFromClass:7,  classPrefix:['P','PR'], leash:false, zoom:false, qual:70, ring:[2400,4000] },
+  ARF: { name:'ARF',            min:19,max:22, minFromClass:8,  classPrefix:['R','APR'],leash:false, zoom:false, qual:70, ring:[2400,4000] },
+  Z1:  { name:'Zoom 1',         min:15,max:18, minFromClass:0,  classPrefix:['Z1'],     leash:true,  zoom:true,  qual:70, ring:[1800,3500] },
+  Z15: { name:'Zoom 1.5',       min:15,max:20, minFromClass:6,  classPrefix:['Z15'],    leash:false, zoom:true,  qual:70, ring:[1800,3500] },
+  Z2:  { name:'Zoom 2',         min:17,max:20, minFromClass:8,  classPrefix:['Z2'],     leash:false, zoom:true,  qual:70, ring:[2400,4000] },
 };
 
-// Recall pairs
 const RECALL_MAP = {
-  A14: ['A15','A16','A18'],
-  A24: ['A15','A16','A18'],
-  PR7: ['P14','P15','P17','P18','R5'],
-  PR8: ['P14','P15','P17','P18','R5'],
+  A14: ['A15','A16','A18'], A24: ['A15','A16','A18'],
+  PR7: ['P14','P15','P17','P18','R5'], PR8: ['P14','P15','P17','P18','R5'],
 };
 const RECALL_IDS = new Set(['A15','A16','A18','A19','P14','P15','P17','P18','R5']);
 const PACE_AFTER = { S18:['S20','S19'], S19:['S20','S18'], A8:['S20','S18'] };
+
+// Signs that should render IN FRONT of handler (direction-change signs per C-WAGS rules)
+const SIGN_IN_FRONT = new Set(['S1','S2','S3','S4','S7','S8','S32','S33','S34','S35',
+  'A1','A2','A3','A4','P1','P2','PR3','P11','R13','R14','R15','R16']);
 
 let currentClass = 'S';
 let currentCourse = [];
@@ -431,87 +443,36 @@ const PAD_C = 36;
 let currentScale = 9;
 let showSigns = true;
 
-function toggleSigns() {
-  showSigns = !showSigns;
-  const btn = document.getElementById('signsToggle');
-  btn.textContent = showSigns ? '🖼 Signs: ON' : '🖼 Signs: OFF';
-  btn.classList.toggle('active', showSigns);
-  redraw();
-}
+// Nesting state
+let nestPreviewData = null;   // null = no preview; array of {idx, action:'keep'|'swap'|'insert', swapTo?}
+let nestTargetCls = null;
+let pendingNestCourse = null; // the fully resolved course to apply
 
-function toggleMode() {
-  const isLight = document.body.classList.toggle('light-mode');
-  const btn = document.getElementById('modeToggle');
-  btn.textContent = isLight ? '🌙 Dark Mode' : '☀ Light Mode';
-  btn.classList.toggle('active', isLight);
-  redraw();
-}
-
-function getScale(ringW, ringH) {
-  const wrap = document.getElementById('canvasWrap');
-  if (!wrap) return 9;
-  const rect = wrap.getBoundingClientRect();
-  const availW = Math.max(300, rect.width  - PAD_C * 2 - 16);
-  const availH = Math.max(200, rect.height - PAD_C * 2 - 16);
-  return Math.max(5, Math.min(16, Math.min(availW / ringW, availH / ringH)));
-}
-
-// Ring defaults: middle of each class's allowed range
-// Starter/Advanced/Zoom1/Zoom1.5 → 1800–3500 sq ft
-// Pro/ARF/Zoom2                  → 2400–4000 sq ft
-const RING_DEFAULTS = {
-  S:   { w: 60, h: 50 },  // 3000 sq ft
-  A:   { w: 60, h: 50 },  // 3000 sq ft
-  P:   { w: 65, h: 55 },  // 3575 sq ft
-  ARF: { w: 65, h: 55 },  // 3575 sq ft
-  Z1:  { w: 60, h: 50 },  // 3000 sq ft
-  Z15: { w: 60, h: 50 },  // 3000 sq ft
-  Z2:  { w: 65, h: 55 },  // 3575 sq ft
+// ════════════════════════════════════════════════
+// CLASS-SPECIFIC ID SETS
+// ════════════════════════════════════════════════
+const CLASS_OWN_IDS = {
+  S:   new Set(Object.keys(EX).filter(id => EX[id].cls[0] === 'S')),
+  A:   new Set(['A1','A2','A3','A4','A5','A6','A7','A8','A9','A10','A11','A12','A13','A14','A15','A16','A17','A18','A19','A20','A21','A22','A23','A24']),
+  P:   new Set(['P1','P2','PR3','PR4','P5','PR6','PR7','PR8','P9','P10','P11','P12','P13','P14','P15','P17','P18','PR19','PR20','PR22']),
+  ARF: new Set(['R1','R2','R5','APR9','R10','R11','R13','R14','R15','R16','R18','R21']),
+  Z1:  new Set([]),
+  Z15: new Set(['A9','A10','A11','PR3','A17','A18','A19','A21','A22','A23','A24','R2']),
+  Z2:  new Set(['P1','P2','PR4','PR6','PR7','PR8','P9','P10','P18','PR22','R5','R10','PR19','PR20','R16']),
 };
 
-function updateRingInfo() {
-  const w = parseInt(document.getElementById('ringW').value) || 0;
-  const h = parseInt(document.getElementById('ringH').value) || 0;
-  const sqft = w * h;
-  const cfg = CLASS_CFG[currentClass];
-  const [lo, hi] = cfg.ring;
-  const ok = sqft >= lo && sqft <= hi;
-  const color = ok ? '#2dd4a0' : (sqft < lo ? '#ff5252' : '#f0a500');
-  document.getElementById('ringInfo').innerHTML =
-    `<span style="color:${color}">${sqft.toLocaleString()} sq ft</span>`+
-    `<span style="color:var(--text3)"> · allowed: ${lo.toLocaleString()}–${hi.toLocaleString()} sq ft</span>`;
-}
-
-
-function selectClass(cls) {
-  currentClass = cls;
-  document.querySelectorAll('.cls-btn').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
-  document.getElementById('canvasTitle').textContent = CLASS_CFG[cls].name + ' Course';
-  const d = RING_DEFAULTS[cls];
-  document.getElementById('ringW').value = d.w;
-  document.getElementById('ringH').value = d.h;
-  updateRingInfo();
-  generate();
-}
-
+// ════════════════════════════════════════════════
+// UTILITY
+// ════════════════════════════════════════════════
 function rnd(min, max) { return Math.random() * (max - min) + min; }
 function rndInt(min, max) { return Math.floor(rnd(min, max + 1)); }
 function shuffle(arr) { for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr; }
-
 function normalizeAngle(a) { return ((a % 360) + 360) % 360; }
-
-function vecFromHeading(h) {
-  const r = h * Math.PI / 180;
-  return { x: Math.sin(r), y: -Math.cos(r) }; // canvas: y down, so -cos for north
-}
-
+function vecFromHeading(h) { const r = h * Math.PI / 180; return { x: Math.sin(r), y: -Math.cos(r) }; }
 function dist(a, b) { return Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2); }
 
 function wallRoom(pos, heading, ringW, ringH, margin=5) {
-  // How much room is ahead in the current heading?
   const v = vecFromHeading(heading);
-  // Find min distance to wall in that direction
   let room = 999;
   if (v.x > 0.1) room = Math.min(room, (ringW - margin - pos.x) / v.x);
   if (v.x < -0.1) room = Math.min(room, (pos.x - margin) / (-v.x));
@@ -529,53 +490,73 @@ function getPool(cls, includeEquip, includeLeave) {
   }).map(([id, ex]) => ({ id, ...ex }));
 }
 
-// ── Build class-specific ID set (exact, not prefix-startsWith) ──────────────
-// This maps each class code to its unique sign IDs (signs that ONLY appear in
-// that class and above, not in every lower class).
-const CLASS_OWN_IDS = {
-  S:   new Set(Object.keys(EX).filter(id => EX[id].cls[0] === 'S' || (EX[id].cls.includes('S') && !['A','P','ARF','Z1','Z15','Z2'].some(c => !EX[id].cls.includes(c) && EX[id].cls[0]!=='S')))),
-  A:   new Set(['A1','A2','A3','A4','A5','A6','A7','A8','A9','A10','A11','A12','A13','A14','A15','A16','A17','A18','A19','A20','A21','A22','A23','A24']),
-  P:   new Set(['P1','P2','PR3','PR4','P5','PR6','PR7','PR8','P9','P10','P11','P12','P13','P14','P15','P17','P18','PR19','PR20','PR22']),
-  ARF: new Set(['R1','R2','R5','APR9','R10','R11','R13','R14','R15','R16','R17','R18','R21']),
-  Z1:  new Set([]), // Zoom 1 uses Starter signs - no additional class minimum
-  Z15: new Set(['A9','A10','A11','PR3','A17','A18','A19','A21','A22','A23','A24','R2']),
-  Z2:  new Set(['P1','P2','PR4','PR6','PR7','PR8','P9','P10','P18','PR22','R5_z2','R10','PR19','PR20','R16']),
+function getScale(ringW, ringH) {
+  const wrap = document.getElementById('canvasWrap');
+  if (!wrap) return 9;
+  const rect = wrap.getBoundingClientRect();
+  const availW = Math.max(300, rect.width  - PAD_C * 2 - 16);
+  const availH = Math.max(200, rect.height - PAD_C * 2 - 16);
+  return Math.max(5, Math.min(16, Math.min(availW / ringW, availH / ringH)));
+}
+
+const RING_DEFAULTS = {
+  S:   { w: 60, h: 50 }, A:   { w: 60, h: 50 }, P:   { w: 65, h: 55 },
+  ARF: { w: 65, h: 55 }, Z1:  { w: 60, h: 50 }, Z15: { w: 60, h: 50 }, Z2:  { w: 65, h: 55 },
 };
 
+function updateRingInfo() {
+  const w = parseInt(document.getElementById('ringW').value) || 0;
+  const h = parseInt(document.getElementById('ringH').value) || 0;
+  const sqft = w * h;
+  const cfg = CLASS_CFG[currentClass];
+  const [lo, hi] = cfg.ring;
+  const ok = sqft >= lo && sqft <= hi;
+  const color = ok ? '#2dd4a0' : (sqft < lo ? '#ff5252' : '#f0a500');
+  document.getElementById('ringInfo').innerHTML =
+    `<span style="color:${color}">${sqft.toLocaleString()} sq ft</span>`+
+    `<span style="color:var(--text3)"> · allowed: ${lo.toLocaleString()}–${hi.toLocaleString()} sq ft</span>`;
+}
+
+function selectClass(cls) {
+  currentClass = cls;
+  clearNestPreview();
+  document.querySelectorAll('.cls-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('canvasTitle').textContent = CLASS_CFG[cls].name + ' Course';
+  const d = RING_DEFAULTS[cls];
+  document.getElementById('ringW').value = d.w;
+  document.getElementById('ringH').value = d.h;
+  updateRingInfo();
+  generate();
+}
+
+// ════════════════════════════════════════════════
+// GENERATION
+// ════════════════════════════════════════════════
 function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave, randFactor) {
-  // Returns placed[] array or null if failed
   const pool = getPool(cls, includeEquip, includeLeave);
   if (pool.length < 5) return null;
 
   const target = rndInt(cfg.min, cfg.max);
   const maxStationary = Math.floor(target / 3);
-
   const placed = [];
   let heading = 0;
-  // Start near bottom-center with some random offset
   let pos = { x: ringW * (0.4 + Math.random() * 0.2), y: ringH - 8 };
-
   let stationaryCount = 0;
   const usedIds = {};
-  let needsFollowBy = null;  // string[] of allowed IDs for next exercise
+  let needsFollowBy = null;
   let lastCat = null;
   let classCount = 0;
   const ownIds = CLASS_OWN_IDS[cls] || new Set();
-
   placed.push({ id:'START', n:'Start', pos:{...pos}, heading, cat:'start' });
-
-  // Per-exercise attempt loop — try to place each exercise up to 40 times
-  // If truly stuck, bail and let outer loop restart
   let stuckCount = 0;
 
   while (placed.length - 1 < target) {
-    if (stuckCount > 60) return null; // totally stuck — restart
+    if (stuckCount > 60) return null;
 
-    // ── 1. Build filtered pool for this step ──────────────
     let avail = pool.filter(ex => {
       if (needsFollowBy) return needsFollowBy.includes(ex.id);
       if (RECALL_IDS.has(ex.id) && lastCat !== 'leave') return false;
-      if ((ex.cat === 'leave') && needsFollowBy) return false;
       if (ex.stat && stationaryCount >= maxStationary) return false;
       if (!ex.mult && (usedIds[ex.id] || 0) >= 1) return false;
       if (ex.mult && (usedIds[ex.id] || 0) >= 2) return false;
@@ -583,24 +564,18 @@ function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave
       return true;
     });
 
-    // ── 2. Class minimum bias — must use enough class-specific signs ──
     if (!needsFollowBy) {
       const remaining = target - (placed.length - 1);
       const needed = cfg.minFromClass - classCount;
-      // If urgently needed, force class-specific; otherwise just bias
       if (needed > 0) {
         const clsAvail = avail.filter(ex => ownIds.has(ex.id));
-        if (clsAvail.length > 0 && needed >= remaining * 0.4) {
-          avail = clsAvail; // force when we're running out of room
-        } else if (clsAvail.length > 0 && Math.random() < 0.55) {
-          avail = clsAvail; // bias toward class signs otherwise
-        }
+        if (clsAvail.length > 0 && needed >= remaining * 0.4) avail = clsAvail;
+        else if (clsAvail.length > 0 && Math.random() < 0.55) avail = clsAvail;
       }
     }
 
     if (avail.length === 0) { stuckCount++; continue; }
 
-    // ── 3. Wall avoidance — bias toward signs that turn us inward ─────
     const room = wallRoom(pos, heading, ringW, ringH, minDist + 1);
     if (room < minDist + 4 && !needsFollowBy) {
       const turners = avail.filter(ex => {
@@ -608,28 +583,23 @@ function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave
         return wallRoom(pos, newH, ringW, ringH, minDist + 1) > room + 4;
       });
       if (turners.length > 0) avail = turners;
-      // If no turners exist in filtered avail, don't zero out — keep original avail
     }
 
-    // ── 4. Pick a random exercise from filtered list ──────────────────
     shuffle(avail);
     let placed_one = false;
 
     for (const ex of avail) {
-      // Try placing this exercise with multiple fallback distance relaxations
       const newPos = tryPlaceExercise(pos, heading, ex.td, placed, ringW, ringH, minDist, randFactor, ex.cat);
       if (!newPos) continue;
 
-      // ── 5. Leave-dog lookahead: make sure a recall CAN fit ────────
       if (ex.cat === 'leave') {
         const recallOptions = RECALL_MAP[ex.id] || [];
         const recallPool = pool.filter(r => recallOptions.includes(r.id));
         const recallPos = tryPlaceExercise(newPos, normalizeAngle(heading + ex.td), 180,
           [...placed, {pos: newPos, cat:'ex'}], ringW, ringH, minDist * 0.8, 0.6);
-        if (!recallPos && recallPool.length > 0) continue; // skip leave dog if recall won't fit
+        if (!recallPos && recallPool.length > 0) continue;
       }
 
-      // ── 6. Accept ─────────────────────────────────────────────────
       placed.push({ id:ex.id, n:ex.n, pos:newPos, heading, cat:ex.cat, stat:ex.stat, eq:ex.eq, seq:ex.seq });
       heading = normalizeAngle(heading + ex.td);
       if (ex.stat) stationaryCount++;
@@ -639,14 +609,9 @@ function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave
       if (ownIds.has(ex.id)) classCount++;
       stuckCount = 0;
 
-      // Update sequence constraint
-      if (PACE_AFTER[ex.id]) {
-        needsFollowBy = PACE_AFTER[ex.id];
-      } else if (ex.cat === 'leave') {
-        needsFollowBy = RECALL_MAP[ex.id] || null;
-      } else {
-        needsFollowBy = null;
-      }
+      if (PACE_AFTER[ex.id]) needsFollowBy = PACE_AFTER[ex.id];
+      else if (ex.cat === 'leave') needsFollowBy = RECALL_MAP[ex.id] || null;
+      else needsFollowBy = null;
 
       placed_one = true;
       break;
@@ -655,661 +620,15 @@ function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave
     if (!placed_one) stuckCount++;
   }
 
-  // ── Validate class minimum met ────────────────────────────────────────
   if (cfg.minFromClass > 0 && classCount < cfg.minFromClass) return null;
 
-  // ── Place FINISH ──────────────────────────────────────────────────────
   const finPos = findFinishPos(pos, heading, placed, ringW, ringH, minDist);
   placed.push({ id:'FINISH', n:'Finish', pos:finPos, heading, cat:'finish' });
-
   return placed;
-}
-
-// ── DRAG STATE ───────────────────────────────────────────────────
-let dragIdx = -1;
-let dragStartFt = null;
-let mouseDidMove = false;
-
-// ── SIGN IMAGES ──────────────────────────────────────────────────
-const signImages = {}; // keyed by exercise ID, e.g. 'S1', 'A9'
-
-const GITHUB_SIGNS_BASE = 'https://raw.githubusercontent.com/chrojoh/cwagrally/main/Signs/';
-const ALL_SIGN_IDS = Object.keys(EX);
-
-function setGithubStatus(icon, msg, color) {
-  document.getElementById('githubSignIcon').textContent = icon;
-  const msgEl = document.getElementById('githubSignMsg');
-  msgEl.textContent = msg;
-  msgEl.style.color = color || 'var(--text3)';
-}
-
-function autoLoadGithubSigns() {
-  let attempted = 0, loaded = 0, failed = 0;
-  const total = ALL_SIGN_IDS.length;
-  setGithubStatus('⏳', `Checking GitHub for ${total} signs…`, 'var(--text3)');
-
-  ALL_SIGN_IDS.forEach(id => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      signImages[id] = img;
-      loaded++;
-      attempted++;
-      if (currentCourse.length > 0 && showSigns) redraw();
-      updateGithubProgress(loaded, attempted, total);
-    };
-    img.onerror = () => {
-      failed++;
-      attempted++;
-      updateGithubProgress(loaded, attempted, total);
-    };
-    // Try .png first; fallback handled by onerror (user can upload manually)
-    img.src = GITHUB_SIGNS_BASE + id + '.png';
-  });
-}
-
-function updateGithubProgress(loaded, attempted, total) {
-  if (attempted < total) {
-    setGithubStatus('⏳', `Loading from GitHub… ${attempted}/${total}`, 'var(--text3)');
-    return;
-  }
-  // All attempted
-  if (loaded === 0) {
-    setGithubStatus('📂', 'No signs found on GitHub — upload manually below', 'var(--text3)');
-  } else if (loaded === total) {
-    setGithubStatus('✅', `All ${loaded} signs loaded from GitHub`, 'var(--green)');
-  } else {
-    setGithubStatus('🟡', `${loaded} of ${total} signs loaded from GitHub`, 'var(--gold)');
-  }
-  if (currentCourse.length > 0) redraw();
-}
-
-function loadSignImages(files) {
-  let loaded = 0;
-  const total = files.length;
-  Array.from(files).forEach(file => {
-    // Strip extension to get ID: "S1.png" → "S1", "A9.jpg" → "A9"
-    const id = file.name.replace(/\.[^.]+$/, '');
-    const img = new Image();
-    img.onload = () => {
-      signImages[id] = img;
-      loaded++;
-      const countEl = document.getElementById('signCount');
-      countEl.textContent = `✓ ${loaded} of ${total} local sign images loaded`;
-      countEl.classList.add('visible');
-      // Redraw if course is already showing
-      if (currentCourse.length > 0) redraw();
-    };
-    img.src = URL.createObjectURL(file);
-  });
-}
-
-function redraw() {
-  if (!currentCourse || currentCourse.length === 0) return;
-  const ringW = parseInt(document.getElementById('ringW').value);
-  const ringH = parseInt(document.getElementById('ringH').value);
-  renderCourse(currentCourse, ringW, ringH, CLASS_CFG[currentClass]);
-}
-function canvasEvtPx(e) {
-  const canvas = document.getElementById('courseCanvas');
-  const rect = canvas.getBoundingClientRect();
-  // canvas.width is dpr-scaled, rect.width is CSS size — divide by CSS size to get logical px
-  return { x: (e.clientX - rect.left) * (canvas.width / (rect.width * (window.devicePixelRatio || 1))), 
-           y: (e.clientY - rect.top)  * (canvas.height / (rect.height * (window.devicePixelRatio || 1))) };
-}
-
-function canvasEvtToFt(e) {
-  const {x, y} = canvasEvtPx(e);
-  const ringW = parseInt(document.getElementById('ringW').value);
-  const ringH = parseInt(document.getElementById('ringH').value);
-  return canvasToFt(x, y, ringW, ringH);
-}
-
-function findStationAt(px, py) {
-  let bestIdx = -1, bestDist = 9999;
-  for (let i = 0; i < currentCourse.length; i++) {
-    const cp = toCanvas(currentCourse[i].pos);
-    const d = Math.sqrt((px - cp.x) ** 2 + (py - cp.y) ** 2);
-    if (d < 18 && d < bestDist) { bestDist = d; bestIdx = i; }
-  }
-  return bestIdx;
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  const canvas = document.getElementById('courseCanvas');
-
-  canvas.addEventListener('mousedown', e => {
-    if (e.button !== 0) return;
-    const {x, y} = canvasEvtPx(e);
-    const idx = findStationAt(x, y);
-    if (idx >= 0) {
-      dragIdx = idx;
-      dragStartFt = { ...currentCourse[idx].pos };
-      mouseDidMove = false;
-      canvas.classList.add('dragging');
-      e.preventDefault();
-    }
-  });
-
-  canvas.addEventListener('mousemove', e => {
-    if (dragIdx < 0) {
-      // Show pointer cursor when hovering a station
-      const {x, y} = canvasEvtPx(e);
-      const idx = findStationAt(x, y);
-      const hoverEx = idx >= 0 ? currentCourse[idx] : null;
-      canvas.style.cursor = (hoverEx && hoverEx.cat !== 'start' && hoverEx.cat !== 'finish') ? 'pointer' : 'crosshair';
-      return;
-    }
-    const ft = canvasEvtToFt(e);
-    const dx = Math.abs(ft.x - dragStartFt.x), dy = Math.abs(ft.y - dragStartFt.y);
-    if (dx > 0.5 || dy > 0.5) mouseDidMove = true;
-    if (mouseDidMove) {
-      currentCourse[dragIdx].pos = { ...ft };
-      redraw();
-      updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
-    }
-  });
-
-  canvas.addEventListener('mouseup', e => {
-    if (dragIdx < 0) return;
-    canvas.classList.remove('dragging');
-    const wasDrag = mouseDidMove;
-    if (mouseDidMove) {
-      // Enforce minimum only between consecutive stations in path
-      const minD = parseInt(document.getElementById('minDist').value);
-      const allPoints = currentCourse; // placed[] is already in order
-      let violated = false;
-      for (let i = 0; i < allPoints.length - 1; i++) {
-        if (dist(allPoints[i].pos, allPoints[i + 1].pos) < minD) { violated = true; break; }
-      }
-      if (violated) {
-        // Snap back — do NOT regenerate, just warn
-        currentCourse[dragIdx].pos = { ...dragStartFt };
-        // Collect which indices are violating after snap-back
-        const badIdx = [];
-        for (let i = 0; i < allPoints.length - 1; i++) {
-          if (dist(allPoints[i].pos, allPoints[i + 1].pos) < minD) {
-            badIdx.push(i); badIdx.push(i + 1);
-          }
-        }
-        recalcHeadings(currentCourse);
-        redraw();
-        updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
-        showDistanceWarning([...new Set(badIdx)]);
-      } else {
-        recalcHeadings(currentCourse);
-        redraw();
-        updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
-      }
-    } else {
-      // It was a click, not a drag — open substitute modal for exercise stations
-      const idx = dragIdx;
-      const clicked = currentCourse[idx];
-      if (clicked && clicked.cat !== 'start' && clicked.cat !== 'finish') {
-        openSubstituteModal(idx);
-      }
-    }
-    dragIdx = -1;
-  });
-
-  // Touch support
-  canvas.addEventListener('touchstart', e => {
-    const t = e.touches[0];
-    const {x, y} = canvasEvtPx(t);
-    const idx = findStationAt(x, y);
-    if (idx >= 0) { dragIdx = idx; dragStartFt = { ...currentCourse[idx].pos }; mouseDidMove = false; e.preventDefault(); }
-  }, { passive: false });
-
-  canvas.addEventListener('touchmove', e => {
-    if (dragIdx < 0) return;
-    const ft = canvasEvtToFt(e.touches[0]);
-    currentCourse[dragIdx].pos = { ...ft }; mouseDidMove = true; redraw();
-    updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
-    e.preventDefault();
-  }, { passive: false });
-
-  canvas.addEventListener('touchend', e => {
-    if (dragIdx < 0) return;
-    if (mouseDidMove) {
-      const minD = parseInt(document.getElementById('minDist').value);
-      const allPoints = currentCourse;
-      let violated = false;
-      for (let i = 0; i < allPoints.length - 1; i++) {
-        if (dist(allPoints[i].pos, allPoints[i + 1].pos) < minD) { violated = true; break; }
-      }
-      if (violated) {
-        currentCourse[dragIdx].pos = { ...dragStartFt };
-        const badIdx = [];
-        for (let i = 0; i < allPoints.length - 1; i++) {
-          if (dist(allPoints[i].pos, allPoints[i + 1].pos) < minD) {
-            badIdx.push(i); badIdx.push(i + 1);
-          }
-        }
-        recalcHeadings(currentCourse);
-        redraw();
-        updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
-        showDistanceWarning([...new Set(badIdx)]);
-      } else {
-        recalcHeadings(currentCourse);
-        redraw();
-        updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
-      }
-    }
-    dragIdx = -1;
-  });
-});
-
-// ════════════════════════════════════════════════
-// SUBSTITUTE MODAL
-// ════════════════════════════════════════════════
-let substituteIdx = -1;
-
-function openSubstituteModal(idx) {
-  substituteIdx = idx;
-  const ex = currentCourse[idx];
-  const cls = currentClass;
-  const cfg = CLASS_CFG[cls];
-  const minDist = parseInt(document.getElementById('minDist').value);
-  const includeEquip = document.getElementById('includeEquip').checked;
-  const includeLeave = document.getElementById('includeLeavedog').checked;
-
-  // Build full pool for this class
-  const pool = getPool(cls, includeEquip, includeLeave);
-
-  // Figure out constraints for this position
-  const prevEx = idx > 0 ? currentCourse[idx - 1] : null;
-  const nextEx = idx < currentCourse.length - 1 ? currentCourse[idx + 1] : null;
-  const exercises = currentCourse.filter(p => p.cat !== 'start' && p.cat !== 'finish');
-  const exIdx = exercises.indexOf(ex); // index within exercises only
-
-  // Count usages of each id (excluding current)
-  const usedIds = {};
-  exercises.forEach((e, i) => {
-    if (i !== exIdx) usedIds[e.id] = (usedIds[e.id] || 0) + 1;
-  });
-
-  const stationaryCount = exercises.filter((e, i) => e.stat && i !== exIdx).length;
-  const maxStationary = Math.floor(exercises.length / 3);
-
-  const candidates = pool.filter(candidate => {
-    if (candidate.id === ex.id) return false;
-    // Mult/duplicate check
-    if (!candidate.mult && (usedIds[candidate.id] || 0) >= 1) return false;
-    if (candidate.mult && (usedIds[candidate.id] || 0) >= 2) return false;
-    // Stationary limit
-    if (candidate.stat && stationaryCount >= maxStationary) return false;
-    // Zoom halt restriction
-    if (cfg.zoom && (candidate.stat || candidate.cat === 'halt')) return false;
-    // Recall-only signs can't just be swapped in freely
-    if (RECALL_IDS.has(candidate.id)) {
-      if (!prevEx || prevEx.cat !== 'leave') return false;
-    }
-    // Prev must allow this candidate
-    if (prevEx) {
-      if (PACE_AFTER[prevEx.id] && !PACE_AFTER[prevEx.id].includes(candidate.id)) return false;
-      if (prevEx.cat === 'leave') {
-        const valid = (RECALL_MAP[prevEx.id] || []).includes(candidate.id);
-        if (!valid) return false;
-      }
-    }
-    // This candidate's required follower must match next
-    if (nextEx) {
-      if (PACE_AFTER[candidate.id] && !PACE_AFTER[candidate.id].includes(nextEx.id)) return false;
-      if (candidate.cat === 'leave') {
-        const recallOk = (RECALL_MAP[candidate.id] || []).includes(nextEx.id);
-        if (!recallOk) return false;
-      }
-    } else {
-      // No next — can't be a leave-dog or pace sign that requires a follower
-      if (candidate.cat === 'leave') return false;
-      if (PACE_AFTER[candidate.id]) return false;
-    }
-    // Distance: check candidate's position fits with neighbors
-    const pos = ex.pos;
-    if (prevEx && dist(pos, prevEx.pos) < minDist) return false;
-    if (nextEx && dist(pos, nextEx.pos) < minDist) return false;
-    return true;
-  });
-
-  // Build modal content
-  const modal = document.getElementById('subModal');
-  const title = document.getElementById('subModalTitle');
-  const list = document.getElementById('subModalList');
-  title.textContent = `Substitutes for #${exIdx + 1}: ${ex.n} (${ex.id})`;
-  list.innerHTML = '';
-
-  if (candidates.length === 0) {
-    list.innerHTML = '<div style="color:var(--text3);font-size:15px;padding:12px 0;">No valid substitutes found for this position.</div>';
-  } else {
-    candidates.forEach(c => {
-      const color = c.stat ? '#a78bfa' : (c.eq ? '#fb923c' : (c.cat === 'leave' || c.cat === 'recall' ? '#f472b6' : '#4fc3f7'));
-      const imgEl = signImages[c.id]
-        ? `<img src="${signImages[c.id].src}" style="width:36px;height:36px;object-fit:contain;border-radius:3px;border:1px solid ${color};background:#fff;flex-shrink:0;">`
-        : `<div style="width:40px;height:40px;border-radius:3px;border:1px dashed var(--border2);background:var(--bg3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text3)">no img</div>`;
-      const flags = [c.stat ? '<span style="color:#a78bfa">◾ Stat</span>' : '', c.eq ? `<span style="color:#fb923c">▲ ${c.eq}</span>` : '', c.seq ? `<span style="color:#f472b6">↝ ${c.seq}</span>` : ''].filter(Boolean).join(' ');
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:5px;cursor:pointer;border:1px solid var(--border);background:var(--bg3);transition:border-color 0.12s;';
-      row.innerHTML = `${imgEl}<div style="flex:1"><div style="font-size:13px;color:var(--text3)">${c.id}</div><div style="font-size:15px;color:var(--text)">${c.n}</div>${flags ? `<div style="font-size:13px;margin-top:2px">${flags}</div>` : ''}</div><div style="font-size:13px;color:${color};font-weight:700;flex-shrink:0">Use ›</div>`;
-      row.onmouseenter = () => row.style.borderColor = color;
-      row.onmouseleave = () => row.style.borderColor = 'var(--border)';
-      row.onclick = () => applySubstitute(c);
-      list.appendChild(row);
-    });
-  }
-
-  modal.style.display = 'flex';
-}
-
-function closeSubstituteModal() {
-  document.getElementById('subModal').style.display = 'none';
-  substituteIdx = -1;
-}
-
-function applySubstitute(candidate) {
-  if (substituteIdx < 0) return;
-  const old = currentCourse[substituteIdx];
-  currentCourse[substituteIdx] = {
-    ...old,
-    id: candidate.id,
-    n: candidate.n,
-    cat: candidate.cat,
-    stat: candidate.stat,
-    eq: candidate.eq,
-    seq: candidate.seq,
-  };
-  closeSubstituteModal();
-  recalcHeadings(currentCourse);
-  redraw();
-  updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
-}
-
-// Indices of stations that are currently violating the distance rule (for highlight)
-let distViolators = new Set();
-
-// ── LEVEL PROGRESSION ────────────────────────────────────────────
-const LEVEL_ORDER = ['S', 'A', 'P', 'ARF', 'Z1', 'Z15', 'Z2'];
-const LEVEL_NEXT  = { S:'A', A:'P', P:'ARF', Z1:'Z15', Z15:'Z2' };
-
-// ── SAVE COURSE ──────────────────────────────────────────────────
-function saveCourse() {
-  if (!currentCourse || currentCourse.length < 3) {
-    alert('No course to save yet — generate one first.'); return;
-  }
-  const data = {
-    version: 1,
-    cls: currentClass,
-    ringW: parseInt(document.getElementById('ringW').value),
-    ringH: parseInt(document.getElementById('ringH').value),
-    minDist: parseInt(document.getElementById('minDist').value),
-    includeEquip: document.getElementById('includeEquip').checked,
-    includeLeave: document.getElementById('includeLeavedog').checked,
-    course: currentCourse.map(p => ({
-      id: p.id, n: p.n, cat: p.cat, stat: !!p.stat, eq: p.eq || null,
-      seq: p.seq || null, heading: p.heading || 0,
-      pos: { x: +p.pos.x.toFixed(2), y: +p.pos.y.toFixed(2) }
-    }))
-  };
-  const json = JSON.stringify(data, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
-  const url  = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const dateStr = new Date().toISOString().slice(0,10);
-  a.href = url; a.download = `CWAGS-${currentClass}-${dateStr}.json`; a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 3000);
-  showToast('💾 Course saved!');
-}
-
-// ── LOAD COURSE ──────────────────────────────────────────────────
-function loadCourse(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const data = JSON.parse(e.target.result);
-      if (!data.course || !data.cls) throw new Error('Invalid file');
-      // Restore settings
-      currentClass = data.cls;
-      document.querySelectorAll('.cls-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.cls-btn').forEach(b => {
-        if (b.textContent.trim().replace(' ','') === data.cls ||
-            b.onclick?.toString().includes(`'${data.cls}'`)) b.classList.add('active');
-      });
-      // More reliable: match by onclick string
-      document.querySelectorAll('.cls-btn').forEach(b => {
-        const m = b.getAttribute('onclick')?.match(/'(\w+)'/);
-        if (m && m[1] === data.cls) b.classList.add('active');
-        else b.classList.remove('active');
-      });
-      document.getElementById('canvasTitle').textContent = CLASS_CFG[data.cls].name + ' Course';
-      document.getElementById('ringW').value = data.ringW;
-      document.getElementById('ringH').value = data.ringH;
-      document.getElementById('minDist').value = data.minDist || 10;
-      document.getElementById('includeEquip').checked = !!data.includeEquip;
-      document.getElementById('includeLeavedog').checked = data.includeLeave !== false;
-      updateRingInfo();
-      // Restore course
-      currentCourse = data.course.map(p => ({ ...p, pos: { x: p.pos.x, y: p.pos.y } }));
-      recalcHeadings(currentCourse);
-      redraw();
-      updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
-      showToast('📂 Course loaded!');
-    } catch(err) {
-      alert('Could not load file: ' + err.message);
-    }
-    input.value = '';
-  };
-  reader.readAsText(file);
-}
-
-// ── UPGRADE COURSE TO NEXT LEVEL ─────────────────────────────────
-// Conservative: keep ALL positions. Only swap signs that are outright
-// invalid for the next level, then insert new required signs into the
-// biggest existing gaps. Nothing else moves.
-function upgradeCourse() {
-  if (!currentCourse || currentCourse.length < 3) {
-    alert('No course to upgrade — generate or load one first.'); return;
-  }
-  const nextCls = LEVEL_NEXT[currentClass];
-  if (!nextCls) {
-    showToast('⚠ No next level defined for ' + currentClass); return;
-  }
-  const nextCfg  = CLASS_CFG[nextCls];
-  const includeEquip = document.getElementById('includeEquip').checked;
-  const includeLeave = document.getElementById('includeLeavedog').checked;
-  const minDist  = parseInt(document.getElementById('minDist').value);
-  const ringW    = parseInt(document.getElementById('ringW').value);
-  const ringH    = parseInt(document.getElementById('ringH').value);
-
-  const nextPool     = getPool(nextCls, includeEquip, includeLeave);
-  const nextValidIds = new Set(nextPool.map(e => e.id));
-  const nextOwnIds   = CLASS_OWN_IDS[nextCls] || new Set();
-
-  // Deep copy — positions never move unless we insert
-  let upgraded = currentCourse.map(p => ({ ...p, pos: { ...p.pos } }));
-
-  // Track usage across the whole course
-  const usedIds = {};
-  upgraded.forEach(p => { if (p.cat !== 'start' && p.cat !== 'finish') usedIds[p.id] = (usedIds[p.id]||0)+1; });
-
-  // ── Step 1: Swap only signs that are INVALID for next level ──────
-  // Walk through once; signs already valid stay exactly as-is.
-  let classCount = upgraded.filter(p => nextOwnIds.has(p.id)).length;
-
-  for (let i = 0; i < upgraded.length; i++) {
-    const ex = upgraded[i];
-    if (ex.cat === 'start' || ex.cat === 'finish') continue;
-    if (nextValidIds.has(ex.id)) continue; // ✓ already fine — leave it
-
-    const prevEx = upgraded.slice(0, i).reverse().find(p => p.cat !== 'start');
-    const nextEx = upgraded.slice(i + 1).find(p => p.cat !== 'finish');
-
-    // Temporarily remove this sign from used count so substitutes aren't blocked by it
-    usedIds[ex.id] = Math.max(0, (usedIds[ex.id]||1) - 1);
-    const statCount = upgraded.filter((p,j) => j !== i && p.stat && p.cat !== 'start' && p.cat !== 'finish').length;
-    const maxStat   = Math.floor((upgraded.length - 2) / 3);
-
-    const candidates = nextPool.filter(c => {
-      if (!nextValidIds.has(c.id)) return false;
-      if (!c.mult && (usedIds[c.id]||0) >= 1) return false;
-      if ( c.mult && (usedIds[c.id]||0) >= 2) return false;
-      if (c.stat && statCount >= maxStat) return false;
-      if (nextCfg.zoom && (c.stat || c.cat === 'halt')) return false;
-      if (RECALL_IDS.has(c.id) && (!prevEx || prevEx.cat !== 'leave')) return false;
-      if (prevEx?.cat === 'leave' && !(RECALL_MAP[prevEx.id]||[]).includes(c.id)) return false;
-      if (prevEx && PACE_AFTER[prevEx.id] && !PACE_AFTER[prevEx.id].includes(c.id)) return false;
-      if (nextEx && PACE_AFTER[c.id] && !PACE_AFTER[c.id].includes(nextEx.id)) return false;
-      if (c.cat === 'leave' && nextEx && !(RECALL_MAP[c.id]||[]).includes(nextEx.id)) return false;
-      if (!nextEx && (c.cat === 'leave' || PACE_AFTER[c.id])) return false;
-      return true;
-    });
-
-    // Prefer class-specific when still needed, otherwise pick any valid substitute
-    const preferred = (classCount < nextCfg.minFromClass)
-      ? candidates.filter(c => nextOwnIds.has(c.id))
-      : [];
-    const pick = preferred.length > 0 ? preferred[0] : candidates[0];
-
-    if (pick) {
-      usedIds[pick.id] = (usedIds[pick.id]||0) + 1;
-      if (nextOwnIds.has(pick.id)) classCount++;
-      // Swap sign ID/name/flags — position and heading stay exactly the same
-      upgraded[i] = { ...upgraded[i], id:pick.id, n:pick.n, cat:pick.cat, stat:!!pick.stat, eq:pick.eq||null, seq:pick.seq||null };
-    } else {
-      // No valid substitute found — put back original count, leave sign as flag for judge
-      usedIds[ex.id] = (usedIds[ex.id]||0) + 1;
-    }
-  }
-
-  // ── Step 2: Insert required class-specific signs into LARGEST gaps only ──
-  // Only insert if we're still short on class minimum. Insert into gaps big
-  // enough to fit a new station without violating minDist either side.
-  const stillNeeded = Math.max(0, nextCfg.minFromClass - classCount);
-  if (stillNeeded > 0) {
-    const gaps = [];
-    for (let i = 0; i < upgraded.length - 1; i++) {
-      const d = dist(upgraded[i].pos, upgraded[i+1].pos);
-      if (d >= minDist * 2.2) gaps.push({ i, d });
-    }
-    gaps.sort((a,b) => b.d - a.d); // largest gaps first
-
-    const eligible = nextPool.filter(c =>
-      nextOwnIds.has(c.id) &&
-      !RECALL_IDS.has(c.id) &&
-      c.cat !== 'recall' &&
-      c.cat !== 'leave' &&
-      !PACE_AFTER[c.id] &&
-      (!c.mult ? (usedIds[c.id]||0) < 1 : (usedIds[c.id]||0) < 2)
-    );
-
-    let inserted = 0;
-    for (const gap of gaps) {
-      if (inserted >= stillNeeded) break;
-      const pick = eligible.find(c => (!c.mult ? (usedIds[c.id]||0) < 1 : (usedIds[c.id]||0) < 2));
-      if (!pick) break;
-
-      const from = upgraded[gap.i];
-      const to   = upgraded[gap.i + 1 + inserted]; // account for prior insertions
-      const mid  = {
-        x: Math.max(5, Math.min(ringW-5, (from.pos.x + to.pos.x)/2 + rnd(-2, 2))),
-        y: Math.max(5, Math.min(ringH-5, (from.pos.y + to.pos.y)/2 + rnd(-2, 2)))
-      };
-
-      usedIds[pick.id] = (usedIds[pick.id]||0) + 1;
-      upgraded.splice(gap.i + 1 + inserted, 0, {
-        id: pick.id, n: pick.n, cat: pick.cat, stat: !!pick.stat,
-        eq: pick.eq||null, seq: pick.seq||null,
-        heading: from.heading || 0, pos: mid
-      });
-      inserted++;
-    }
-  }
-
-  // ── Step 3: Switch class UI ───────────────────────────────────────
-  currentClass = nextCls;
-  document.querySelectorAll('.cls-btn').forEach(b => {
-    const m = b.getAttribute('onclick')?.match(/'(\w+)'/);
-    if (m) b.classList.toggle('active', m[1] === nextCls);
-  });
-  document.getElementById('canvasTitle').textContent = nextCfg.name + ' Course';
-  document.getElementById('minDist').value = nextCfg.minDist || 10;
-  updateRingInfo();
-
-  currentCourse = upgraded;
-  recalcHeadings(currentCourse);
-  redraw();
-  updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
-
-  const swapped  = currentCourse.filter(p => p.cat !== 'start' && p.cat !== 'finish' && nextOwnIds.has(p.id)).length;
-  showToast(`⬆ Upgraded to ${nextCfg.name} — ${stillNeeded > 0 ? stillNeeded + ' signs inserted, ' : ''}positions preserved`);
-}
-
-// ── TOAST HELPER ─────────────────────────────────────────────────
-function showToast(msg) {
-  const old = document.getElementById('cwags-toast');
-  if (old) old.remove();
-  const tip = document.createElement('div');
-  tip.id = 'cwags-toast';
-  tip.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#21262f;border:1px solid #4a5468;color:#e8eaf0;padding:10px 18px;border-radius:6px;font-size:13px;z-index:999;box-shadow:0 4px 20px #0006;pointer-events:none;';
-  tip.textContent = msg;
-  document.body.appendChild(tip);
-  setTimeout(() => tip.remove(), 3000);
-}
-
-function showDistanceWarning(violatingIndices) {
-  distViolators = new Set(violatingIndices);
-  redraw(); // redraw will now highlight the bad stations
-  const canvas = document.getElementById('courseCanvas');
-  // Remove any existing tip
-  const old = document.getElementById('dist-warn-tip');
-  if (old) old.remove();
-  const tip = document.createElement('div');
-  tip.id = 'dist-warn-tip';
-  tip.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#21262f;border:1px solid #ff5252;color:#ff5252;padding:8px 16px;border-radius:6px;font-size:12px;z-index:999;box-shadow:0 4px 20px #0006;pointer-events:none;';
-  tip.textContent = '⚠ Too close — move the highlighted station(s) further apart.';
-  document.body.appendChild(tip);
-  setTimeout(() => {
-    tip.remove();
-    distViolators = new Set();
-    redraw();
-  }, 3000);
-}
-
-function generate() {
-  const cls = currentClass;
-  const cfg = CLASS_CFG[cls];
-  const ringW = parseInt(document.getElementById('ringW').value);
-  const ringH = parseInt(document.getElementById('ringH').value);
-  const minDist = parseInt(document.getElementById('minDist').value);
-  const includeEquip = document.getElementById('includeEquip').checked;
-  const includeLeave = document.getElementById('includeLeavedog').checked;
-  const randFactor = { low: 0.15, med: 0.3, high: 0.5 }[document.getElementById('randLevel').value];
-
-  // Retry up to 8 times — usually succeeds in 1–2
-  let placed = null;
-  for (let attempt = 0; attempt < 8; attempt++) {
-    placed = tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave, randFactor);
-    if (placed) break;
-  }
-
-  if (!placed) {
-    // Last resort: one final attempt with relaxed constraints
-    placed = tryGenerate(cls, cfg, ringW, ringH, minDist - 2, includeEquip, false, 0.5);
-  }
-
-  if (!placed || placed.length < 3) {
-    alert('Could not build a valid course with current settings. Try a larger ring, lower minimum distance, or include leave-dog exercises.');
-    return;
-  }
-
-  currentCourse = placed;
-  renderCourse(placed, ringW, ringH, cfg);
-  updateSidebar(placed, cls, cfg);
 }
 
 function tryPlaceExercise(pos, heading, turnDelta, placed, ringW, ringH, minDist, randFactor, exCat) {
   const margin = 4;
-  // For jumps and tunnels, require straight approach — minimal jitter
   const isEquip = exCat === 'equip';
   const passes = isEquip ? [
     { jitter: 8,  slack: 0 },
@@ -1321,9 +640,6 @@ function tryPlaceExercise(pos, heading, turnDelta, placed, ringW, ringH, minDist
     { jitter: 120,              slack: 0 },
     { jitter: 180,              slack: minDist * 0.15 },
   ];
-  // Always project from the OUTGOING heading so the next station
-  // actually appears in the direction the dog will be travelling after the turn.
-  // For small jitter moves (bear left/right ~45°) we still honour the turn.
   const outHeading = normalizeAngle(heading + turnDelta);
   for (const { jitter, slack } of passes) {
     const effectiveMin = minDist - slack;
@@ -1355,23 +671,16 @@ function findFinishPos(pos, heading, placed, ringW, ringH, minDist) {
   return { x: Math.min(ringW-5, Math.max(5, pos.x + 6)), y: Math.min(ringH-5, Math.max(5, pos.y - 6)) };
 }
 
-// ── RECALC HEADINGS ───────────────────────────────────────────────
-// After any drag, load, or substitute, re-derive every station's
-// incoming heading from the actual path geometry, then apply each
-// sign's td to get the outgoing heading for the next station.
-// heading = compass degrees, 0=North(up), clockwise positive.
 function recalcHeadings(course) {
   if (!course || course.length < 2) return;
   for (let i = 0; i < course.length; i++) {
     if (i === 0) {
-      // Start: heading is the direction toward station 1
       if (course.length > 1) {
         const dx = course[1].pos.x - course[0].pos.x;
         const dy = course[1].pos.y - course[0].pos.y;
         course[0].heading = normalizeAngle(Math.atan2(dx, -dy) * 180 / Math.PI);
       }
     } else {
-      // Derive incoming heading from actual vector from previous station
       const dx = course[i].pos.x - course[i-1].pos.x;
       const dy = course[i].pos.y - course[i-1].pos.y;
       course[i].heading = normalizeAngle(Math.atan2(dx, -dy) * 180 / Math.PI);
@@ -1379,17 +688,646 @@ function recalcHeadings(course) {
   }
 }
 
+function generate() {
+  clearNestPreview();
+  const cls = currentClass;
+  const cfg = CLASS_CFG[cls];
+  const ringW = parseInt(document.getElementById('ringW').value);
+  const ringH = parseInt(document.getElementById('ringH').value);
+  const minDist = parseInt(document.getElementById('minDist').value);
+  const includeEquip = document.getElementById('includeEquip').checked;
+  const includeLeave = document.getElementById('includeLeavedog').checked;
+  const randFactor = { low: 0.15, med: 0.3, high: 0.5 }[document.getElementById('randLevel').value];
+
+  let placed = null;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    placed = tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave, randFactor);
+    if (placed) break;
+  }
+  if (!placed) placed = tryGenerate(cls, cfg, ringW, ringH, minDist - 2, includeEquip, false, 0.5);
+
+  if (!placed || placed.length < 3) {
+    alert('Could not build a valid course with current settings. Try a larger ring, lower minimum distance, or include leave-dog exercises.');
+    return;
+  }
+
+  currentCourse = placed;
+  renderCourse(placed, ringW, ringH, cfg);
+  updateSidebar(placed, cls, cfg);
+}
+
+// ════════════════════════════════════════════════
+// NESTING SYSTEM
+// ════════════════════════════════════════════════
+
+// nestTarget is independent — the modal tracks which class button is active
+function openNestModal() {
+  if (!currentCourse || currentCourse.length < 3) {
+    document.getElementById('nestNoCourse').style.display = 'block';
+    document.getElementById('nestAnalysisArea').style.display = 'none';
+    document.getElementById('nestPreviewBtn').style.display = 'none';
+    document.getElementById('nestApplyBtn').style.display = 'none';
+  } else {
+    document.getElementById('nestNoCourse').style.display = 'none';
+  }
+  // Clear class button states in nest modal
+  document.querySelectorAll('#nestClassBtns .cls-btn').forEach(b => b.classList.remove('active'));
+  nestTargetCls = null;
+  document.getElementById('nestAnalysisArea').style.display = 'none';
+  document.getElementById('nestPreviewBtn').style.display = 'none';
+  document.getElementById('nestApplyBtn').style.display = 'none';
+  document.getElementById('nestModal').style.display = 'flex';
+}
+
+function closeNestModal() {
+  document.getElementById('nestModal').style.display = 'none';
+}
+
+function selectNestTarget(cls) {
+  nestTargetCls = cls;
+  document.querySelectorAll('#nestClassBtns .cls-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  if (!currentCourse || currentCourse.length < 3) return;
+  runNestAnalysis(cls);
+}
+
+/**
+ * analyzeNesting — core algorithm
+ * For every exercise station, decide: keep, swap (with best substitute), or flag as unresolved.
+ * Also determines if new stations need inserting to meet class minimum.
+ * Returns { plan[], pendingCourse[], keepCount, swapCount, insertCount, unresolved }
+ */
+function analyzeNesting(targetCls) {
+  const cfg = CLASS_CFG[targetCls];
+  const includeEquip = document.getElementById('includeEquip').checked;
+  const includeLeave = document.getElementById('includeLeavedog').checked;
+  const minDist = parseInt(document.getElementById('minDist').value);
+  const ringW = parseInt(document.getElementById('ringW').value);
+  const ringH = parseInt(document.getElementById('ringH').value);
+
+  const targetPool = getPool(targetCls, includeEquip, includeLeave);
+  const targetValidIds = new Set(targetPool.map(e => e.id));
+  const targetOwnIds = CLASS_OWN_IDS[targetCls] || new Set();
+
+  // Deep copy course
+  let working = currentCourse.map(p => ({ ...p, pos: { ...p.pos } }));
+  const plan = []; // one entry per exercise station
+
+  // Track usage counts (start fresh for target class context)
+  const usedIds = {};
+  working.forEach(p => {
+    if (p.cat !== 'start' && p.cat !== 'finish' && targetValidIds.has(p.id))
+      usedIds[p.id] = (usedIds[p.id] || 0) + 1;
+  });
+
+  let classCount = working.filter(p => targetOwnIds.has(p.id)).length;
+
+  for (let i = 0; i < working.length; i++) {
+    const ex = working[i];
+    if (ex.cat === 'start' || ex.cat === 'finish') continue;
+
+    if (targetValidIds.has(ex.id)) {
+      // This sign is valid for the target class — keep it
+      plan.push({ idx: i, action: 'keep', from: ex.id, fromName: ex.n });
+    } else {
+      // Need to find a substitute
+      const prevEx = working.slice(0, i).reverse().find(p => p.cat !== 'start');
+      const nextEx = working.slice(i + 1).find(p => p.cat !== 'finish');
+
+      // Temporarily remove from usedIds
+      if (usedIds[ex.id]) usedIds[ex.id] = Math.max(0, usedIds[ex.id] - 1);
+
+      const statCount = working.filter((p, j) => j !== i && p.stat && p.cat !== 'start' && p.cat !== 'finish').length;
+      const maxStat = Math.floor((working.length - 2) / 3);
+
+      // Find best substitute — prefer class-specific if still needed
+      const candidates = targetPool.filter(c => {
+        if (!targetValidIds.has(c.id)) return false;
+        if (!c.mult && (usedIds[c.id] || 0) >= 1) return false;
+        if (c.mult && (usedIds[c.id] || 0) >= 2) return false;
+        if (c.stat && statCount >= maxStat) return false;
+        if (cfg.zoom && (c.stat || c.cat === 'halt')) return false;
+        if (RECALL_IDS.has(c.id) && (!prevEx || prevEx.cat !== 'leave')) return false;
+        if (prevEx?.cat === 'leave' && !(RECALL_MAP[prevEx.id] || []).includes(c.id)) return false;
+        if (prevEx && PACE_AFTER[prevEx.id] && !PACE_AFTER[prevEx.id].includes(c.id)) return false;
+        if (nextEx && PACE_AFTER[c.id] && !PACE_AFTER[c.id].includes(nextEx.id)) return false;
+        if (c.cat === 'leave' && nextEx && !(RECALL_MAP[c.id] || []).includes(nextEx.id)) return false;
+        if (!nextEx && (c.cat === 'leave' || PACE_AFTER[c.id])) return false;
+        return true;
+      });
+
+      // Prefer class-specific sign if still short
+      const preferred = classCount < cfg.minFromClass
+        ? candidates.filter(c => targetOwnIds.has(c.id))
+        : [];
+      const pick = preferred.length > 0 ? preferred[0] : (candidates.length > 0 ? candidates[0] : null);
+
+      if (pick) {
+        usedIds[pick.id] = (usedIds[pick.id] || 0) + 1;
+        if (targetOwnIds.has(pick.id)) classCount++;
+        plan.push({ idx: i, action: 'swap', from: ex.id, fromName: ex.n, to: pick.id, toName: pick.n });
+        // Update working copy so subsequent checks see correct neighbors
+        working[i] = { ...working[i], id: pick.id, n: pick.n, cat: pick.cat, stat: !!pick.stat, eq: pick.eq||null, seq: pick.seq||null };
+      } else {
+        plan.push({ idx: i, action: 'unresolved', from: ex.id, fromName: ex.n });
+        usedIds[ex.id] = (usedIds[ex.id] || 0) + 1;
+      }
+    }
+  }
+
+  // Check if we need to insert signs for class minimum
+  const inserts = [];
+  const stillNeeded = Math.max(0, cfg.minFromClass - classCount);
+  const currentTotal = working.filter(p => p.cat !== 'start' && p.cat !== 'finish').length;
+  const targetTotal = Math.max(cfg.min, currentTotal); // aim to meet min if we're below
+
+  if (stillNeeded > 0 || currentTotal < cfg.min) {
+    const toInsert = Math.max(stillNeeded, cfg.min - currentTotal);
+    const gaps = [];
+    for (let i = 0; i < working.length - 1; i++) {
+      const d = dist(working[i].pos, working[i + 1].pos);
+      if (d >= minDist * 2.2) gaps.push({ i, d });
+    }
+    gaps.sort((a, b) => b.d - a.d);
+
+    const eligible = targetPool.filter(c =>
+      (stillNeeded > 0 ? targetOwnIds.has(c.id) : true) &&
+      !RECALL_IDS.has(c.id) && c.cat !== 'recall' && c.cat !== 'leave' &&
+      !PACE_AFTER[c.id] &&
+      (!c.mult ? (usedIds[c.id] || 0) < 1 : (usedIds[c.id] || 0) < 2)
+    );
+
+    for (let gi = 0; gi < Math.min(toInsert, gaps.length); gi++) {
+      const pick = eligible.find(c => (!c.mult ? (usedIds[c.id] || 0) < 1 : (usedIds[c.id] || 0) < 2));
+      if (!pick) break;
+      const gap = gaps[gi];
+      const from = working[gap.i];
+      const to = working[gap.i + 1 + gi];
+      const mid = {
+        x: Math.max(5, Math.min(ringW - 5, (from.pos.x + (to?.pos.x ?? from.pos.x)) / 2 + rnd(-2, 2))),
+        y: Math.max(5, Math.min(ringH - 5, (from.pos.y + (to?.pos.y ?? from.pos.y)) / 2 + rnd(-2, 2)))
+      };
+      usedIds[pick.id] = (usedIds[pick.id] || 0) + 1;
+      inserts.push({ afterIdx: gap.i + gi, pos: mid, id: pick.id, n: pick.n, cat: pick.cat, stat: !!pick.stat, eq: pick.eq || null, seq: pick.seq || null });
+    }
+  }
+
+  // Build the final pending course
+  const resolved = working.map(p => ({ ...p }));
+  // Apply inserts in reverse order to keep indices stable
+  for (const ins of [...inserts].reverse()) {
+    resolved.splice(ins.afterIdx + 1, 0, {
+      id: ins.id, n: ins.n, cat: ins.cat, stat: ins.stat,
+      eq: ins.eq, seq: ins.seq, heading: 0, pos: { ...ins.pos }
+    });
+  }
+
+  recalcHeadings(resolved);
+
+  return {
+    plan,
+    inserts,
+    pendingCourse: resolved,
+    keepCount: plan.filter(p => p.action === 'keep').length,
+    swapCount:  plan.filter(p => p.action === 'swap').length,
+    insertCount: inserts.length,
+    unresolved: plan.filter(p => p.action === 'unresolved').length,
+  };
+}
+
+function runNestAnalysis(cls) {
+  const result = analyzeNesting(cls);
+  pendingNestCourse = result.pendingCourse;
+
+  // Summary stats
+  const summaryEl = document.getElementById('nestSummary');
+  summaryEl.innerHTML = `
+    <div class="nest-stat"><div class="nest-stat-num" style="color:#2dd4a0">${result.keepCount}</div><div class="nest-stat-lbl">Signs keep</div></div>
+    <div class="nest-stat"><div class="nest-stat-num" style="color:#fb923c">${result.swapCount}</div><div class="nest-stat-lbl">Signs swap</div></div>
+    <div class="nest-stat"><div class="nest-stat-num" style="color:#4fc3f7">${result.insertCount}</div><div class="nest-stat-lbl">Signs insert</div></div>
+    <div class="nest-stat"><div class="nest-stat-num" style="color:${result.unresolved>0?'#ff5252':'var(--text3)'}">${result.unresolved}</div><div class="nest-stat-lbl">Unresolved</div></div>
+  `;
+
+  // Sign-by-sign list
+  const listEl = document.getElementById('nestChangeList');
+  listEl.innerHTML = '';
+  result.plan.forEach((p, i) => {
+    const row = document.createElement('div');
+    const exIdx = i + 1; // exercise number in current course
+    if (p.action === 'keep') {
+      row.className = 'nest-change-item nest-keep';
+      row.innerHTML = `<span style="width:18px;text-align:center">✅</span><span style="color:var(--text3);min-width:30px">#${exIdx}</span><span style="color:var(--text)">${p.fromName}</span><span style="margin-left:auto;font-size:12px;color:#2dd4a0">KEEP</span>`;
+    } else if (p.action === 'swap') {
+      row.className = 'nest-change-item nest-swap';
+      row.innerHTML = `<span style="width:18px;text-align:center">🔄</span><span style="color:var(--text3);min-width:30px">#${exIdx}</span><span style="flex:1"><span style="color:#fb923c">${p.fromName}</span> <span style="color:var(--text3)">→</span> <span style="color:var(--text)">${p.toName}</span></span><span style="font-size:12px;color:#fb923c">SWAP</span>`;
+    } else {
+      row.className = 'nest-change-item';
+      row.style.borderColor = '#ff5252';
+      row.innerHTML = `<span style="width:18px;text-align:center">⚠️</span><span style="color:var(--text3);min-width:30px">#${exIdx}</span><span style="color:#ff5252">${p.fromName} — no valid sub found</span>`;
+    }
+    listEl.appendChild(row);
+  });
+
+  // Insert rows
+  result.inserts.forEach((ins, i) => {
+    const row = document.createElement('div');
+    row.className = 'nest-change-item nest-insert';
+    row.innerHTML = `<span style="width:18px;text-align:center">➕</span><span style="color:var(--text3);min-width:30px">new</span><span style="color:var(--text)">${ins.n}</span><span style="margin-left:auto;font-size:12px;color:#4fc3f7">INSERT</span>`;
+    listEl.appendChild(row);
+  });
+
+  document.getElementById('nestAnalysisArea').style.display = 'block';
+  document.getElementById('nestNoCourse').style.display = 'none';
+  document.getElementById('nestPreviewBtn').style.display = 'inline-block';
+  document.getElementById('nestApplyBtn').style.display = 'inline-block';
+}
+
+function previewNesting() {
+  if (!nestTargetCls || !pendingNestCourse) return;
+  // Build nestPreviewData from the analysis
+  const result = analyzeNesting(nestTargetCls);
+  nestPreviewData = result;
+  closeNestModal();
+
+  // Show banner
+  const banner = document.getElementById('nestBanner');
+  banner.classList.add('visible');
+  document.getElementById('nestBannerMsg').textContent =
+    `${result.keepCount} keep · ${result.swapCount} swap · ${result.insertCount} insert — showing on canvas`;
+  document.getElementById('nestBtn').classList.add('nest-active');
+
+  redraw();
+}
+
+function applyNesting() {
+  if (!nestTargetCls || !pendingNestCourse) return;
+  closeNestModal();
+  clearNestPreview();
+
+  const nextCfg = CLASS_CFG[nestTargetCls];
+  currentClass = nestTargetCls;
+  document.querySelectorAll('.cls-btn').forEach(b => {
+    const m = b.getAttribute('onclick')?.match(/'(\w+)'/);
+    if (m) b.classList.toggle('active', m[1] === nestTargetCls);
+  });
+  document.getElementById('canvasTitle').textContent = nextCfg.name + ' Course';
+  updateRingInfo();
+
+  currentCourse = pendingNestCourse;
+  recalcHeadings(currentCourse);
+  redraw();
+  updateSidebar(currentCourse, currentClass, nextCfg);
+  showToast(`🔀 Nested to ${nextCfg.name} — positions kept, signs updated`);
+}
+
+function clearNestPreview() {
+  nestPreviewData = null;
+  document.getElementById('nestBanner').classList.remove('visible');
+  document.getElementById('nestBtn').classList.remove('nest-active');
+  if (currentCourse.length > 0) redraw();
+}
+
+// ════════════════════════════════════════════════
+// SIGN IMAGES
+// ════════════════════════════════════════════════
+const signImages = {};
+const GITHUB_SIGNS_BASE = 'https://raw.githubusercontent.com/chrojoh/cwagrally/main/Signs/';
+const ALL_SIGN_IDS = Object.keys(EX);
+
+function setGithubStatus(icon, msg, color) {
+  document.getElementById('githubSignIcon').textContent = icon;
+  const msgEl = document.getElementById('githubSignMsg');
+  msgEl.textContent = msg;
+  msgEl.style.color = color || 'var(--text3)';
+}
+
+function autoLoadGithubSigns() {
+  let attempted = 0, loaded = 0;
+  const total = ALL_SIGN_IDS.length;
+  setGithubStatus('⏳', `Checking GitHub for ${total} signs…`, 'var(--text3)');
+  ALL_SIGN_IDS.forEach(id => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => { signImages[id] = img; loaded++; attempted++; if (currentCourse.length > 0 && showSigns) redraw(); updateGithubProgress(loaded, attempted, total); };
+    img.onerror = () => { attempted++; updateGithubProgress(loaded, attempted, total); };
+    img.src = GITHUB_SIGNS_BASE + id + '.png';
+  });
+}
+
+function updateGithubProgress(loaded, attempted, total) {
+  if (attempted < total) { setGithubStatus('⏳', `Loading from GitHub… ${attempted}/${total}`, 'var(--text3)'); return; }
+  if (loaded === 0) setGithubStatus('📂', 'No signs found on GitHub — upload manually below', 'var(--text3)');
+  else if (loaded === total) setGithubStatus('✅', `All ${loaded} signs loaded from GitHub`, 'var(--green)');
+  else setGithubStatus('🟡', `${loaded} of ${total} signs loaded from GitHub`, 'var(--gold)');
+  if (currentCourse.length > 0) redraw();
+}
+
+function loadSignImages(files) {
+  let loaded = 0;
+  const total = files.length;
+  Array.from(files).forEach(file => {
+    const id = file.name.replace(/\.[^.]+$/, '');
+    const img = new Image();
+    img.onload = () => {
+      signImages[id] = img;
+      loaded++;
+      const countEl = document.getElementById('signCount');
+      countEl.textContent = `✓ ${loaded} of ${total} local sign images loaded`;
+      countEl.classList.add('visible');
+      if (currentCourse.length > 0) redraw();
+    };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+function toggleSigns() {
+  showSigns = !showSigns;
+  const btn = document.getElementById('signsToggle');
+  btn.textContent = showSigns ? '🖼 Signs: ON' : '🖼 Signs: OFF';
+  btn.classList.toggle('active', showSigns);
+  redraw();
+}
+
+function toggleMode() {
+  const isLight = document.body.classList.toggle('light-mode');
+  const btn = document.getElementById('modeToggle');
+  btn.textContent = isLight ? '🌙 Dark Mode' : '☀ Light Mode';
+  btn.classList.toggle('active', isLight);
+  redraw();
+}
+
+// ════════════════════════════════════════════════
+// DRAG & CLICK
+// ════════════════════════════════════════════════
+let dragIdx = -1;
+let dragStartFt = null;
+let mouseDidMove = false;
+let distViolators = new Set();
+
+function redraw() {
+  if (!currentCourse || currentCourse.length === 0) return;
+  const ringW = parseInt(document.getElementById('ringW').value);
+  const ringH = parseInt(document.getElementById('ringH').value);
+  renderCourse(currentCourse, ringW, ringH, CLASS_CFG[currentClass]);
+}
+
+function canvasEvtPx(e) {
+  const canvas = document.getElementById('courseCanvas');
+  const rect = canvas.getBoundingClientRect();
+  return { x: (e.clientX - rect.left) * (canvas.width / (rect.width * (window.devicePixelRatio || 1))),
+           y: (e.clientY - rect.top)  * (canvas.height / (rect.height * (window.devicePixelRatio || 1))) };
+}
+
+function canvasEvtToFt(e) {
+  const {x, y} = canvasEvtPx(e);
+  const ringW = parseInt(document.getElementById('ringW').value);
+  const ringH = parseInt(document.getElementById('ringH').value);
+  return canvasToFt(x, y, ringW, ringH);
+}
+
+function findStationAt(px, py) {
+  let bestIdx = -1, bestDist = 9999;
+  for (let i = 0; i < currentCourse.length; i++) {
+    const cp = toCanvas(currentCourse[i].pos);
+    const d = Math.sqrt((px - cp.x) ** 2 + (py - cp.y) ** 2);
+    if (d < 18 && d < bestDist) { bestDist = d; bestIdx = i; }
+  }
+  return bestIdx;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const canvas = document.getElementById('courseCanvas');
+
+  canvas.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    const {x, y} = canvasEvtPx(e);
+    const idx = findStationAt(x, y);
+    if (idx >= 0) { dragIdx = idx; dragStartFt = { ...currentCourse[idx].pos }; mouseDidMove = false; canvas.classList.add('dragging'); e.preventDefault(); }
+  });
+
+  canvas.addEventListener('mousemove', e => {
+    if (dragIdx < 0) {
+      const {x, y} = canvasEvtPx(e);
+      const idx = findStationAt(x, y);
+      const hoverEx = idx >= 0 ? currentCourse[idx] : null;
+      canvas.style.cursor = (hoverEx && hoverEx.cat !== 'start' && hoverEx.cat !== 'finish') ? 'pointer' : 'crosshair';
+      return;
+    }
+    const ft = canvasEvtToFt(e);
+    const dx = Math.abs(ft.x - dragStartFt.x), dy = Math.abs(ft.y - dragStartFt.y);
+    if (dx > 0.5 || dy > 0.5) mouseDidMove = true;
+    if (mouseDidMove) { currentCourse[dragIdx].pos = { ...ft }; redraw(); updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]); }
+  });
+
+  canvas.addEventListener('mouseup', e => {
+    if (dragIdx < 0) return;
+    canvas.classList.remove('dragging');
+    if (mouseDidMove) {
+      const minD = parseInt(document.getElementById('minDist').value);
+      const allPoints = currentCourse;
+      let violated = false;
+      for (let i = 0; i < allPoints.length - 1; i++) {
+        if (dist(allPoints[i].pos, allPoints[i + 1].pos) < minD) { violated = true; break; }
+      }
+      if (violated) {
+        currentCourse[dragIdx].pos = { ...dragStartFt };
+        const badIdx = [];
+        for (let i = 0; i < allPoints.length - 1; i++) {
+          if (dist(allPoints[i].pos, allPoints[i + 1].pos) < minD) { badIdx.push(i); badIdx.push(i + 1); }
+        }
+        recalcHeadings(currentCourse); redraw(); updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
+        showDistanceWarning([...new Set(badIdx)]);
+      } else { recalcHeadings(currentCourse); redraw(); updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]); }
+    } else {
+      const idx = dragIdx;
+      const clicked = currentCourse[idx];
+      if (clicked && clicked.cat !== 'start' && clicked.cat !== 'finish') openSubstituteModal(idx);
+    }
+    dragIdx = -1;
+  });
+
+  canvas.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    const {x, y} = canvasEvtPx(t);
+    const idx = findStationAt(x, y);
+    if (idx >= 0) { dragIdx = idx; dragStartFt = { ...currentCourse[idx].pos }; mouseDidMove = false; e.preventDefault(); }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', e => {
+    if (dragIdx < 0) return;
+    const ft = canvasEvtToFt(e.touches[0]);
+    currentCourse[dragIdx].pos = { ...ft }; mouseDidMove = true; redraw();
+    updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
+    e.preventDefault();
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', e => {
+    if (dragIdx < 0) return;
+    if (mouseDidMove) {
+      const minD = parseInt(document.getElementById('minDist').value);
+      const allPoints = currentCourse;
+      let violated = false;
+      for (let i = 0; i < allPoints.length - 1; i++) {
+        if (dist(allPoints[i].pos, allPoints[i + 1].pos) < minD) { violated = true; break; }
+      }
+      if (violated) {
+        currentCourse[dragIdx].pos = { ...dragStartFt };
+        recalcHeadings(currentCourse); redraw(); updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
+      } else { recalcHeadings(currentCourse); redraw(); updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]); }
+    }
+    dragIdx = -1;
+  });
+});
+
+// ════════════════════════════════════════════════
+// SUBSTITUTE MODAL
+// ════════════════════════════════════════════════
+let substituteIdx = -1;
+
+function openSubstituteModal(idx) {
+  substituteIdx = idx;
+  const ex = currentCourse[idx];
+  const cls = currentClass;
+  const cfg = CLASS_CFG[cls];
+  const minDist = parseInt(document.getElementById('minDist').value);
+  const includeEquip = document.getElementById('includeEquip').checked;
+  const includeLeave = document.getElementById('includeLeavedog').checked;
+  const pool = getPool(cls, includeEquip, includeLeave);
+  const prevEx = idx > 0 ? currentCourse[idx - 1] : null;
+  const nextEx = idx < currentCourse.length - 1 ? currentCourse[idx + 1] : null;
+  const exercises = currentCourse.filter(p => p.cat !== 'start' && p.cat !== 'finish');
+  const exIdx = exercises.indexOf(ex);
+  const usedIds = {};
+  exercises.forEach((e, i) => { if (i !== exIdx) usedIds[e.id] = (usedIds[e.id] || 0) + 1; });
+  const stationaryCount = exercises.filter((e, i) => e.stat && i !== exIdx).length;
+  const maxStationary = Math.floor(exercises.length / 3);
+
+  const candidates = pool.filter(candidate => {
+    if (candidate.id === ex.id) return false;
+    if (!candidate.mult && (usedIds[candidate.id] || 0) >= 1) return false;
+    if (candidate.mult && (usedIds[candidate.id] || 0) >= 2) return false;
+    if (candidate.stat && stationaryCount >= maxStationary) return false;
+    if (cfg.zoom && (candidate.stat || candidate.cat === 'halt')) return false;
+    if (RECALL_IDS.has(candidate.id)) { if (!prevEx || prevEx.cat !== 'leave') return false; }
+    if (prevEx) {
+      if (PACE_AFTER[prevEx.id] && !PACE_AFTER[prevEx.id].includes(candidate.id)) return false;
+      if (prevEx.cat === 'leave' && !(RECALL_MAP[prevEx.id] || []).includes(candidate.id)) return false;
+    }
+    if (nextEx) {
+      if (PACE_AFTER[candidate.id] && !PACE_AFTER[candidate.id].includes(nextEx.id)) return false;
+      if (candidate.cat === 'leave' && !(RECALL_MAP[candidate.id] || []).includes(nextEx.id)) return false;
+    } else {
+      if (candidate.cat === 'leave') return false;
+      if (PACE_AFTER[candidate.id]) return false;
+    }
+    if (prevEx && dist(ex.pos, prevEx.pos) < minDist) return false;
+    if (nextEx && dist(ex.pos, nextEx.pos) < minDist) return false;
+    return true;
+  });
+
+  const modal = document.getElementById('subModal');
+  const title = document.getElementById('subModalTitle');
+  const list = document.getElementById('subModalList');
+  title.textContent = `Substitutes for #${exIdx + 1}: ${ex.n} (${ex.id})`;
+  list.innerHTML = '';
+
+  if (candidates.length === 0) {
+    list.innerHTML = '<div style="color:var(--text3);font-size:15px;padding:12px 0;">No valid substitutes found for this position.</div>';
+  } else {
+    candidates.forEach(c => {
+      const color = c.stat ? '#a78bfa' : (c.eq ? '#fb923c' : (c.cat === 'leave' || c.cat === 'recall' ? '#f472b6' : '#4fc3f7'));
+      const imgEl = signImages[c.id]
+        ? `<img src="${signImages[c.id].src}" style="width:36px;height:36px;object-fit:contain;border-radius:3px;border:1px solid ${color};background:#fff;flex-shrink:0;">`
+        : `<div style="width:40px;height:40px;border-radius:3px;border:1px dashed var(--border2);background:var(--bg3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text3)">no img</div>`;
+      const flags = [c.stat ? '<span style="color:#a78bfa">◾ Stat</span>' : '', c.eq ? `<span style="color:#fb923c">▲ ${c.eq}</span>` : '', c.seq ? `<span style="color:#f472b6">↝ ${c.seq}</span>` : ''].filter(Boolean).join(' ');
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:5px;cursor:pointer;border:1px solid var(--border);background:var(--bg3);transition:border-color 0.12s;';
+      row.innerHTML = `${imgEl}<div style="flex:1"><div style="font-size:13px;color:var(--text3)">${c.id}</div><div style="font-size:15px;color:var(--text)">${c.n}</div>${flags ? `<div style="font-size:13px;margin-top:2px">${flags}</div>` : ''}</div><div style="font-size:13px;color:${color};font-weight:700;flex-shrink:0">Use ›</div>`;
+      row.onmouseenter = () => row.style.borderColor = color;
+      row.onmouseleave = () => row.style.borderColor = 'var(--border)';
+      row.onclick = () => applySubstitute(c);
+      list.appendChild(row);
+    });
+  }
+  modal.style.display = 'flex';
+}
+
+function closeSubstituteModal() {
+  document.getElementById('subModal').style.display = 'none';
+  substituteIdx = -1;
+}
+
+function applySubstitute(candidate) {
+  if (substituteIdx < 0) return;
+  const old = currentCourse[substituteIdx];
+  currentCourse[substituteIdx] = { ...old, id: candidate.id, n: candidate.n, cat: candidate.cat, stat: candidate.stat, eq: candidate.eq, seq: candidate.seq };
+  closeSubstituteModal();
+  recalcHeadings(currentCourse);
+  redraw();
+  updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
+}
+
+// ════════════════════════════════════════════════
+// SAVE / LOAD
+// ════════════════════════════════════════════════
+function saveCourse() {
+  if (!currentCourse || currentCourse.length < 3) { alert('No course to save yet — generate one first.'); return; }
+  const data = {
+    version: 2, cls: currentClass,
+    ringW: parseInt(document.getElementById('ringW').value),
+    ringH: parseInt(document.getElementById('ringH').value),
+    minDist: parseInt(document.getElementById('minDist').value),
+    includeEquip: document.getElementById('includeEquip').checked,
+    includeLeave: document.getElementById('includeLeavedog').checked,
+    course: currentCourse.map(p => ({ id: p.id, n: p.n, cat: p.cat, stat: !!p.stat, eq: p.eq || null, seq: p.seq || null, heading: p.heading || 0, pos: { x: +p.pos.x.toFixed(2), y: +p.pos.y.toFixed(2) } }))
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `CWAGS-${currentClass}-${new Date().toISOString().slice(0,10)}.json`; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+  showToast('💾 Course saved!');
+}
+
+function loadCourse(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.course || !data.cls) throw new Error('Invalid file');
+      currentClass = data.cls;
+      document.querySelectorAll('.cls-btn').forEach(b => {
+        const m = b.getAttribute('onclick')?.match(/'(\w+)'/);
+        if (m && m[1] === data.cls) b.classList.add('active');
+        else b.classList.remove('active');
+      });
+      document.getElementById('canvasTitle').textContent = CLASS_CFG[data.cls].name + ' Course';
+      document.getElementById('ringW').value = data.ringW;
+      document.getElementById('ringH').value = data.ringH;
+      document.getElementById('minDist').value = data.minDist || 10;
+      document.getElementById('includeEquip').checked = !!data.includeEquip;
+      document.getElementById('includeLeavedog').checked = data.includeLeave !== false;
+      updateRingInfo();
+      clearNestPreview();
+      currentCourse = data.course.map(p => ({ ...p, pos: { x: p.pos.x, y: p.pos.y } }));
+      recalcHeadings(currentCourse);
+      redraw();
+      updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
+      showToast('📂 Course loaded!');
+    } catch(err) { alert('Could not load file: ' + err.message); }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
 // ════════════════════════════════════════════════
 // RENDERER
 // ════════════════════════════════════════════════
-function toCanvas(pos) {
-  return { x: PAD_C + pos.x * currentScale, y: PAD_C + pos.y * currentScale };
-}
+function toCanvas(pos) { return { x: PAD_C + pos.x * currentScale, y: PAD_C + pos.y * currentScale }; }
 function canvasToFt(cx, cy, ringW, ringH) {
-  return {
-    x: Math.max(2, Math.min(ringW - 2, (cx - PAD_C) / currentScale)),
-    y: Math.max(2, Math.min(ringH - 2, (cy - PAD_C) / currentScale))
-  };
+  return { x: Math.max(2, Math.min(ringW - 2, (cx - PAD_C) / currentScale)), y: Math.max(2, Math.min(ringH - 2, (cy - PAD_C) / currentScale)) };
 }
 
 function renderCourse(placed, ringW, ringH, cfg) {
@@ -1399,24 +1337,23 @@ function renderCourse(placed, ringW, ringH, cfg) {
   const H = ringH * currentScale + PAD_C * 2;
   const dpr = window.devicePixelRatio || 1;
   canvas.width = W * dpr; canvas.height = H * dpr;
-  canvas.style.width  = W + 'px';
-  canvas.style.height = H + 'px';
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
 
   const isLight = document.body.classList.contains('light-mode');
-  const canvasBg    = isLight ? '#ffffff' : '#1a1d23';
-  const gridMajor   = isLight ? '#d8dce8' : '#363d4f';
-  const gridMinor   = isLight ? '#eceef5' : '#2a3040';
-  const ringBorder  = isLight ? '#5a6890' : '#4a5468';
-  const tickColor   = isLight ? '#8896b0' : '#4a5468';
-  const labelColor  = isLight ? '#5a6480' : '#6b7589';
-  const labelDim    = isLight ? '#b0bcd0' : '#363d4f';
-  const titleColor  = isLight ? '#1a1d23' : '#e8eaf0';
-  const nodeFill    = isLight ? '#ffffff' : '#1a1d23';
-  const arrowNormal = isLight ? '#1a6bb5bb' : '#4fc3f766';
-  const arrowViol   = isLight ? '#d93025cc' : '#ff525299';
-  const lineW       = isLight ? 2.5 : 1.8;
+  const canvasBg   = isLight ? '#ffffff' : '#1a1d23';
+  const gridMajor  = isLight ? '#d8dce8' : '#363d4f';
+  const gridMinor  = isLight ? '#eceef5' : '#2a3040';
+  const ringBorder = isLight ? '#5a6890' : '#4a5468';
+  const tickColor  = isLight ? '#8896b0' : '#4a5468';
+  const labelColor = isLight ? '#5a6480' : '#6b7589';
+  const labelDim   = isLight ? '#b0bcd0' : '#363d4f';
+  const titleColor = isLight ? '#1a1d23' : '#e8eaf0';
+  const nodeFill   = isLight ? '#ffffff' : '#1a1d23';
+  const arrowNorm  = isLight ? '#1a6bb5bb' : '#4fc3f766';
+  const arrowViol  = isLight ? '#d93025cc' : '#ff525299';
+  const lineW      = isLight ? 2.5 : 1.8;
 
   ctx.fillStyle = canvasBg;
   ctx.fillRect(0, 0, W, H);
@@ -1434,10 +1371,7 @@ function renderCourse(placed, ringW, ringH, cfg) {
     ctx.lineWidth   = gy % 10 === 0 ? 0.8 : 0.4;
     ctx.beginPath(); ctx.moveTo(PAD_C, py); ctx.lineTo(PAD_C + ringH * currentScale, py); ctx.stroke();
   }
-
-  // Ring border
-  ctx.strokeStyle = ringBorder;
-  ctx.lineWidth = isLight ? 3 : 2;
+  ctx.strokeStyle = ringBorder; ctx.lineWidth = isLight ? 3 : 2;
   ctx.strokeRect(PAD_C, PAD_C, ringW * currentScale, ringH * currentScale);
 
   // Rulers
@@ -1447,8 +1381,7 @@ function renderCourse(placed, ringW, ringH, cfg) {
   for (let ft = 0; ft <= ringH; ft += stepH) {
     const py = PAD_C + ft * currentScale;
     const isMajor = ft % (stepH * 2) === 0;
-    ctx.strokeStyle = isMajor ? tickColor : labelDim;
-    ctx.lineWidth   = isMajor ? 1 : 0.5;
+    ctx.strokeStyle = isMajor ? tickColor : labelDim; ctx.lineWidth = isMajor ? 1 : 0.5;
     ctx.beginPath(); ctx.moveTo(PAD_C - (isMajor ? 8 : 4), py); ctx.lineTo(PAD_C, py); ctx.stroke();
     if (isMajor) { ctx.fillStyle = labelColor; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillText(ft + 'ft', PAD_C - 10, py); }
   }
@@ -1457,44 +1390,58 @@ function renderCourse(placed, ringW, ringH, cfg) {
   for (let ft = 0; ft <= ringW; ft += stepW) {
     const px = PAD_C + ft * currentScale;
     const isMajor = ft % (stepW * 2) === 0;
-    ctx.strokeStyle = isMajor ? tickColor : labelDim;
-    ctx.lineWidth   = isMajor ? 1 : 0.5;
+    ctx.strokeStyle = isMajor ? tickColor : labelDim; ctx.lineWidth = isMajor ? 1 : 0.5;
     ctx.beginPath(); ctx.moveTo(px, PAD_C + ringH * currentScale); ctx.lineTo(px, PAD_C + ringH * currentScale + (isMajor ? 8 : 4)); ctx.stroke();
     if (isMajor) { ctx.fillStyle = labelColor; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText(ft + 'ft', px, PAD_C + ringH * currentScale + 10); }
   }
   ctx.strokeStyle = tickColor; ctx.lineWidth = 0.5;
   ctx.beginPath(); ctx.moveTo(PAD_C, PAD_C + ringH * currentScale); ctx.lineTo(PAD_C + ringW * currentScale, PAD_C + ringH * currentScale); ctx.stroke();
+  ctx.fillStyle = labelDim; ctx.font = 'bold 11px Barlow Condensed, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(`${ringW}ft × ${ringH}ft = ${ringW * ringH} sq ft`, PAD_C + ringW * currentScale / 2, PAD_C - 8);
 
-  ctx.fillStyle = labelDim;
-  ctx.font = 'bold 11px Barlow Condensed, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(`${ringW}ft \u00d7 ${ringH}ft = ${ringW * ringH} sq ft`, PAD_C + ringW * currentScale / 2, PAD_C - 8);
+  // Build nest status lookup (by course index)
+  // nestPreviewData.plan is indexed by exercise order (0-based), not course array index
+  const nestStatusByIdx = {}; // courseIdx → 'keep'|'swap'|'insert'
+  const nestSwapToByIdx = {};
+  if (nestPreviewData) {
+    nestPreviewData.plan.forEach(p => {
+      nestStatusByIdx[p.idx] = p.action;
+      if (p.action === 'swap') nestSwapToByIdx[p.idx] = p.toName;
+    });
+  }
 
   const exercises = placed.filter(p => p.cat !== 'start' && p.cat !== 'finish');
   const allPoints = [placed[0], ...exercises, placed[placed.length-1]];
 
+  // Arrows
   for (let i = 0; i < allPoints.length - 1; i++) {
     const from = toCanvas(allPoints[i].pos);
     const to = toCanvas(allPoints[i+1].pos);
     const isViolating = distViolators.has(i) && distViolators.has(i + 1);
-    drawArrow(ctx, from.x, from.y, to.x, to.y, isViolating ? arrowViol : arrowNormal, isViolating ? lineW + 1 : lineW);
+    drawArrow(ctx, from.x, from.y, to.x, to.y, isViolating ? arrowViol : arrowNorm, isViolating ? lineW + 1 : lineW);
   }
 
-  for (let i = 1; i <= exercises.length; i++) {
-    const ex = exercises[i - 1];
+  // Exercise nodes
+  // Map each exercise to its course array index
+  let exOrdinal = 0;
+  for (let ci = 0; ci < placed.length; ci++) {
+    const ex = placed[ci];
+    if (ex.cat === 'start' || ex.cat === 'finish') continue;
+    exOrdinal++;
     const cp = toCanvas(ex.pos);
-    drawExercise(ctx, cp.x, cp.y, i, ex, distViolators.has(i), nodeFill, labelColor, isLight);
+    const nestStatus = nestPreviewData ? (nestStatusByIdx[ci] || null) : null;
+    const nestToName = nestSwapToByIdx[ci] || null;
+    drawExercise(ctx, cp.x, cp.y, exOrdinal, ex, distViolators.has(exOrdinal), nodeFill, labelColor, isLight, nestStatus, nestToName);
   }
 
+  // Start / Finish
   const startPt = toCanvas(placed[0].pos);
   drawStartFinish(ctx, startPt.x, startPt.y, 'S', '#f0a500', nodeFill, isLight);
   const finPt = toCanvas(placed[placed.length - 1].pos);
   drawStartFinish(ctx, finPt.x, finPt.y, 'F', '#f0a500', nodeFill, isLight);
 
-  ctx.fillStyle = titleColor;
-  ctx.font = 'bold 14px Barlow Condensed, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText(cfg.name.toUpperCase() + ' COURSE', PAD_C, PAD_C - 16);
+  ctx.fillStyle = titleColor; ctx.font = 'bold 14px Barlow Condensed, sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText(cfg.name.toUpperCase() + ' COURSE' + (nestPreviewData ? ' — NESTING PREVIEW' : ''), PAD_C, PAD_C - 16);
 }
 
 function drawArrow(ctx, x1, y1, x2, y2, color, width) {
@@ -1502,39 +1449,35 @@ function drawArrow(ctx, x1, y1, x2, y2, color, width) {
   const len = Math.sqrt(dx*dx + dy*dy);
   if (len < 1) return;
   const nx = dx/len, ny = dy/len;
-  // Stop short of destination circle
   const stopDist = 14;
-  const ex = x2 - nx * stopDist, ey = y2 - ny * stopDist;
+  const ex2 = x2 - nx * stopDist, ey2 = y2 - ny * stopDist;
   const startX = x1 + nx * 14, startY = y1 + ny * 14;
-
-  ctx.strokeStyle = color;
-  ctx.lineWidth = width;
+  ctx.strokeStyle = color; ctx.lineWidth = width;
   ctx.setLineDash([6, 4]);
-  ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(ex, ey); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(ex2, ey2); ctx.stroke();
   ctx.setLineDash([]);
-
-  // Arrowhead
   const ah = 8, aw = 4;
   ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.moveTo(ex + nx * ah, ey + ny * ah);
-  ctx.lineTo(ex - ny * aw, ey + nx * aw);
-  ctx.lineTo(ex + ny * aw, ey - nx * aw);
+  ctx.moveTo(ex2 + nx * ah, ey2 + ny * ah);
+  ctx.lineTo(ex2 - ny * aw, ey2 + nx * aw);
+  ctx.lineTo(ex2 + ny * aw, ey2 - nx * aw);
   ctx.closePath(); ctx.fill();
 }
 
-const CAT_COLOR = {
-  halt: '#a78bfa', move: '#4fc3f7', turn: '#4fc3f7', circle: '#4fc3f7',
-  cone: '#4fc3f7', equip: '#fb923c', front: '#4fc3f7', leave: '#f472b6',
-  recall: '#f472b6', pace: '#4fc3f7',
-};
-
-function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isLight) {
+function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isLight, nestStatus, nestToName) {
   const r = 13;
-  const color = ex.stat ? '#a78bfa' : (ex.eq ? '#fb923c' : (ex.cat === 'leave' || ex.cat === 'recall' ? '#f472b6' : (isLight ? '#1a6bb5' : '#4fc3f7')));
+  // Normal color logic
+  const normalColor = ex.stat ? '#a78bfa' : (ex.eq ? '#fb923c' : (ex.cat === 'leave' || ex.cat === 'recall' ? '#f472b6' : (isLight ? '#1a6bb5' : '#4fc3f7')));
+  // Nesting overrides border color
+  let ringColor = normalColor;
+  if (nestStatus === 'keep')   ringColor = '#2dd4a0';
+  if (nestStatus === 'swap')   ringColor = '#fb923c';
+  if (nestStatus === 'insert') ringColor = '#4fc3f7';
+  if (nestStatus === 'unresolved') ringColor = '#ff5252';
   const strokeW = isLight ? 2.5 : 2;
 
-  // Violation glow ring
+  // Violation glow
   if (highlight) {
     ctx.beginPath(); ctx.arc(cx, cy, r + 6, 0, Math.PI * 2);
     ctx.fillStyle = isLight ? 'rgba(217,48,37,0.12)' : 'rgba(255,82,82,0.18)'; ctx.fill();
@@ -1542,61 +1485,83 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
     ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
   }
 
-  // Circle
+  // Nesting outer ring for swap/keep/insert
+  if (nestStatus) {
+    ctx.beginPath(); ctx.arc(cx, cy, r + 5, 0, Math.PI * 2);
+    if (nestStatus === 'keep')   ctx.fillStyle = 'rgba(45,212,160,0.12)';
+    else if (nestStatus === 'swap') ctx.fillStyle = 'rgba(251,146,60,0.15)';
+    else ctx.fillStyle = 'rgba(79,195,247,0.12)';
+    ctx.fill();
+    ctx.strokeStyle = ringColor; ctx.lineWidth = 2;
+    ctx.setLineDash([3, 2]); ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  // Circle fill
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.fillStyle = nodeFill; ctx.fill();
-  ctx.strokeStyle = color; ctx.lineWidth = strokeW; ctx.stroke();
+  ctx.strokeStyle = ringColor; ctx.lineWidth = nestStatus ? strokeW + 1 : strokeW; ctx.stroke();
 
   // Number
-  ctx.fillStyle = color;
+  ctx.fillStyle = nestStatus ? ringColor : normalColor;
   ctx.font = `bold ${num >= 10 ? '10' : '13'}px Arial, sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(num, cx, cy);
 
-  // Sign thumbnail — rotated to face the incoming heading
+  // Sign thumbnail — position depends on type
   if (showSigns) {
     const img = signImages[ex.id];
     if (img) {
       const thumbSize = 64;
       const gap = 5;
-
-      // The sign always sits to the handler's right = 90° clockwise from incoming heading
-      // Sign face points toward incoming heading (handler reads it as they approach)
       const inHeadRad = ((ex.heading || 0) * Math.PI) / 180;
 
-      // Place sign to the right of the path (90° clockwise from heading)
-      const rightAngle = inHeadRad + Math.PI / 2;
-      const signDist = r + gap + thumbSize / 2;
-      const scx = cx + Math.sin(rightAngle) * signDist;
-      const scy = cy - Math.cos(rightAngle) * signDist;
+      let signDist, scx, scy;
+      if (SIGN_IN_FRONT.has(ex.id)) {
+        // Direction-change signs: place IN FRONT (along incoming heading direction)
+        const frontDist = r + gap + thumbSize / 2;
+        scx = cx + Math.sin(inHeadRad) * frontDist;
+        scy = cy - Math.cos(inHeadRad) * frontDist;
+      } else {
+        // All other signs: handler's RIGHT (90° clockwise from incoming heading)
+        const rightAngle = inHeadRad + Math.PI / 2;
+        signDist = r + gap + thumbSize / 2;
+        scx = cx + Math.sin(rightAngle) * signDist;
+        scy = cy - Math.cos(rightAngle) * signDist;
+      }
 
       ctx.save();
       ctx.translate(scx, scy);
-      // Rotate so the sign face points along the incoming heading
       ctx.rotate(inHeadRad);
-
-      const hw = thumbSize / 2, hh = thumbSize / 2;
-      // White background
+      const hw = thumbSize / 2;
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.roundRect(-hw - 1, -hh - 1, thumbSize + 2, thumbSize + 2, 3);
+      if (ctx.roundRect) ctx.roundRect(-hw - 1, -hw - 1, thumbSize + 2, thumbSize + 2, 3);
+      else ctx.rect(-hw - 1, -hw - 1, thumbSize + 2, thumbSize + 2);
       ctx.fill();
-      ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+      ctx.strokeStyle = ringColor; ctx.lineWidth = nestStatus ? 2.5 : 1.5;
       ctx.stroke();
-
-      // Draw image centered
       const aspect = img.naturalWidth / img.naturalHeight;
       let dw = thumbSize, dh = thumbSize;
       if (aspect > 1) dh = thumbSize / aspect;
       else dw = thumbSize * aspect;
       ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
-
       ctx.restore();
+
+      // If swap preview: show "→ NewName" label below thumbnail
+      if (nestStatus === 'swap' && nestToName) {
+        ctx.save();
+        ctx.translate(scx, scy + thumbSize / 2 + 10);
+        ctx.fillStyle = '#fb923c';
+        ctx.font = 'bold 8px Barlow, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText('→ ' + nestToName.substring(0, 16), 0, 0);
+        ctx.restore();
+      }
     }
   }
 
-  // Label below circle (not rotated)
-  ctx.fillStyle = labelColor;
+  // Label below circle
+  ctx.fillStyle = nestStatus ? ringColor : labelColor;
   ctx.font = '7px Barlow, sans-serif';
   ctx.textBaseline = 'top'; ctx.textAlign = 'center';
   const shortName = ex.n.length > 14 ? ex.n.substring(0, 13) + '…' : ex.n;
@@ -1622,7 +1587,6 @@ function drawStartFinish(ctx, cx, cy, label, color, nodeFill, isLight) {
 function updateSidebar(placed, cls, cfg) {
   const exercises = placed.filter(p => p.cat !== 'start' && p.cat !== 'finish');
   document.getElementById('exCount').textContent = exercises.length;
-  
   const listEl = document.getElementById('exList');
   listEl.innerHTML = '';
   exercises.forEach((ex, i) => {
@@ -1632,72 +1596,40 @@ function updateSidebar(placed, cls, cfg) {
     const imgEl = signImages[ex.id]
       ? `<img src="${signImages[ex.id].src}" style="width:32px;height:32px;object-fit:contain;border-radius:3px;border:1px solid ${color};background:#fff;flex-shrink:0;">`
       : `<div style="width:32px;height:32px;border-radius:3px;border:1px solid var(--border);background:var(--bg3);flex-shrink:0;"></div>`;
-    div.innerHTML = `
-      <div class="ex-num" style="border-color:${color};color:${color}">${i+1}</div>
-      ${imgEl}
-      <div class="ex-text">
-        <div class="ex-id">${ex.id}</div>
-        <div class="ex-name">${ex.n}</div>
-        <div class="ex-flag">
-          ${ex.stat ? '<span class="flag-stat">◾ Stationary</span> ' : ''}
-          ${ex.eq ? `<span class="flag-eq">▲ ${ex.eq}</span> ` : ''}
-          ${ex.seq ? `<span class="flag-seq">↝ ${ex.seq}</span>` : ''}
-        </div>
-      </div>`;
+    div.innerHTML = `<div class="ex-num" style="border-color:${color};color:${color}">${i+1}</div>${imgEl}<div class="ex-text"><div class="ex-id">${ex.id}</div><div class="ex-name">${ex.n}</div><div class="ex-flag">${ex.stat ? '<span class="flag-stat">◾ Stationary</span> ' : ''}${ex.eq ? `<span class="flag-eq">▲ ${ex.eq}</span> ` : ''}${ex.seq ? `<span class="flag-seq">↝ ${ex.seq}</span>` : ''}</div></div>`;
     listEl.appendChild(div);
   });
 
-  // Validation
   const count = exercises.length;
   const inRange = count >= cfg.min && count <= cfg.max;
   setVal('v-count', `${count} exercises (need ${cfg.min}–${cfg.max})`, inRange ? 'ok' : 'err');
-  
   const statCount = exercises.filter(e => e.stat).length;
   const maxStat = Math.floor(count / 3);
   setVal('v-stat', `${statCount} stationary (max ~${maxStat})`, statCount <= maxStat ? 'ok' : 'warn');
-  
-  // Class minimum
   const ownIds = CLASS_OWN_IDS[cls] || new Set();
   const classSpecificCount = exercises.filter(ex => ownIds.has(ex.id)).length;
   if (cfg.minFromClass > 0) {
-    const ok = classSpecificCount >= cfg.minFromClass;
-    setVal('v-class', `${classSpecificCount}/${cfg.minFromClass} from ${cls} class`, ok ? 'ok' : 'err');
+    setVal('v-class', `${classSpecificCount}/${cfg.minFromClass} from ${cls} class`, classSpecificCount >= cfg.minFromClass ? 'ok' : 'err');
   } else {
     setVal('v-class', 'No class minimum (Starter / Zoom 1 use full pool)', 'ok');
   }
-  
-  // Sequence check
   let seqOk = true, seqNote = 'All sequences valid';
   for (let i = 0; i < exercises.length - 1; i++) {
-    const ex = exercises[i];
-    const next = exercises[i+1];
-    if (PACE_AFTER[ex.id] && !PACE_AFTER[ex.id].includes(next.id)) {
-      seqOk = false; seqNote = `${ex.id} must be followed by ${PACE_AFTER[ex.id].join(' or ')}`; break;
-    }
-    if (ex.cat === 'leave') {
-      const valid = (RECALL_MAP[ex.id] || []).includes(next.id);
-      if (!valid) { seqOk = false; seqNote = `${ex.id} must be followed by recall`; break; }
-    }
+    const ex = exercises[i], next = exercises[i+1];
+    if (PACE_AFTER[ex.id] && !PACE_AFTER[ex.id].includes(next.id)) { seqOk = false; seqNote = `${ex.id} must be followed by ${PACE_AFTER[ex.id].join(' or ')}`; break; }
+    if (ex.cat === 'leave' && !(RECALL_MAP[ex.id] || []).includes(next.id)) { seqOk = false; seqNote = `${ex.id} must be followed by recall`; break; }
   }
   setVal('v-seq', seqNote, seqOk ? 'ok' : 'err');
-  
-  // Distance check — only consecutive pairs in path need 10ft minimum
   const minD = parseInt(document.getElementById('minDist').value);
   const allPoints = [placed[0], ...exercises, placed[placed.length - 1]];
   let minFound = Infinity;
-  let violatingPair = null;
   for (let i = 0; i < allPoints.length - 1; i++) {
     const d = dist(allPoints[i].pos, allPoints[i + 1].pos);
-    if (d < minFound) { minFound = d; if (d < minD) violatingPair = [i, i + 1]; }
+    if (d < minFound) minFound = d;
   }
   const distOk = minFound >= minD;
-  const distTxt = allPoints.length < 2 ? `Min ${minD}ft enforced (consecutive)` :
-    `Closest consecutive: ${minFound.toFixed(1)}ft (min ${minD}ft)`;
-  setVal('v-dist', distTxt, distOk ? 'ok' : 'err');
-  
-  // Meta
-  document.getElementById('canvasMeta').textContent =
-    `${count} exercises · ${cfg.leash ? 'On or Off Leash' : 'Off Leash'} · QQ: ${cfg.qual}+ pts · Ring: ${parseInt(document.getElementById('ringW').value)*parseInt(document.getElementById('ringH').value)} sq ft`;
+  setVal('v-dist', allPoints.length < 2 ? `Min ${minD}ft enforced` : `Closest consecutive: ${minFound.toFixed(1)}ft (min ${minD}ft)`, distOk ? 'ok' : 'err');
+  document.getElementById('canvasMeta').textContent = `${count} exercises · ${cfg.leash ? 'On or Off Leash' : 'Off Leash'} · QQ: ${cfg.qual}+ pts · Ring: ${parseInt(document.getElementById('ringW').value)*parseInt(document.getElementById('ringH').value)} sq ft`;
 }
 
 function setVal(id, text, type) {
@@ -1706,6 +1638,36 @@ function setVal(id, text, type) {
   el.className = `val-item val-${type}`;
 }
 
+// ════════════════════════════════════════════════
+// TOAST & WARNINGS
+// ════════════════════════════════════════════════
+function showToast(msg) {
+  const old = document.getElementById('cwags-toast');
+  if (old) old.remove();
+  const tip = document.createElement('div');
+  tip.id = 'cwags-toast';
+  tip.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#21262f;border:1px solid #4a5468;color:#e8eaf0;padding:10px 18px;border-radius:6px;font-size:13px;z-index:999;box-shadow:0 4px 20px #0006;pointer-events:none;';
+  tip.textContent = msg;
+  document.body.appendChild(tip);
+  setTimeout(() => tip.remove(), 3000);
+}
+
+function showDistanceWarning(violatingIndices) {
+  distViolators = new Set(violatingIndices);
+  redraw();
+  const old = document.getElementById('dist-warn-tip');
+  if (old) old.remove();
+  const tip = document.createElement('div');
+  tip.id = 'dist-warn-tip';
+  tip.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#21262f;border:1px solid #ff5252;color:#ff5252;padding:8px 16px;border-radius:6px;font-size:12px;z-index:999;box-shadow:0 4px 20px #0006;pointer-events:none;';
+  tip.textContent = '⚠ Too close — move the highlighted station(s) further apart.';
+  document.body.appendChild(tip);
+  setTimeout(() => { tip.remove(); distViolators = new Set(); redraw(); }, 3000);
+}
+
+// ════════════════════════════════════════════════
+// EXPORT PDF
+// ════════════════════════════════════════════════
 function exportPDF() {
   const canvas = document.getElementById('courseCanvas');
   const imgData = canvas.toDataURL('image/png');
@@ -1715,117 +1677,52 @@ function exportPDF() {
   const ringH = parseInt(document.getElementById('ringH').value);
   const exercises = currentCourse.filter(p => p.cat !== 'start' && p.cat !== 'finish');
   const dateStr = new Date().toLocaleDateString('en-CA', { year:'numeric', month:'long', day:'numeric' });
-
   const clsColors = { S:'#2dd4a0', A:'#4fc3f7', P:'#a78bfa', ARF:'#fb923c', Z1:'#f472b6', Z15:'#f472b6', Z2:'#f472b6' };
   const clsColor = clsColors[cls] || '#f0a500';
-
   const stationRows = exercises.map((ex, i) => {
     const color = ex.stat ? '#a78bfa' : (ex.eq ? '#fb923c' : (ex.cat==='leave'||ex.cat==='recall' ? '#f472b6' : '#4fc3f7'));
-    return `<tr>
-      <td style="color:${color};font-weight:700">${i+1}</td>
-      <td style="color:#6b7589">${ex.id}</td>
-      <td>${ex.n}</td>
-      <td style="font-size:7pt;color:#6b7589">${ex.stat?'Stat':''}${ex.eq?' ▲'+ex.eq:''}</td>
-    </tr>`;
+    return `<tr><td style="color:${color};font-weight:700">${i+1}</td><td style="color:#6b7589">${ex.id}</td><td>${ex.n}</td><td style="font-size:7pt;color:#6b7589">${ex.stat?'Stat':''}${ex.eq?' ▲'+ex.eq:''}</td></tr>`;
   }).join('');
-
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-<style>
-  @page { size: 11in 8.5in; margin: 0.75in; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { width: 100%; height: 100%; }
-  body { font-family: Arial, sans-serif; background: #fff; color: #222; }
-  .page {
-    width: 100%;
-    height: calc(8.5in - 1.5in);
-    display: flex; flex-direction: column;
-  }
-  .header {
-    background: #f5f6fa; border-bottom: 3px solid ${clsColor};
-    padding: 8px 14px; display: flex; align-items: center;
-    justify-content: space-between; flex-shrink: 0;
-  }
-  .header-title { font-size: 16pt; font-weight: 900; letter-spacing: 1px; color: ${clsColor}; }
-  .header-sub { font-size: 8pt; color: #6b7589; letter-spacing: 1px; margin-top: 2px; }
-  .class-badge {
-    background: ${clsColor}22; border: 2px solid ${clsColor}; color: ${clsColor};
-    font-size: 10pt; font-weight: 700; letter-spacing: 1px; padding: 3px 10px; border-radius: 3px;
-  }
-  .meta { font-size: 8pt; color: #6b7589; margin-top: 4px; text-align: right; }
-  .body { display: flex; flex: 1; min-height: 0; }
-  .course-img {
-    flex: 1; padding: 8px;
-    display: flex; align-items: center; justify-content: center;
-    min-width: 0;
-  }
-  .course-img img {
-    max-width: 100%; max-height: 100%;
-    width: auto; height: auto;
-    object-fit: contain;
-    border: 1px solid #dde; border-radius: 4px;
-    display: block;
-  }
-  .sidebar {
-    width: 2.4in; flex-shrink: 0; border-left: 1px solid #dde;
-    padding: 10px 10px; display: flex; flex-direction: column; gap: 8px;
-  }
-  .sidebar-title { font-size: 7pt; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #6b7589; margin-bottom: 4px; }
-  .station-table { width: 100%; border-collapse: collapse; font-size: 8pt; }
-  .station-table th { text-align: left; padding: 2px 4px; font-size: 7pt; color: #6b7589; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #eee; }
-  .station-table td { padding: 2px 4px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
-  .footer {
-    background: #f5f6fa; border-top: 1px solid #dde;
-    padding: 5px 14px; font-size: 7.5pt; color: #6b7589;
-    display: flex; justify-content: space-between; flex-shrink: 0;
-  }
-  @media print {
-    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .page { height: calc(8.5in - 1.5in); }
-  }
-</style></head><body>
-<div class="page">
-  <div class="header">
-    <div><div class="header-title">🐾 C-WAGS RALLY COURSE</div><div class="header-sub">Canine-Work And Games · Course Design Tool</div></div>
-    <div style="text-align:right"><div class="class-badge">${cfg.name.toUpperCase()}</div><div class="meta">${exercises.length} stations · ${cfg.leash?'On/Off Leash':'Off Leash'} · Qualify: ${cfg.qual}+ pts · ${ringW}ft × ${ringH}ft</div></div>
-  </div>
-  <div class="body">
-    <div class="course-img"><img src="${imgData}" alt="Course diagram"></div>
-    <div class="sidebar">
-      <div><div class="sidebar-title">Station List</div>
-        <table class="station-table">
-          <thead><tr><th>#</th><th>ID</th><th>Exercise</th><th>Notes</th></tr></thead>
-          <tbody>${stationRows}</tbody>
-        </table>
-      </div>
-      <div style="margin-top:auto;font-size:7pt;color:#aaa;line-height:1.6">
-        Class rules: ${cfg.min}–${cfg.max} stations · Min 10ft spacing<br>
-        Ring: ${cfg.ring[0].toLocaleString()}–${cfg.ring[1].toLocaleString()} sq ft<br>
-        ${cfg.minFromClass > 0 ? `Min ${cfg.minFromClass} ${cls}-class signs required` : 'No class sign minimum'}
-      </div>
-    </div>
-  </div>
-  <div class="footer">
-    <span>Generated ${dateStr}</span>
-    <span>C-WAGS Rally · ${cfg.name} Course</span>
-  </div>
-</div>
-<script>window.onload = () => { window.print(); }<\/script>
-</body></html>`;
-
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+    @page{size:11in 8.5in;margin:0.75in}*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#fff;color:#222}
+    .page{width:100%;height:calc(8.5in - 1.5in);display:flex;flex-direction:column}
+    .header{background:#f5f6fa;border-bottom:3px solid ${clsColor};padding:8px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+    .header-title{font-size:16pt;font-weight:900;letter-spacing:1px;color:${clsColor}}.header-sub{font-size:8pt;color:#6b7589;letter-spacing:1px;margin-top:2px}
+    .class-badge{background:${clsColor}22;border:2px solid ${clsColor};color:${clsColor};font-size:10pt;font-weight:700;letter-spacing:1px;padding:3px 10px;border-radius:3px}
+    .meta{font-size:8pt;color:#6b7589;margin-top:4px;text-align:right}.body{display:flex;flex:1;min-height:0}
+    .course-img{flex:1;padding:8px;display:flex;align-items:center;justify-content:center;min-width:0}
+    .course-img img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;border:1px solid #dde;border-radius:4px;display:block}
+    .sidebar{width:2.4in;flex-shrink:0;border-left:1px solid #dde;padding:10px}
+    .sidebar-title{font-size:7pt;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7589;margin-bottom:4px}
+    .station-table{width:100%;border-collapse:collapse;font-size:8pt}
+    .station-table th{text-align:left;padding:2px 4px;font-size:7pt;color:#6b7589;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid #eee}
+    .station-table td{padding:2px 4px;border-bottom:1px solid #f0f0f0;vertical-align:middle}
+    .footer{background:#f5f6fa;border-top:1px solid #dde;padding:5px 14px;font-size:7.5pt;color:#6b7589;display:flex;justify-content:space-between;flex-shrink:0}
+    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+  </style></head><body><div class="page">
+    <div class="header"><div><div class="header-title">🐾 C-WAGS RALLY COURSE</div><div class="header-sub">Canine-Work And Games · Course Design Tool</div></div>
+    <div style="text-align:right"><div class="class-badge">${cfg.name.toUpperCase()}</div><div class="meta">${exercises.length} stations · ${cfg.leash?'On/Off Leash':'Off Leash'} · Qualify: ${cfg.qual}+ pts · ${ringW}ft × ${ringH}ft</div></div></div>
+    <div class="body"><div class="course-img"><img src="${imgData}" alt="Course diagram"></div>
+    <div class="sidebar"><div><div class="sidebar-title">Station List</div>
+      <table class="station-table"><thead><tr><th>#</th><th>ID</th><th>Exercise</th><th>Notes</th></tr></thead><tbody>${stationRows}</tbody></table></div>
+      <div style="margin-top:auto;font-size:7pt;color:#aaa;line-height:1.6">Class rules: ${cfg.min}–${cfg.max} stations · Min 10ft spacing<br>Ring: ${cfg.ring[0].toLocaleString()}–${cfg.ring[1].toLocaleString()} sq ft<br>${cfg.minFromClass > 0 ? `Min ${cfg.minFromClass} ${cls}-class signs required` : 'No class sign minimum'}</div></div></div>
+    <div class="footer"><span>Generated ${dateStr}</span><span>C-WAGS Rally · ${cfg.name} Course</span></div>
+  </div><script>window.onload=()=>{window.print()}<\/script></body></html>`;
   const blob = new Blob([html], { type: 'text/html' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = `CWAGS-Rally-${cls}-course.html`; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
-
   const tip = document.createElement('div');
   tip.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#21262f;border:1px solid #4a5468;color:#e8eaf0;padding:10px 18px;border-radius:6px;font-size:12px;z-index:999;box-shadow:0 4px 20px #0006;pointer-events:none;';
-  tip.innerHTML = '📄 <strong>File downloaded.</strong> Open it in your browser, then press <kbd style="background:#2a3040;padding:1px 5px;border-radius:3px">Ctrl+P</kbd> / <kbd style="background:#2a3040;padding:1px 5px;border-radius:3px">⌘P</kbd> → Save as PDF';
+  tip.innerHTML = '📄 <strong>File downloaded.</strong> Open in browser → <kbd style="background:#2a3040;padding:1px 5px;border-radius:3px">Ctrl+P</kbd> → Save as PDF';
   document.body.appendChild(tip);
   setTimeout(() => tip.remove(), 6000);
 }
 
-// Generate on load
+// ════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════
 window.onload = () => {
   updateRingInfo();
   autoLoadGithubSigns();
