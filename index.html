@@ -1583,20 +1583,35 @@ document.addEventListener('DOMContentLoaded', () => {
     canvas.classList.remove('dragging');
     if (mouseDidMove) {
       const minD = parseInt(document.getElementById('minDist').value);
-      const allPoints = currentCourse;
-      let violated = false;
-      for (let i = 0; i < allPoints.length - 1; i++) {
-        if (dist(allPoints[i].pos, allPoints[i + 1].pos) < minD) { violated = true; break; }
-      }
-      if (violated) {
-        currentCourse[dragIdx].pos = { ...dragStartFt };
+      const idx  = dragIdx;
+
+      // Only check the two segments CONNECTED to the dragged station.
+      // This lets the judge fix one violation at a time without being
+      // trapped — the old code checked the whole course and snapped back
+      // to a position that was itself already violating.
+      const prev = idx > 0                          ? currentCourse[idx - 1] : null;
+      const next = idx < currentCourse.length - 1  ? currentCourse[idx + 1] : null;
+      const toPrev = prev ? dist(currentCourse[idx].pos, prev.pos) : Infinity;
+      const toNext = next ? dist(currentCourse[idx].pos, next.pos) : Infinity;
+      const localViolation = (toPrev < minD) || (toNext < minD);
+
+      if (localViolation) {
+        // New position makes THIS station's own connections worse — snap back
+        currentCourse[idx].pos = { ...dragStartFt };
+        // Highlight only the segments that are still broken after snap-back
+        const allPoints = currentCourse;
         const badIdx = [];
         for (let i = 0; i < allPoints.length - 1; i++) {
-          if (dist(allPoints[i].pos, allPoints[i + 1].pos) < minD) { badIdx.push(i); badIdx.push(i + 1); }
+          if (dist(allPoints[i].pos, allPoints[i + 1].pos) < minD) {
+            badIdx.push(i); badIdx.push(i + 1);
+          }
         }
         recalcHeadings(currentCourse); redraw(); updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
-        showDistanceWarning([...new Set(badIdx)]);
-      } else { recalcHeadings(currentCourse); redraw(); updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]); }
+        if (badIdx.length) showDistanceWarning([...new Set(badIdx)]);
+      } else {
+        // Move accepted — other existing violations elsewhere are not this drag's problem
+        recalcHeadings(currentCourse); redraw(); updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
+      }
     } else {
       const idx = dragIdx;
       const clicked = currentCourse[idx];
@@ -1624,15 +1639,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dragIdx < 0) return;
     if (mouseDidMove) {
       const minD = parseInt(document.getElementById('minDist').value);
-      const allPoints = currentCourse;
-      let violated = false;
-      for (let i = 0; i < allPoints.length - 1; i++) {
-        if (dist(allPoints[i].pos, allPoints[i + 1].pos) < minD) { violated = true; break; }
+      const idx  = dragIdx;
+      const prev = idx > 0                         ? currentCourse[idx - 1] : null;
+      const next = idx < currentCourse.length - 1 ? currentCourse[idx + 1] : null;
+      const toPrev = prev ? dist(currentCourse[idx].pos, prev.pos) : Infinity;
+      const toNext = next ? dist(currentCourse[idx].pos, next.pos) : Infinity;
+      if ((toPrev < minD) || (toNext < minD)) {
+        currentCourse[idx].pos = { ...dragStartFt };
       }
-      if (violated) {
-        currentCourse[dragIdx].pos = { ...dragStartFt };
-        recalcHeadings(currentCourse); redraw(); updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
-      } else { recalcHeadings(currentCourse); redraw(); updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]); }
+      recalcHeadings(currentCourse); redraw(); updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]);
     }
     dragIdx = -1;
   });
