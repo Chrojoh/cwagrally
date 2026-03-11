@@ -568,7 +568,7 @@ function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave
 
   const target  = rndInt(cfg.min, cfg.max);
   const ownIds  = CLASS_OWN_IDS[cls] || new Set();
-  const MARGIN  = 7;   // feet from ring edge
+  const MARGIN  = 4;   // feet from ring edge
 
   // ── Helpers ───────────────────────────────────────────────────────────
   // Compass heading A→B on the canvas (0=North=up, 90=East=right, clockwise+)
@@ -593,62 +593,79 @@ function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave
   // A controlled random jitter inside each cell adds variety.
   // ══════════════════════════════════════════════════════════════════════
   function buildWaypoints(n) {
-    // How many columns to use?  Wider rings get one more column.
-    const cols  = ringW >= 65 ? 4 : 3;
-    const rows  = Math.ceil((n + 1) / cols) + 1;
-    const cellW = (ringW - MARGIN * 2) / cols;
-    const cellH = (ringH - MARGIN * 2) / rows;
+    // ── Grid sizing ──────────────────────────────────────────────────────
+    // Goal: cell dimensions both ≥ minDist so consecutive stations fit naturally.
+    //
+    // Strategy:
+    //   • Start with rows derived from ring height (how many minDist strips fit)
+    //   • Then compute cols needed to seat n stations across those rows
+    //   • This keeps both cellW and cellH close to minDist rather than making
+    //     one dimension tiny (the old bug: 8-row grid had cellH = 4.5 ft!)
 
-    // Build the serpentine zone centres, bottom-to-top, alternating left/right
+    const usableW = ringW - MARGIN * 2;
+    const usableH = ringH - MARGIN * 2;
+
+    // How many rows can fit vertically with ≥minDist row height?
+    const rows = Math.max(3, Math.min(6, Math.floor(usableH / (minDist * 1.05))));
+    // Enough columns to seat all n stations (one per cell), plus 1 spare
+    const cols = Math.max(3, Math.ceil(n / rows) + 1);
+
+    const cellW = usableW / cols;
+    const cellH = usableH / rows;
+
+    // ── Boustrophedon (lawnmower) zone centres ───────────────────────────
+    // Row 0 = bottom, alternates L→R, R→L each row.
+    // This produces a path that covers the whole ring without crossing itself.
     const zones = [];
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const col = (r % 2 === 0) ? c : (cols - 1 - c);
         zones.push({
           x: MARGIN + (col + 0.5) * cellW,
-          y: MARGIN + ((rows - 1 - r) + 0.5) * cellH   // row 0 = bottom
+          y: MARGIN + ((rows - 1 - r) + 0.5) * cellH,   // row 0 = bottom
+          rowBand: { lo: MARGIN + (rows - 1 - r) * cellH,
+                     hi: MARGIN + (rows - r) * cellH }
         });
       }
     }
 
-    // Start: near bottom-centre, inside the first zone with jitter
+    // ── Start: just inside the ring, near bottom-centre ─────────────────
     const start = {
-      x: ringW * (0.3 + Math.random() * 0.4),
-      y: ringH - MARGIN - rnd(1, 4)
+      x: MARGIN + usableW * (0.3 + Math.random() * 0.4),
+      y: ringH - MARGIN - rnd(0.5, 2)
     };
     const pts = [start];
 
-    // Pick n waypoints from zones starting at index 1 (skip zone closest to start)
+    // ── Place n waypoints, one per zone ─────────────────────────────────
     let zi = 1;
     for (let i = 0; i < n; i++, zi++) {
       const zone = zones[zi % zones.length];
 
-      // Jitter: smaller = more regular, larger = more varied
-      // Keep jitter < 40% of cell so boustrophedon order is preserved
-      const jx = cellW * 0.35 * (Math.random() * 2 - 1) * randFactor;
-      const jy = cellH * 0.35 * (Math.random() * 2 - 1) * randFactor;
+      // Jitter: at most 38% of cell in each axis — stations cannot jump row bands
+      const jx = cellW  * 0.38 * (Math.random() * 2 - 1) * (0.3 + randFactor * 0.7);
+      const jy = cellH  * 0.38 * (Math.random() * 2 - 1) * (0.3 + randFactor * 0.7);
 
+      // Clamp to this zone's row band so boustrophedon order is never broken
       let cand = {
         x: Math.max(MARGIN, Math.min(ringW - MARGIN, zone.x + jx)),
-        y: Math.max(MARGIN, Math.min(ringH - MARGIN, zone.y + jy))
+        y: Math.max(zone.rowBand.lo + 0.5, Math.min(zone.rowBand.hi - 0.5, zone.y + jy))
       };
 
-      // Enforce minimum distance from previous waypoint
+      // Enforce minimum distance from previous waypoint by pushing outward
       const prev = pts[pts.length - 1];
       const d    = Math.hypot(cand.x - prev.x, cand.y - prev.y);
       if (d < minDist) {
-        // Push candidate away from prev along the same bearing
         const ang = Math.atan2(cand.y - prev.y, cand.x - prev.x);
         cand = {
-          x: Math.max(MARGIN, Math.min(ringW - MARGIN, prev.x + Math.cos(ang) * (minDist + 3))),
-          y: Math.max(MARGIN, Math.min(ringH - MARGIN, prev.y + Math.sin(ang) * (minDist + 3)))
+          x: Math.max(MARGIN, Math.min(ringW - MARGIN, prev.x + Math.cos(ang) * (minDist + 2))),
+          y: Math.max(zone.rowBand.lo + 0.5, Math.min(zone.rowBand.hi - 0.5,
+               prev.y + Math.sin(ang) * (minDist + 2)))
         };
       }
 
       pts.push(cand);
     }
     return pts;
-    // Returns [start, wp1 … wpN]  — length = n+1
   }
 
   // ══════════════════════════════════════════════════════════════════════
