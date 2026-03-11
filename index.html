@@ -268,11 +268,13 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
       <button id="nestModalClose" onclick="closeNestModal()">✕</button>
     </div>
     <div id="nestModalBody">
-      <div style="font-size:14px;color:var(--text2);line-height:1.5;">
-        Keep all sign positions exactly where they are. Only the signs that <em>must</em> change for the new class will be swapped — everything else stays put. Judges get the minimum physical work.
-      </div>
-      <div>
-        <div class="section-label" style="margin-bottom:6px;">Target Class</div>
+
+      <!-- Step 1: pick class -->
+      <div id="nestStep1">
+        <div style="font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:10px;">
+          Walk the same path. Only pull the signs that must change — everything else stays on its stake.
+          Pick the class you are nesting <em>to</em>:
+        </div>
         <div class="class-btns" id="nestClassBtns">
           <button class="cls-btn" onclick="selectNestTarget('S')">Starter</button>
           <button class="cls-btn" onclick="selectNestTarget('A')">Advanced</button>
@@ -282,19 +284,31 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
           <button class="cls-btn" onclick="selectNestTarget('Z15')">Zoom 1.5</button>
           <button class="cls-btn" onclick="selectNestTarget('Z2')">Zoom 2</button>
         </div>
+        <div id="nestNoCourse" style="font-size:14px;color:var(--red);padding:8px 0;display:none;">⚠ Generate or load a course first.</div>
       </div>
+
+      <!-- Step 2: briefing + plan (shown after class picked) -->
       <div id="nestAnalysisArea" style="display:none;">
-        <div class="section-label" style="margin-bottom:6px;">Change Summary</div>
-        <div class="nest-summary" id="nestSummary"></div>
-        <div style="margin-top:10px;font-size:13px;font-weight:700;color:var(--text3);margin-bottom:4px;">SIGN-BY-SIGN PLAN</div>
+
+        <!-- Plain-English briefing box -->
+        <div id="nestBriefing" style="background:var(--bg3);border-radius:6px;padding:10px 14px;border:1px solid var(--border);font-size:14px;line-height:1.8;"></div>
+
+        <!-- Stats row -->
+        <div class="nest-summary" id="nestSummary" style="margin-top:10px;"></div>
+
+        <!-- Sign-by-sign table -->
+        <div style="margin-top:12px;font-size:12px;font-weight:700;color:var(--text3);letter-spacing:2px;margin-bottom:4px;">STATION-BY-STATION PLAN — click any SWAP row to choose a different sign</div>
         <div class="nest-change-list" id="nestChangeList"></div>
+
+        <!-- Pending adds/removes notice -->
+        <div id="nestPendingNotice" style="display:none;margin-top:10px;padding:8px 12px;border-radius:5px;border:1px solid var(--gold);background:rgba(240,165,0,0.08);font-size:13px;color:var(--gold);line-height:1.6;"></div>
       </div>
-      <div id="nestNoCourse" style="font-size:14px;color:var(--text3);text-align:center;padding:20px 0;display:none;">Generate or load a course first.</div>
+
     </div>
     <div id="nestModalFooter">
       <button class="cancel-btn" onclick="closeNestModal()">Cancel</button>
       <button class="cancel-btn" id="nestPreviewBtn" onclick="previewNesting()" style="display:none;">👁 Preview on Canvas</button>
-      <button class="apply-btn" id="nestApplyBtn" onclick="applyNesting()" style="display:none;">✅ Apply Nesting</button>
+      <button class="apply-btn" id="nestSaveBtn" onclick="saveNestedCourse()" style="display:none;">💾 Save Nested Course</button>
     </div>
   </div>
 </div>
@@ -755,232 +769,491 @@ function selectNestTarget(cls) {
 }
 
 /**
- * analyzeNesting — core algorithm
- * For every exercise station, decide: keep, swap (with best substitute), or flag as unresolved.
- * Also determines if new stations need inserting to meet class minimum.
- * Returns { plan[], pendingCourse[], keepCount, swapCount, insertCount, unresolved }
+ * analyzeNesting — core nesting algorithm
+ *
+ * For each exercise station in the current course:
+ *   KEEP   — sign is valid for the target class, leave it on its stake
+ *   SWAP   — sign is invalid; find the best legal replacement for that position
+ *   REMOVE — station count is over the target class maximum; flag for removal
+ *
+ * Also identifies how many stations need to be ADDED and what type,
+ * including specific equipment requirements and class-minimum sign types.
+ *
+ * Returns a full analysis object used by both the UI and saveNestedCourse().
  */
 function analyzeNesting(targetCls) {
-  const cfg = CLASS_CFG[targetCls];
-  const includeEquip = document.getElementById('includeEquip').checked;
-  const includeLeave = document.getElementById('includeLeavedog').checked;
-  const minDist = parseInt(document.getElementById('minDist').value);
-  const ringW = parseInt(document.getElementById('ringW').value);
-  const ringH = parseInt(document.getElementById('ringH').value);
+  const cfg        = CLASS_CFG[targetCls];
+  const includeEquip  = document.getElementById('includeEquip').checked;
+  const includeLeave  = document.getElementById('includeLeavedog').checked;
+  const ringW      = parseInt(document.getElementById('ringW').value);
+  const ringH      = parseInt(document.getElementById('ringH').value);
+  const minDist    = parseInt(document.getElementById('minDist').value);
 
-  const targetPool = getPool(targetCls, includeEquip, includeLeave);
+  const targetPool     = getPool(targetCls, includeEquip, includeLeave);
   const targetValidIds = new Set(targetPool.map(e => e.id));
-  const targetOwnIds = CLASS_OWN_IDS[targetCls] || new Set();
+  const targetOwnIds   = CLASS_OWN_IDS[targetCls] || new Set();
 
-  // Deep copy course
-  let working = currentCourse.map(p => ({ ...p, pos: { ...p.pos } }));
-  const plan = []; // one entry per exercise station
+  // Working copy — positions never change during analysis
+  const working = currentCourse.map(p => ({ ...p, pos: { ...p.pos } }));
+  const exercises = working.filter(p => p.cat !== 'start' && p.cat !== 'finish');
+  const currentCount = exercises.length;
 
-  // Track usage counts (start fresh for target class context)
+  // ── Count usage for duplicate-check ──────────────────────────────
   const usedIds = {};
-  working.forEach(p => {
-    if (p.cat !== 'start' && p.cat !== 'finish' && targetValidIds.has(p.id))
+  exercises.forEach(p => {
+    if (targetValidIds.has(p.id))
       usedIds[p.id] = (usedIds[p.id] || 0) + 1;
   });
 
-  let classCount = working.filter(p => targetOwnIds.has(p.id)).length;
+  let classCount = exercises.filter(p => targetOwnIds.has(p.id)).length;
 
-  for (let i = 0; i < working.length; i++) {
-    const ex = working[i];
+  // ── Pass 1: decide KEEP or SWAP for every station ─────────────────
+  // We also need to handle REMOVE: if currentCount > cfg.max, some must go.
+  // We flag the weakest stations (easiest to remove physically) but let the
+  // judge decide which ones to actually pull.
+  const plan = []; // { courseIdx, stationNum, action, from, fromName, to?, toName?, eq? }
+  let stationNum = 0;
+
+  for (let ci = 0; ci < working.length; ci++) {
+    const ex = working[ci];
     if (ex.cat === 'start' || ex.cat === 'finish') continue;
+    stationNum++;
 
     if (targetValidIds.has(ex.id)) {
-      // This sign is valid for the target class — keep it
-      plan.push({ idx: i, action: 'keep', from: ex.id, fromName: ex.n });
+      plan.push({ courseIdx: ci, stationNum, action: 'keep',
+                  from: ex.id, fromName: ex.n, eq: ex.eq });
     } else {
-      // Need to find a substitute
-      const prevEx = working.slice(0, i).reverse().find(p => p.cat !== 'start');
-      const nextEx = working.slice(i + 1).find(p => p.cat !== 'finish');
+      // Need a substitute — find best legal candidate
+      const prevEx = working.slice(0, ci).reverse().find(p => p.cat !== 'start');
+      const nextEx = working.slice(ci + 1).find(p => p.cat !== 'finish');
 
-      // Temporarily remove from usedIds
-      if (usedIds[ex.id]) usedIds[ex.id] = Math.max(0, usedIds[ex.id] - 1);
+      // Remove this sign from usedIds temporarily
+      const prevCount = usedIds[ex.id] || 0;
+      if (prevCount > 0) usedIds[ex.id] = prevCount - 1;
 
-      const statCount = working.filter((p, j) => j !== i && p.stat && p.cat !== 'start' && p.cat !== 'finish').length;
-      const maxStat = Math.floor((working.length - 2) / 3);
+      const statCount = plan.filter(p => p.action !== 'remove' && EX[p.to || p.from]?.stat).length;
+      const maxStat   = Math.floor(currentCount / 3);
 
-      // Find best substitute — prefer class-specific if still needed
       const candidates = targetPool.filter(c => {
         if (!targetValidIds.has(c.id)) return false;
         if (!c.mult && (usedIds[c.id] || 0) >= 1) return false;
-        if (c.mult && (usedIds[c.id] || 0) >= 2) return false;
-        if (c.stat && statCount >= maxStat) return false;
+        if (c.mult  && (usedIds[c.id] || 0) >= 2) return false;
+        if (c.stat  && statCount >= maxStat) return false;
         if (cfg.zoom && (c.stat || c.cat === 'halt')) return false;
         if (RECALL_IDS.has(c.id) && (!prevEx || prevEx.cat !== 'leave')) return false;
-        if (prevEx?.cat === 'leave' && !(RECALL_MAP[prevEx.id] || []).includes(c.id)) return false;
+        if (prevEx?.cat === 'leave' && !(RECALL_MAP[prevEx.id]||[]).includes(c.id)) return false;
         if (prevEx && PACE_AFTER[prevEx.id] && !PACE_AFTER[prevEx.id].includes(c.id)) return false;
         if (nextEx && PACE_AFTER[c.id] && !PACE_AFTER[c.id].includes(nextEx.id)) return false;
-        if (c.cat === 'leave' && nextEx && !(RECALL_MAP[c.id] || []).includes(nextEx.id)) return false;
+        if (c.cat === 'leave' && nextEx && !(RECALL_MAP[c.id]||[]).includes(nextEx.id)) return false;
         if (!nextEx && (c.cat === 'leave' || PACE_AFTER[c.id])) return false;
         return true;
       });
 
-      // Prefer class-specific sign if still short
-      const preferred = classCount < cfg.minFromClass
+      // Prefer class-specific when still needed
+      const preferred = (classCount < cfg.minFromClass)
         ? candidates.filter(c => targetOwnIds.has(c.id))
         : [];
-      const pick = preferred.length > 0 ? preferred[0] : (candidates.length > 0 ? candidates[0] : null);
+      const pick = preferred.length > 0 ? preferred[0]
+                 : candidates.length  > 0 ? candidates[0]
+                 : null;
 
       if (pick) {
         usedIds[pick.id] = (usedIds[pick.id] || 0) + 1;
         if (targetOwnIds.has(pick.id)) classCount++;
-        plan.push({ idx: i, action: 'swap', from: ex.id, fromName: ex.n, to: pick.id, toName: pick.n });
-        // Update working copy so subsequent checks see correct neighbors
-        working[i] = { ...working[i], id: pick.id, n: pick.n, cat: pick.cat, stat: !!pick.stat, eq: pick.eq||null, seq: pick.seq||null };
+        // Update working so subsequent neighbour-checks are accurate
+        working[ci] = { ...working[ci], id: pick.id, n: pick.n,
+                        cat: pick.cat, stat: !!pick.stat,
+                        eq: pick.eq||null, seq: pick.seq||null };
+        plan.push({ courseIdx: ci, stationNum, action: 'swap',
+                    from: ex.id, fromName: ex.n,
+                    to: pick.id, toName: pick.n,
+                    eq: pick.eq, allCandidates: candidates });
       } else {
-        plan.push({ idx: i, action: 'unresolved', from: ex.id, fromName: ex.n });
+        // No valid substitute — flag as unresolved
         usedIds[ex.id] = (usedIds[ex.id] || 0) + 1;
+        plan.push({ courseIdx: ci, stationNum, action: 'unresolved',
+                    from: ex.id, fromName: ex.n, eq: ex.eq });
       }
     }
   }
 
-  // Check if we need to insert signs for class minimum
-  const inserts = [];
-  const stillNeeded = Math.max(0, cfg.minFromClass - classCount);
-  const currentTotal = working.filter(p => p.cat !== 'start' && p.cat !== 'finish').length;
-  const targetTotal = Math.max(cfg.min, currentTotal); // aim to meet min if we're below
+  // ── Pass 2: count analysis — how many to add or remove? ───────────
+  const resolvedCount  = plan.filter(p => p.action !== 'unresolved').length;
+  const countDelta     = cfg.min - resolvedCount;      // positive = need to add
+  const overMax        = resolvedCount - cfg.max;      // positive = need to remove
+  const classStillNeed = Math.max(0, cfg.minFromClass - classCount);
 
-  if (stillNeeded > 0 || currentTotal < cfg.min) {
-    const toInsert = Math.max(stillNeeded, cfg.min - currentTotal);
-    const gaps = [];
-    for (let i = 0; i < working.length - 1; i++) {
-      const d = dist(working[i].pos, working[i + 1].pos);
-      if (d >= minDist * 2.2) gaps.push({ i, d });
-    }
-    gaps.sort((a, b) => b.d - a.d);
+  // Equipment currently in resolved plan
+  const resolvedEquip = plan.filter(p => p.action !== 'unresolved')
+    .map(p => p.action === 'swap' ? p.eq : p.eq).filter(Boolean);
+  const hasJump    = resolvedEquip.includes('jump');
+  const hasTunnel  = resolvedEquip.includes('tunnel');
+  const hasTable   = resolvedEquip.includes('table');
 
-    const eligible = targetPool.filter(c =>
-      (stillNeeded > 0 ? targetOwnIds.has(c.id) : true) &&
-      !RECALL_IDS.has(c.id) && c.cat !== 'recall' && c.cat !== 'leave' &&
-      !PACE_AFTER[c.id] &&
-      (!c.mult ? (usedIds[c.id] || 0) < 1 : (usedIds[c.id] || 0) < 2)
-    );
+  // What eligible signs could be added?
+  const addCandidates = targetPool.filter(c =>
+    !RECALL_IDS.has(c.id) && c.cat !== 'recall' && c.cat !== 'leave' &&
+    !PACE_AFTER[c.id] &&
+    (!c.mult ? (usedIds[c.id]||0) < 1 : (usedIds[c.id]||0) < 2)
+  );
+  // Prefer class-specific for adds if still needed
+  const addPool = (classStillNeed > 0)
+    ? addCandidates.filter(c => targetOwnIds.has(c.id))
+    : addCandidates;
 
-    for (let gi = 0; gi < Math.min(toInsert, gaps.length); gi++) {
-      const pick = eligible.find(c => (!c.mult ? (usedIds[c.id] || 0) < 1 : (usedIds[c.id] || 0) < 2));
-      if (!pick) break;
-      const gap = gaps[gi];
-      const from = working[gap.i];
-      const to = working[gap.i + 1 + gi];
-      const mid = {
-        x: Math.max(5, Math.min(ringW - 5, (from.pos.x + (to?.pos.x ?? from.pos.x)) / 2 + rnd(-2, 2))),
-        y: Math.max(5, Math.min(ringH - 5, (from.pos.y + (to?.pos.y ?? from.pos.y)) / 2 + rnd(-2, 2)))
-      };
-      usedIds[pick.id] = (usedIds[pick.id] || 0) + 1;
-      inserts.push({ afterIdx: gap.i + gi, pos: mid, id: pick.id, n: pick.n, cat: pick.cat, stat: !!pick.stat, eq: pick.eq || null, seq: pick.seq || null });
-    }
+  // Suggest signs to add (just the type/name — judge places them)
+  const suggestedAdds = [];
+  const tempUsed = { ...usedIds };
+  const toAdd = Math.max(0, countDelta, classStillNeed);
+  for (let i = 0; i < toAdd; i++) {
+    const pick = addPool.find(c => (!c.mult ? (tempUsed[c.id]||0) < 1 : (tempUsed[c.id]||0) < 2));
+    if (!pick) break;
+    tempUsed[pick.id] = (tempUsed[pick.id]||0) + 1;
+    suggestedAdds.push({ id: pick.id, n: pick.n, cat: pick.cat, eq: pick.eq });
   }
 
-  // Build the final pending course
-  const resolved = working.map(p => ({ ...p }));
-  // Apply inserts in reverse order to keep indices stable
-  for (const ins of [...inserts].reverse()) {
-    resolved.splice(ins.afterIdx + 1, 0, {
-      id: ins.id, n: ins.n, cat: ins.cat, stat: ins.stat,
-      eq: ins.eq, seq: ins.seq, heading: 0, pos: { ...ins.pos }
-    });
-  }
-
-  recalcHeadings(resolved);
+  // Stations to flag for possible removal (judge picks which)
+  // Flag equipment first (easiest to remove physically), then mult:true signs
+  const removeCount = Math.max(0, overMax);
+  const removeCandidates = plan
+    .filter(p => p.action === 'keep' || p.action === 'swap')
+    .sort((a, b) => {
+      // Sort: equipment first, then mult signs, then stationary
+      const scoreA = (a.eq ? 3 : 0) + (EX[a.to||a.from]?.mult ? 1 : 0);
+      const scoreB = (b.eq ? 3 : 0) + (EX[b.to||b.from]?.mult ? 1 : 0);
+      return scoreB - scoreA;
+    })
+    .slice(0, removeCount)
+    .map(p => p.courseIdx);
 
   return {
     plan,
-    inserts,
-    pendingCourse: resolved,
-    keepCount: plan.filter(p => p.action === 'keep').length,
-    swapCount:  plan.filter(p => p.action === 'swap').length,
-    insertCount: inserts.length,
-    unresolved: plan.filter(p => p.action === 'unresolved').length,
+    targetCls,
+    cfg,
+    classCount,
+    classStillNeed,
+    countDelta,        // positive = add, negative = too many
+    overMax,           // positive = remove this many
+    removeCount,
+    removeCandidateIdxs: new Set(removeCandidates),
+    suggestedAdds,
+    keepCount:      plan.filter(p => p.action === 'keep').length,
+    swapCount:      plan.filter(p => p.action === 'swap').length,
+    unresolvedCount:plan.filter(p => p.action === 'unresolved').length,
   };
 }
 
-function runNestAnalysis(cls) {
-  const result = analyzeNesting(cls);
-  pendingNestCourse = result.pendingCourse;
+// ── Nest override state ───────────────────────────────────────────
+// Judge can click any SWAP row to pick a different sign
+let nestOverrides = {}; // courseIdx → { id, n, eq, cat }
+let lastNestResult = null;
 
-  // Summary stats
+function runNestAnalysis(cls) {
+  nestOverrides = {};
+  lastNestResult = analyzeNesting(cls);
+  renderNestUI(lastNestResult);
+}
+
+function renderNestUI(result) {
+  const { cfg, targetCls } = result;
+
+  // ── Plain-English briefing ────────────────────────────────────────
+  const lines = [];
+  const swaps = result.plan.filter(p => p.action === 'swap');
+  const unres = result.plan.filter(p => p.action === 'unresolved');
+
+  if (swaps.length > 0)
+    lines.push(`🔄 <strong>${swaps.length} sign${swaps.length>1?'s':''} need swapping</strong> — suggestions shown below, click any row to choose a different sign.`);
+
+  if (result.overMax > 0)
+    lines.push(`➖ <strong>Remove ${result.overMax} stake${result.overMax>1?'s':''}</strong> — ${cfg.name} allows max ${cfg.max}. Suggested removals highlighted in red below.`);
+
+  if (result.countDelta > 0) {
+    const addMsgs = [];
+    if (result.classStillNeed > 0)
+      addMsgs.push(`${result.classStillNeed} must be ${CLASS_CFG[targetCls].name.split(' ')[0]}-class signs`);
+    // Check if equipment is needed
+    const needsJump = cfg.min > 0 && !result.suggestedAdds.some(a => a.eq === 'jump') ? false : result.suggestedAdds.some(a => a.eq === 'jump');
+    if (result.suggestedAdds.length > 0) {
+      const eqAdds = result.suggestedAdds.filter(a => a.eq).map(a => a.eq);
+      if (eqAdds.length > 0) addMsgs.push(`including ${[...new Set(eqAdds)].join(', ')}`);
+    }
+    lines.push(`➕ <strong>Add ${result.countDelta} new stake${result.countDelta>1?'s':''}</strong>${addMsgs.length ? ' — ' + addMsgs.join(', ') : ''}. Suggested signs listed below.`);
+  }
+
+  if (result.classStillNeed > 0 && result.countDelta <= 0)
+    lines.push(`⚠️ Need <strong>${result.classStillNeed} more ${cfg.name.split(' ')[0]}-class sign${result.classStillNeed>1?'s':''}</strong> — swap some KEEP signs using the substitute picker.`);
+
+  if (unres.length > 0)
+    lines.push(`⚠️ <strong>${unres.length} sign${unres.length>1?'s':''} could not be resolved</strong> — no valid substitute found. These need manual attention.`);
+
+  if (lines.length === 0)
+    lines.push(`✅ <strong>No changes needed.</strong> All signs are already valid for ${cfg.name}.`);
+
+  document.getElementById('nestBriefing').innerHTML = lines.join('<br>');
+
+  // ── Summary stats ─────────────────────────────────────────────────
   const summaryEl = document.getElementById('nestSummary');
   summaryEl.innerHTML = `
-    <div class="nest-stat"><div class="nest-stat-num" style="color:#2dd4a0">${result.keepCount}</div><div class="nest-stat-lbl">Signs keep</div></div>
-    <div class="nest-stat"><div class="nest-stat-num" style="color:#fb923c">${result.swapCount}</div><div class="nest-stat-lbl">Signs swap</div></div>
-    <div class="nest-stat"><div class="nest-stat-num" style="color:#4fc3f7">${result.insertCount}</div><div class="nest-stat-lbl">Signs insert</div></div>
-    <div class="nest-stat"><div class="nest-stat-num" style="color:${result.unresolved>0?'#ff5252':'var(--text3)'}">${result.unresolved}</div><div class="nest-stat-lbl">Unresolved</div></div>
+    <div class="nest-stat"><div class="nest-stat-num" style="color:#2dd4a0">${result.keepCount}</div><div class="nest-stat-lbl">Keep</div></div>
+    <div class="nest-stat"><div class="nest-stat-num" style="color:#fb923c">${result.swapCount}</div><div class="nest-stat-lbl">Swap</div></div>
+    <div class="nest-stat"><div class="nest-stat-num" style="color:#4fc3f7">${result.countDelta > 0 ? result.countDelta : 0}</div><div class="nest-stat-lbl">Add</div></div>
+    <div class="nest-stat"><div class="nest-stat-num" style="color:${result.removeCount>0?'#ff5252':'var(--text3)'}">${result.removeCount}</div><div class="nest-stat-lbl">Remove</div></div>
+    <div class="nest-stat"><div class="nest-stat-num" style="color:${result.unresolvedCount>0?'#ff5252':'var(--text3)'}">${result.unresolvedCount}</div><div class="nest-stat-lbl">Unresolved</div></div>
   `;
 
-  // Sign-by-sign list
+  // ── Station-by-station rows ───────────────────────────────────────
   const listEl = document.getElementById('nestChangeList');
   listEl.innerHTML = '';
-  result.plan.forEach((p, i) => {
+
+  result.plan.forEach(p => {
+    const isRemoveCandidate = result.removeCandidateIdxs.has(p.courseIdx);
+    const override = nestOverrides[p.courseIdx];
+    const displayTo   = override ? override.n  : p.toName;
+    const displayToId = override ? override.id : p.to;
     const row = document.createElement('div');
-    const exIdx = i + 1; // exercise number in current course
-    if (p.action === 'keep') {
+
+    if (p.action === 'keep' && !isRemoveCandidate) {
       row.className = 'nest-change-item nest-keep';
-      row.innerHTML = `<span style="width:18px;text-align:center">✅</span><span style="color:var(--text3);min-width:30px">#${exIdx}</span><span style="color:var(--text)">${p.fromName}</span><span style="margin-left:auto;font-size:12px;color:#2dd4a0">KEEP</span>`;
+      row.innerHTML = `
+        <span style="min-width:22px;text-align:center;font-size:15px">✅</span>
+        <span style="color:var(--text3);min-width:28px;font-size:13px">#${p.stationNum}</span>
+        <span style="flex:1;color:var(--text)">${p.fromName}</span>
+        <span style="font-size:11px;color:#2dd4a0;font-weight:700">KEEP</span>`;
+      // Clickable to pick an override swap
+      row.title = 'Click to swap this sign instead';
+      row.style.cursor = 'pointer';
+      row.onclick = () => openNestOverridePicker(p, result);
+
+    } else if (p.action === 'keep' && isRemoveCandidate) {
+      row.className = 'nest-change-item';
+      row.style.cssText += 'border-color:#ff5252;background:rgba(255,82,82,0.06);';
+      row.innerHTML = `
+        <span style="min-width:22px;text-align:center;font-size:15px">➖</span>
+        <span style="color:var(--text3);min-width:28px;font-size:13px">#${p.stationNum}</span>
+        <span style="flex:1;color:#ff5252">${p.fromName}</span>
+        <span style="font-size:11px;color:#ff5252;font-weight:700">REMOVE?</span>`;
+      row.title = 'Suggested for removal to meet max count — click to keep this sign instead';
+      row.style.cursor = 'pointer';
+      row.onclick = () => openNestOverridePicker(p, result);
+
     } else if (p.action === 'swap') {
       row.className = 'nest-change-item nest-swap';
-      row.innerHTML = `<span style="width:18px;text-align:center">🔄</span><span style="color:var(--text3);min-width:30px">#${exIdx}</span><span style="flex:1"><span style="color:#fb923c">${p.fromName}</span> <span style="color:var(--text3)">→</span> <span style="color:var(--text)">${p.toName}</span></span><span style="font-size:12px;color:#fb923c">SWAP</span>`;
-    } else {
+      const overrideLabel = override ? ' (your choice)' : '';
+      row.innerHTML = `
+        <span style="min-width:22px;text-align:center;font-size:15px">🔄</span>
+        <span style="color:var(--text3);min-width:28px;font-size:13px">#${p.stationNum}</span>
+        <span style="flex:1">
+          <span style="color:var(--text3);text-decoration:line-through">${p.fromName}</span>
+          <span style="color:var(--text3);margin:0 4px">→</span>
+          <span style="color:var(--text);font-weight:600">${displayTo}${overrideLabel}</span>
+          ${displayToId ? `<span style="color:var(--text3);font-size:12px;margin-left:4px">(${displayToId})</span>` : ''}
+        </span>
+        <span style="font-size:11px;color:#fb923c;font-weight:700;cursor:pointer;text-decoration:underline" onclick="openNestOverridePicker(nestPlanRef[${result.plan.indexOf(p)}], lastNestResult)">change</span>`;
+
+    } else if (p.action === 'unresolved') {
       row.className = 'nest-change-item';
-      row.style.borderColor = '#ff5252';
-      row.innerHTML = `<span style="width:18px;text-align:center">⚠️</span><span style="color:var(--text3);min-width:30px">#${exIdx}</span><span style="color:#ff5252">${p.fromName} — no valid sub found</span>`;
+      row.style.cssText += 'border-color:#ff5252;';
+      row.innerHTML = `
+        <span style="min-width:22px;text-align:center;font-size:15px">⚠️</span>
+        <span style="color:var(--text3);min-width:28px;font-size:13px">#${p.stationNum}</span>
+        <span style="flex:1;color:#ff5252">${p.fromName} — no valid substitute found</span>`;
     }
+
     listEl.appendChild(row);
   });
 
-  // Insert rows
-  result.inserts.forEach((ins, i) => {
-    const row = document.createElement('div');
-    row.className = 'nest-change-item nest-insert';
-    row.innerHTML = `<span style="width:18px;text-align:center">➕</span><span style="color:var(--text3);min-width:30px">new</span><span style="color:var(--text)">${ins.n}</span><span style="margin-left:auto;font-size:12px;color:#4fc3f7">INSERT</span>`;
-    listEl.appendChild(row);
-  });
+  // ── Suggested adds ───────────────────────────────────────────────
+  if (result.suggestedAdds.length > 0) {
+    const sep = document.createElement('div');
+    sep.style.cssText = 'font-size:12px;font-weight:700;color:var(--text3);letter-spacing:2px;padding:8px 0 4px 0;';
+    sep.textContent = 'SUGGESTED NEW SIGNS TO ADD';
+    listEl.appendChild(sep);
 
+    result.suggestedAdds.forEach(add => {
+      const row = document.createElement('div');
+      row.className = 'nest-change-item nest-insert';
+      row.innerHTML = `
+        <span style="min-width:22px;text-align:center;font-size:15px">➕</span>
+        <span style="color:var(--text3);min-width:28px;font-size:13px">${add.id}</span>
+        <span style="flex:1;color:var(--text)">${add.n}</span>
+        ${add.eq ? `<span style="font-size:12px;color:#fb923c">▲ ${add.eq}</span>` : ''}
+        <span style="font-size:11px;color:#4fc3f7;font-weight:700;margin-left:8px">ADD</span>`;
+      listEl.appendChild(row);
+    });
+  }
+
+  // Keep a reference for inline onclick handlers
+  window.nestPlanRef = result.plan;
+
+  // ── Footer buttons ───────────────────────────────────────────────
   document.getElementById('nestAnalysisArea').style.display = 'block';
-  document.getElementById('nestNoCourse').style.display = 'none';
-  document.getElementById('nestPreviewBtn').style.display = 'inline-block';
-  document.getElementById('nestApplyBtn').style.display = 'inline-block';
+  document.getElementById('nestNoCourse').style.display    = 'none';
+  document.getElementById('nestPreviewBtn').style.display  = 'inline-block';
+  document.getElementById('nestSaveBtn').style.display     = 'inline-block';
+}
+
+// ── Override picker: judge clicks a row to swap to a different sign ─
+function openNestOverridePicker(planItem, result) {
+  // Reuse the substitute modal but in "nest override" mode
+  const targetPool = getPool(result.targetCls,
+    document.getElementById('includeEquip').checked,
+    document.getElementById('includeLeavedog').checked);
+  const targetValidIds = new Set(targetPool.map(e => e.id));
+
+  // Build usage counts excluding the sign at this position
+  const usedIds = {};
+  result.plan.forEach(p => {
+    if (p.courseIdx === planItem.courseIdx) return;
+    const id = nestOverrides[p.courseIdx]?.id || p.to || p.from;
+    if (id && targetValidIds.has(id)) usedIds[id] = (usedIds[id]||0) + 1;
+  });
+
+  const ci = planItem.courseIdx;
+  const prevEx = currentCourse.slice(0, ci).reverse().find(p => p.cat !== 'start');
+  const nextEx = currentCourse.slice(ci + 1).find(p => p.cat !== 'finish');
+  const cfg    = result.cfg;
+
+  const candidates = targetPool.filter(c => {
+    if (!targetValidIds.has(c.id)) return false;
+    if (!c.mult && (usedIds[c.id]||0) >= 1) return false;
+    if (c.mult  && (usedIds[c.id]||0) >= 2) return false;
+    if (cfg.zoom && (c.stat || c.cat === 'halt')) return false;
+    if (RECALL_IDS.has(c.id) && (!prevEx || prevEx.cat !== 'leave')) return false;
+    if (prevEx?.cat === 'leave' && !(RECALL_MAP[prevEx.id]||[]).includes(c.id)) return false;
+    if (prevEx && PACE_AFTER[prevEx.id] && !PACE_AFTER[prevEx.id].includes(c.id)) return false;
+    if (nextEx && PACE_AFTER[c.id] && !PACE_AFTER[c.id].includes(nextEx.id)) return false;
+    if (c.cat === 'leave' && nextEx && !(RECALL_MAP[c.id]||[]).includes(nextEx.id)) return false;
+    if (!nextEx && (c.cat === 'leave' || PACE_AFTER[c.id])) return false;
+    return true;
+  });
+
+  const modal = document.getElementById('subModal');
+  const title = document.getElementById('subModalTitle');
+  const list  = document.getElementById('subModalList');
+  const hint  = document.getElementById('subModalHint');
+
+  title.textContent = `Choose sign for station #${planItem.stationNum} (replacing ${planItem.fromName})`;
+  hint.textContent  = 'All signs shown are valid for this class and position.';
+  list.innerHTML    = '';
+
+  if (candidates.length === 0) {
+    list.innerHTML = '<div style="color:var(--text3);font-size:15px;padding:12px 0;">No valid signs found for this position.</div>';
+  } else {
+    // Mark current selection
+    const currentId = nestOverrides[ci]?.id || planItem.to;
+    candidates.forEach(c => {
+      const isCurrent = c.id === currentId;
+      const color = c.stat ? '#a78bfa' : (c.eq ? '#fb923c' : (c.cat === 'leave' || c.cat === 'recall' ? '#f472b6' : '#4fc3f7'));
+      const imgEl = signImages[c.id]
+        ? `<img src="${signImages[c.id].src}" style="width:36px;height:36px;object-fit:contain;border-radius:3px;border:1px solid ${color};background:#fff;flex-shrink:0;">`
+        : `<div style="width:36px;height:36px;border-radius:3px;border:1px dashed var(--border2);background:var(--bg3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text3)">${c.id}</div>`;
+      const row = document.createElement('div');
+      row.style.cssText = `display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:5px;cursor:pointer;border:1px solid ${isCurrent ? color : 'var(--border)'};background:${isCurrent ? 'rgba(79,195,247,0.08)' : 'var(--bg3)'};transition:border-color 0.12s;`;
+      row.innerHTML = `${imgEl}<div style="flex:1"><div style="font-size:12px;color:var(--text3)">${c.id}</div><div style="font-size:15px;color:var(--text)">${c.n}</div>${c.eq?`<div style="font-size:12px;color:#fb923c">▲ ${c.eq}</div>`:''}</div><div style="font-size:13px;color:${color};font-weight:700">${isCurrent ? '✓ Current' : 'Use ›'}</div>`;
+      row.onmouseenter = () => row.style.borderColor = color;
+      row.onmouseleave = () => row.style.borderColor = isCurrent ? color : 'var(--border)';
+      row.onclick = () => {
+        nestOverrides[ci] = { id: c.id, n: c.n, eq: c.eq, cat: c.cat };
+        closeSubstituteModal();
+        // Re-render the nest UI with the override applied
+        renderNestUI(lastNestResult);
+      };
+      list.appendChild(row);
+    });
+  }
+
+  modal.style.display = 'flex';
 }
 
 function previewNesting() {
-  if (!nestTargetCls || !pendingNestCourse) return;
-  // Build nestPreviewData from the analysis
-  const result = analyzeNesting(nestTargetCls);
-  nestPreviewData = result;
+  if (!nestTargetCls || !lastNestResult) return;
+  // Build a preview plan incorporating overrides
+  const previewPlan = lastNestResult.plan.map(p => {
+    const ov = nestOverrides[p.courseIdx];
+    if (ov) return { ...p, action: 'swap', to: ov.id, toName: ov.n };
+    return p;
+  });
+  nestPreviewData = { ...lastNestResult, plan: previewPlan,
+    planByIdx: Object.fromEntries(previewPlan.map(p => [p.courseIdx, p])) };
   closeNestModal();
 
-  // Show banner
   const banner = document.getElementById('nestBanner');
   banner.classList.add('visible');
+  const swaps = previewPlan.filter(p => p.action === 'swap').length;
+  const keeps = previewPlan.filter(p => p.action === 'keep').length;
   document.getElementById('nestBannerMsg').textContent =
-    `${result.keepCount} keep · ${result.swapCount} swap · ${result.insertCount} insert — showing on canvas`;
+    `${keeps} keep · ${swaps} swap · ${lastNestResult.countDelta > 0 ? lastNestResult.countDelta + ' to add' : ''} ${lastNestResult.removeCount > 0 ? lastNestResult.removeCount + ' to remove' : ''}`.trim();
   document.getElementById('nestBtn').classList.add('nest-active');
-
   redraw();
 }
 
-function applyNesting() {
-  if (!nestTargetCls || !pendingNestCourse) return;
-  closeNestModal();
-  clearNestPreview();
+/**
+ * saveNestedCourse — creates the nested course object and downloads it as JSON.
+ * The ORIGINAL course remains loaded in the tool unchanged.
+ * All kept/swapped positions are identical to the original; overrides are applied.
+ */
+function saveNestedCourse() {
+  if (!nestTargetCls || !lastNestResult) return;
+  const result = lastNestResult;
+  const cfg    = result.cfg;
 
-  const nextCfg = CLASS_CFG[nestTargetCls];
-  currentClass = nestTargetCls;
-  document.querySelectorAll('.cls-btn').forEach(b => {
-    const m = b.getAttribute('onclick')?.match(/'(\w+)'/);
-    if (m) b.classList.toggle('active', m[1] === nestTargetCls);
+  // Build the nested course array from the analysis
+  const nestedCourse = currentCourse.map(p => {
+    if (p.cat === 'start' || p.cat === 'finish') return { ...p, pos: { ...p.pos } };
+
+    // Find the plan entry for this courseIdx
+    const planEntry = result.plan.find(pl => pl.courseIdx === currentCourse.indexOf(p));
+    if (!planEntry) return { ...p, pos: { ...p.pos } };
+
+    // Apply override if judge chose a different sign
+    const override = nestOverrides[planEntry.courseIdx];
+    if (override) {
+      const exData = EX[override.id] || {};
+      return { ...p, pos: { ...p.pos },
+               id: override.id, n: override.n,
+               cat: exData.cat || p.cat,
+               stat: !!exData.stat, eq: exData.eq||null, seq: exData.seq||null };
+    }
+    // Apply suggested swap
+    if (planEntry.action === 'swap' && planEntry.to) {
+      const exData = EX[planEntry.to] || {};
+      return { ...p, pos: { ...p.pos },
+               id: planEntry.to, n: planEntry.toName,
+               cat: exData.cat || p.cat,
+               stat: !!exData.stat, eq: exData.eq||null, seq: exData.seq||null };
+    }
+    // Keep as-is
+    return { ...p, pos: { ...p.pos } };
   });
-  document.getElementById('canvasTitle').textContent = nextCfg.name + ' Course';
-  updateRingInfo();
 
-  currentCourse = pendingNestCourse;
-  recalcHeadings(currentCourse);
-  redraw();
-  updateSidebar(currentCourse, currentClass, nextCfg);
-  showToast(`🔀 Nested to ${nextCfg.name} — positions kept, signs updated`);
+  recalcHeadings(nestedCourse);
+
+  const data = {
+    version: 2, cls: nestTargetCls,
+    ringW: parseInt(document.getElementById('ringW').value),
+    ringH: parseInt(document.getElementById('ringH').value),
+    minDist: parseInt(document.getElementById('minDist').value),
+    includeEquip: document.getElementById('includeEquip').checked,
+    includeLeave: document.getElementById('includeLeavedog').checked,
+    nestedFrom: currentClass,
+    course: nestedCourse.map(p => ({
+      id: p.id, n: p.n, cat: p.cat, stat: !!p.stat,
+      eq: p.eq||null, seq: p.seq||null, heading: p.heading||0,
+      pos: { x: +p.pos.x.toFixed(2), y: +p.pos.y.toFixed(2) }
+    }))
+  };
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `CWAGS-${nestTargetCls}-nested-from-${currentClass}-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+
+  closeNestModal();
+  showToast(`💾 ${cfg.name} nested course saved — original ${CLASS_CFG[currentClass].name} course still loaded`);
 }
 
 function clearNestPreview() {
@@ -1402,14 +1675,14 @@ function renderCourse(placed, ringW, ringH, cfg) {
   ctx.fillStyle = labelDim; ctx.font = 'bold 11px Barlow Condensed, sans-serif'; ctx.textAlign = 'center';
   ctx.fillText(`${ringW}ft × ${ringH}ft = ${ringW * ringH} sq ft`, PAD_C + ringW * currentScale / 2, PAD_C - 8);
 
-  // Build nest status lookup (by course index)
-  // nestPreviewData.plan is indexed by exercise order (0-based), not course array index
-  const nestStatusByIdx = {}; // courseIdx → 'keep'|'swap'|'insert'
+  // Build nest status lookup (by course array index)
+  const nestStatusByIdx = {};
   const nestSwapToByIdx = {};
   if (nestPreviewData) {
-    nestPreviewData.plan.forEach(p => {
-      nestStatusByIdx[p.idx] = p.action;
-      if (p.action === 'swap') nestSwapToByIdx[p.idx] = p.toName;
+    const byIdx = nestPreviewData.planByIdx || {};
+    Object.entries(byIdx).forEach(([ci, p]) => {
+      nestStatusByIdx[+ci] = p.action;
+      if (p.action === 'swap') nestSwapToByIdx[+ci] = p.toName;
     });
   }
 
@@ -1424,16 +1697,16 @@ function renderCourse(placed, ringW, ringH, cfg) {
     drawArrow(ctx, from.x, from.y, to.x, to.y, isViolating ? arrowViol : arrowNorm, isViolating ? lineW + 1 : lineW);
   }
 
-  // Exercise nodes
-  // Map each exercise to its course array index
+  // Exercise nodes — ci is the course array index (used for nest status lookup)
   let exOrdinal = 0;
   for (let ci = 0; ci < placed.length; ci++) {
     const ex = placed[ci];
     if (ex.cat === 'start' || ex.cat === 'finish') continue;
     exOrdinal++;
     const cp = toCanvas(ex.pos);
+    // nestStatusByIdx is keyed by course array index (ci), not ordinal
     const nestStatus = nestPreviewData ? (nestStatusByIdx[ci] || null) : null;
-    const nestToName = nestSwapToByIdx[ci] || null;
+    const nestToName = nestPreviewData ? (nestSwapToByIdx[ci] || null) : null;
     drawExercise(ctx, cp.x, cp.y, exOrdinal, ex, distViolators.has(exOrdinal), nodeFill, labelColor, isLight, nestStatus, nestToName);
   }
 
