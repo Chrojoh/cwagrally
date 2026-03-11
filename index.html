@@ -37,7 +37,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
 .header-title { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 900; letter-spacing: 1px; color: var(--gold); }
 .header-sub { font-size: 16px; color: var(--text3); letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
 
-.main { display: grid; grid-template-columns: 680px 1fr; gap: 0; height: calc(100vh - 57px); overflow: hidden; }
+.main { display: grid; grid-template-columns: 420px 1fr; gap: 0; height: calc(100vh - 57px); overflow: hidden; }
 .sidebar { background: var(--bg2); border-right: 1px solid var(--border); padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; font-size: 16px; }
 .canvas-area { padding: 16px; overflow: hidden; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
 
@@ -510,7 +510,7 @@ function getScale(ringW, ringH) {
   const rect = wrap.getBoundingClientRect();
   const availW = Math.max(300, rect.width  - PAD_C * 2 - 16);
   const availH = Math.max(200, rect.height - PAD_C * 2 - 16);
-  return Math.max(5, Math.min(16, Math.min(availW / ringW, availH / ringH)));
+  return Math.max(5, Math.min(22, Math.min(availW / ringW, availH / ringH)));
 }
 
 const RING_DEFAULTS = {
@@ -1953,8 +1953,8 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
   if (showSigns) {
     const img = signImages[ex.id];
     if (img) {
-      const thumbSize = 64;
-      const gap = 5;
+      const thumbSize = Math.round(Math.max(40, Math.min(72, currentScale * 4.5)));
+      const gap = 4;
       const inHeadRad = ((ex.heading || 0) * Math.PI) / 180;
 
       let signDist, scx, scy;
@@ -1971,15 +1971,15 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
         scy = cy - Math.cos(rightAngle) * signDist;
       }
 
-      // Signs always render upright — no rotation. The printed arrows/text
-      // on sign images are designed for their natural orientation.
-      // Position (scx, scy) already places the sign to the handler's right
-      // or directly in front per C-WAGS rules. No ctx.save/restore needed.
+      // Draw sign rotated to face direction of travel (incoming heading)
       const hw = thumbSize / 2;
+      ctx.save();
+      ctx.translate(scx, scy);
+      ctx.rotate(inHeadRad);           // sign face points along incoming heading
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(scx - hw - 1, scy - hw - 1, thumbSize + 2, thumbSize + 2, 3);
-      else ctx.rect(scx - hw - 1, scy - hw - 1, thumbSize + 2, thumbSize + 2);
+      if (ctx.roundRect) ctx.roundRect(-hw - 1, -hw - 1, thumbSize + 2, thumbSize + 2, 3);
+      else ctx.rect(-hw - 1, -hw - 1, thumbSize + 2, thumbSize + 2);
       ctx.fill();
       ctx.strokeStyle = ringColor; ctx.lineWidth = nestStatus ? 2.5 : 1.5;
       ctx.stroke();
@@ -1987,17 +1987,15 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
       let dw = thumbSize, dh = thumbSize;
       if (aspect > 1) dh = thumbSize / aspect;
       else dw = thumbSize * aspect;
-      ctx.drawImage(img, scx - dw / 2, scy - dh / 2, dw, dh);
+      ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+      ctx.restore();
 
-      // If swap preview: show "→ NewName" label below thumbnail
+      // If swap preview: show "→ NewName" label below thumbnail (in screen coords)
       if (nestStatus === 'swap' && nestToName) {
-        ctx.save();
-        ctx.translate(scx, scy + thumbSize / 2 + 10);
         ctx.fillStyle = '#fb923c';
         ctx.font = 'bold 8px Barlow, sans-serif';
         ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-        ctx.fillText('→ ' + nestToName.substring(0, 16), 0, 0);
-        ctx.restore();
+        ctx.fillText('→ ' + nestToName.substring(0, 16), scx, scy + thumbSize / 2 + 10);
       }
     }
   }
