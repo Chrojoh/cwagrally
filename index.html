@@ -2010,22 +2010,10 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
   ctx.fillStyle = nodeFill; ctx.fill();
   ctx.strokeStyle = ringColor; ctx.lineWidth = nestStatus ? strokeW + 1 : strokeW; ctx.stroke();
 
-  // Number bubble — solid fill so it always reads over grid/arrows
-  ctx.beginPath(); ctx.arc(numX, numY, numBubbleR, 0, Math.PI * 2);
-  ctx.fillStyle = nodeFill; ctx.fill();
-  ctx.strokeStyle = nestStatus ? ringColor : normalColor;
-  ctx.lineWidth = isLight ? 2 : 1.8; ctx.stroke();
-
-  ctx.fillStyle = nestStatus ? ringColor : normalColor;
-  ctx.font = `bold ${num >= 10 ? '10' : '12'}px Arial, sans-serif`;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(num, numX, numY);
-
-  // Sign thumbnail — smaller than before, same placement rules
+  // Sign thumbnail — drawn before the number so number always appears on top
   if (showSigns) {
     const img = signImages[ex.id];
     if (img) {
-      // Reduced from max(40,min(72,...)) → max(28,min(52,...)) — smaller signs
       const thumbSize = Math.round(Math.max(28, Math.min(52, currentScale * 3.2)));
       const gap = 4;
       const inHeadRad = ((ex.heading || 0) * Math.PI) / 180;
@@ -2068,6 +2056,17 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
       }
     }
   }
+
+  // Number bubble — drawn LAST so it always sits on top of the sign thumbnail
+  ctx.beginPath(); ctx.arc(numX, numY, numBubbleR, 0, Math.PI * 2);
+  ctx.fillStyle = nodeFill; ctx.fill();
+  ctx.strokeStyle = nestStatus ? ringColor : normalColor;
+  ctx.lineWidth = isLight ? 2 : 1.8; ctx.stroke();
+
+  ctx.fillStyle = nestStatus ? ringColor : normalColor;
+  ctx.font = `bold ${num >= 10 ? '10' : '12'}px Arial, sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(num, numX, numY);
 
   // Label below circle (exercise short name)
   ctx.fillStyle = nestStatus ? ringColor : labelColor;
