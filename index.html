@@ -1485,6 +1485,15 @@ function autoLoadGithubSigns() {
   let attempted = 0, loaded = 0;
   const total = ALL_SIGN_IDS.length;
   setGithubStatus('⏳', `Checking GitHub for ${total} signs…`, 'var(--text3)');
+
+  // Load START and FINISH sign images (always, independent of signs toggle)
+  ['START', 'FINISH'].forEach(id => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => { signImages[id] = img; if (currentCourse.length > 0) redraw(); };
+    img.src = GITHUB_SIGNS_BASE + id + '.png';
+  });
+
   ALL_SIGN_IDS.forEach(id => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -1864,7 +1873,7 @@ function renderCourse(placed, ringW, ringH, cfg) {
     const py = PAD_C + gy * currentScale;
     ctx.strokeStyle = gy % 10 === 0 ? gridMajor : gridMinor;
     ctx.lineWidth   = gy % 10 === 0 ? 0.8 : 0.4;
-    ctx.beginPath(); ctx.moveTo(PAD_C, py); ctx.lineTo(PAD_C + ringH * currentScale, py); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD_C, py); ctx.lineTo(PAD_C + ringW * currentScale, py); ctx.stroke();
   }
   ctx.strokeStyle = ringBorder; ctx.lineWidth = isLight ? 3 : 2;
   ctx.strokeRect(PAD_C, PAD_C, ringW * currentScale, ringH * currentScale);
@@ -1916,6 +1925,11 @@ function renderCourse(placed, ringW, ringH, cfg) {
     drawArrow(ctx, from.x, from.y, to.x, to.y, isViolating ? arrowViol : arrowNorm, isViolating ? lineW + 1 : lineW);
   }
 
+  // Build list of all exercise canvas positions (excluding start/finish) for overlap detection
+  const allExCanvasPos = placed
+    .filter(p => p.cat !== 'start' && p.cat !== 'finish')
+    .map(p => toCanvas(p.pos));
+
   // Exercise nodes — ci is the course array index (used for nest status lookup)
   let exOrdinal = 0;
   for (let ci = 0; ci < placed.length; ci++) {
@@ -1926,14 +1940,16 @@ function renderCourse(placed, ringW, ringH, cfg) {
     // nestStatusByIdx is keyed by course array index (ci), not ordinal
     const nestStatus = nestPreviewData ? (nestStatusByIdx[ci] || null) : null;
     const nestToName = nestPreviewData ? (nestSwapToByIdx[ci] || null) : null;
-    drawExercise(ctx, cp.x, cp.y, exOrdinal, ex, distViolators.has(exOrdinal), nodeFill, labelColor, isLight, nestStatus, nestToName);
+    // Pass all OTHER exercise positions so overlap detection can exclude self
+    const othersPos = allExCanvasPos.filter((_, idx) => idx !== exOrdinal - 1);
+    drawExercise(ctx, cp.x, cp.y, exOrdinal, ex, distViolators.has(exOrdinal), nodeFill, labelColor, isLight, nestStatus, nestToName, othersPos);
   }
 
   // Start / Finish
   const startPt = toCanvas(placed[0].pos);
-  drawStartFinish(ctx, startPt.x, startPt.y, 'S', '#f0a500', nodeFill, isLight);
+  drawStartFinish(ctx, startPt.x, startPt.y, 'S', '#f0a500', nodeFill, isLight, placed[0].heading);
   const finPt = toCanvas(placed[placed.length - 1].pos);
-  drawStartFinish(ctx, finPt.x, finPt.y, 'F', '#f0a500', nodeFill, isLight);
+  drawStartFinish(ctx, finPt.x, finPt.y, 'F', '#f0a500', nodeFill, isLight, placed[placed.length-1].heading);
 
   ctx.fillStyle = titleColor; ctx.font = 'bold 14px Barlow Condensed, sans-serif'; ctx.textAlign = 'left';
   ctx.fillText(cfg.name.toUpperCase() + ' COURSE' + (nestPreviewData ? ' — NESTING PREVIEW' : ''), PAD_C, PAD_C - 16);
@@ -1960,7 +1976,7 @@ function drawArrow(ctx, x1, y1, x2, y2, color, width) {
   ctx.closePath(); ctx.fill();
 }
 
-function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isLight, nestStatus, nestToName) {
+function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isLight, nestStatus, nestToName, allCanvasPositions) {
   const r = 13;
   // Normal color logic
   const normalColor = ex.stat ? '#a78bfa' : (ex.eq ? '#fb923c' : (ex.cat === 'leave' || ex.cat === 'recall' ? '#f472b6' : (isLight ? '#1a6bb5' : '#4fc3f7')));
@@ -1971,6 +1987,23 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
   if (nestStatus === 'insert') ringColor = '#4fc3f7';
   if (nestStatus === 'unresolved') ringColor = '#ff5252';
   const strokeW = isLight ? 2.5 : 2;
+
+  // ── Detect overlap: is any OTHER station within 2r px of this one? ────
+  // If so, push the number to the RIGHT of the direction of travel so both
+  // numbers stay legible. "Right" = 90° clockwise from incoming heading.
+  const overlapThresh = r * 2.2;
+  const hasOverlap = allCanvasPositions.some(p => p !== null &&
+    Math.hypot(p.x - cx, p.y - cy) < overlapThresh
+  );
+
+  let numX = cx, numY = cy;  // default: centre of circle
+  if (hasOverlap && ex.heading != null) {
+    // Offset number to handler's right of travel direction
+    const rightRad = ((ex.heading + 90) * Math.PI) / 180;
+    const offset = r + 8;
+    numX = cx + Math.sin(rightRad) * offset;
+    numY = cy - Math.cos(rightRad) * offset;
+  }
 
   // Violation glow
   if (highlight) {
@@ -1996,39 +2029,43 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
   ctx.fillStyle = nodeFill; ctx.fill();
   ctx.strokeStyle = ringColor; ctx.lineWidth = nestStatus ? strokeW + 1 : strokeW; ctx.stroke();
 
-  // Number
+  // Number — at centre normally, or offset right if overlapping
   ctx.fillStyle = nestStatus ? ringColor : normalColor;
   ctx.font = `bold ${num >= 10 ? '10' : '13'}px Arial, sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(num, cx, cy);
+  if (hasOverlap) {
+    // Draw a tiny white halo behind the number so it reads over the arrow/circle
+    ctx.strokeStyle = isLight ? 'rgba(255,255,255,0.9)' : 'rgba(26,29,35,0.85)';
+    ctx.lineWidth = 3; ctx.lineJoin = 'round';
+    ctx.strokeText(num, numX, numY);
+  }
+  ctx.fillText(num, numX, numY);
 
-  // Sign thumbnail — position depends on type
+  // Sign thumbnail — smaller than before, same placement rules
   if (showSigns) {
     const img = signImages[ex.id];
     if (img) {
-      const thumbSize = Math.round(Math.max(40, Math.min(72, currentScale * 4.5)));
+      // Reduced from max(40,min(72,...)) → max(28,min(52,...)) — smaller signs
+      const thumbSize = Math.round(Math.max(28, Math.min(52, currentScale * 3.2)));
       const gap = 4;
       const inHeadRad = ((ex.heading || 0) * Math.PI) / 180;
 
       let signDist, scx, scy;
       if (SIGN_IN_FRONT.has(ex.id)) {
-        // Direction-change signs: place IN FRONT (along incoming heading direction)
         const frontDist = r + gap + thumbSize / 2;
         scx = cx + Math.sin(inHeadRad) * frontDist;
         scy = cy - Math.cos(inHeadRad) * frontDist;
       } else {
-        // All other signs: handler's RIGHT (90° clockwise from incoming heading)
         const rightAngle = inHeadRad + Math.PI / 2;
         signDist = r + gap + thumbSize / 2;
         scx = cx + Math.sin(rightAngle) * signDist;
         scy = cy - Math.cos(rightAngle) * signDist;
       }
 
-      // Draw sign rotated to face direction of travel (incoming heading)
       const hw = thumbSize / 2;
       ctx.save();
       ctx.translate(scx, scy);
-      ctx.rotate(inHeadRad);           // sign face points along incoming heading
+      ctx.rotate(inHeadRad);
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
       if (ctx.roundRect) ctx.roundRect(-hw - 1, -hw - 1, thumbSize + 2, thumbSize + 2, 3);
@@ -2043,7 +2080,6 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
       ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
       ctx.restore();
 
-      // If swap preview: show "→ NewName" label below thumbnail (in screen coords)
       if (nestStatus === 'swap' && nestToName) {
         ctx.fillStyle = '#fb923c';
         ctx.font = 'bold 8px Barlow, sans-serif';
@@ -2053,7 +2089,7 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
     }
   }
 
-  // Label below circle
+  // Label below circle (exercise short name)
   ctx.fillStyle = nestStatus ? ringColor : labelColor;
   ctx.font = '7px Barlow, sans-serif';
   ctx.textBaseline = 'top'; ctx.textAlign = 'center';
@@ -2062,16 +2098,43 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
   ctx.textBaseline = 'alphabetic';
 }
 
-function drawStartFinish(ctx, cx, cy, label, color, nodeFill, isLight) {
-  const strokeW = isLight ? 3.5 : 3;
-  ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2);
-  ctx.fillStyle = nodeFill; ctx.fill();
-  ctx.strokeStyle = color; ctx.lineWidth = strokeW; ctx.stroke();
-  ctx.fillStyle = color;
-  ctx.font = 'bold 14px Barlow Condensed, sans-serif';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(label, cx, cy);
-  ctx.textBaseline = 'alphabetic';
+function drawStartFinish(ctx, cx, cy, label, color, nodeFill, isLight, heading) {
+  const imgId = label === 'S' ? 'START' : 'FINISH';
+  const img = signImages[imgId];
+
+  if (img) {
+    // Use sign image — same size as exercise thumbnails
+    const thumbSize = Math.round(Math.max(28, Math.min(52, currentScale * 3.2)));
+    const hw = thumbSize / 2;
+    const inHeadRad = ((heading || 0) * Math.PI) / 180;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(inHeadRad);
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(-hw - 1, -hw - 1, thumbSize + 2, thumbSize + 2, 4);
+    else ctx.rect(-hw - 1, -hw - 1, thumbSize + 2, thumbSize + 2);
+    ctx.fill();
+    ctx.strokeStyle = color; ctx.lineWidth = isLight ? 2.5 : 2;
+    ctx.stroke();
+    const aspect = img.naturalWidth / img.naturalHeight;
+    let dw = thumbSize, dh = thumbSize;
+    if (aspect > 1) dh = thumbSize / aspect;
+    else dw = thumbSize * aspect;
+    ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+    ctx.restore();
+  } else {
+    // Fallback: circle with S / F letter
+    const strokeW = isLight ? 3.5 : 3;
+    ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+    ctx.fillStyle = nodeFill; ctx.fill();
+    ctx.strokeStyle = color; ctx.lineWidth = strokeW; ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.font = 'bold 14px Barlow Condensed, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(label, cx, cy);
+    ctx.textBaseline = 'alphabetic';
+  }
 }
 
 // ════════════════════════════════════════════════
