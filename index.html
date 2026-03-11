@@ -216,7 +216,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
         <button class="toggle-btn active" id="modeToggle" onclick="toggleMode()">🌙 Dark Mode</button>
         <button class="action-btn" onclick="saveCourse()">💾 Save</button>
         <button class="action-btn" onclick="document.getElementById('loadFileInput').click()">📂 Load<input type="file" id="loadFileInput" accept=".json" style="display:none" onchange="loadCourse(this)"></button>
-        <button class="action-btn" id="nestBtn" onclick="openNestModal()" title="Nest this course layout to a different class — keep all positions, swap only the signs that must change">🔀 Nest Level</button>
+        <button class="action-btn" id="nestBtn" onclick="nestToggle()" title="Nest this layout to another class (same stakes/positions, swap sign cards only). Click again to return to original.">🔀 Nest Level</button>
         <button class="action-btn" onclick="generate()">↺ Regenerate</button>
         <button class="action-btn" onclick="exportPDF()">⬇ Export PDF</button>
       </div>
@@ -224,13 +224,12 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
 
     <!-- Nesting preview banner -->
     <div id="nestBanner">
-      <span>🔀 <strong>Nest Preview:</strong></span>
+      <span>🔀 <strong>Nesting ON:</strong></span>
       <span id="nestBannerMsg">Showing changes needed</span>
       <span style="margin-left:auto;display:flex;gap:8px;align-items:center;">
         <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#2dd4a0;display:inline-block;"></span>Keep</span>
         <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#fb923c;display:inline-block;"></span>Swap</span>
-        <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#4fc3f7;display:inline-block;"></span>Insert</span>
-        <button class="cancel-btn" style="padding:3px 10px;font-size:13px;" onclick="clearNestPreview()">✕ Clear</button>
+        <button class="cancel-btn" style="padding:3px 10px;font-size:13px;" onclick="clearNestPreview()" title="Return to original course signs">✕ Back to Original</button>
       </span>
     </div>
 
@@ -524,8 +523,8 @@ const RING_DEFAULTS = {
 };
 
 function updateRingInfo() {
-  const w = parseInt(document.getElementById('ringW').value) || 0;
-  const h = parseInt(document.getElementById('ringH').value) || 0;
+  const w = parseInt(document.getElementById('ringW')?.value) || 0;
+  const h = parseInt(document.getElementById('ringH')?.value) || 0;
   const sqft = w * h;
   const cfg = CLASS_CFG[currentClass];
   const [lo, hi] = cfg.ring;
@@ -995,12 +994,12 @@ function generate() {
   clearNestPreview();
   const cls = currentClass;
   const cfg = CLASS_CFG[cls];
-  const ringW = parseInt(document.getElementById('ringW').value);
-  const ringH = parseInt(document.getElementById('ringH').value);
-  const minDist = parseInt(document.getElementById('minDist').value);
-  const includeEquip = document.getElementById('includeEquip').checked;
-  const includeLeave = document.getElementById('includeLeavedog').checked;
-  const randFactor = { low: 0.15, med: 0.3, high: 0.5 }[document.getElementById('randLevel').value];
+  const ringW = parseInt(document.getElementById('ringW')?.value);
+  const ringH = parseInt(document.getElementById('ringH')?.value);
+  const minDist = parseInt(document.getElementById('minDist')?.value);
+  const includeEquip = document.getElementById('includeEquip')?.checked;
+  const includeLeave = document.getElementById('includeLeavedog')?.checked;
+  const randFactor = { low: 0.15, med: 0.3, high: 0.5 }[document.getElementById('randLevel')?.value];
 
   let placed = null;
   for (let attempt = 0; attempt < 8; attempt++) {
@@ -1030,7 +1029,7 @@ function openNestModal() {
     document.getElementById('nestNoCourse').style.display = 'block';
     document.getElementById('nestAnalysisArea').style.display = 'none';
     document.getElementById('nestPreviewBtn').style.display = 'none';
-    document.getElementById('nestApplyBtn').style.display = 'none';
+    document.getElementById('nestSaveBtn').style.display = 'none';
   } else {
     document.getElementById('nestNoCourse').style.display = 'none';
   }
@@ -1039,7 +1038,7 @@ function openNestModal() {
   nestTargetCls = null;
   document.getElementById('nestAnalysisArea').style.display = 'none';
   document.getElementById('nestPreviewBtn').style.display = 'none';
-  document.getElementById('nestApplyBtn').style.display = 'none';
+  document.getElementById('nestSaveBtn').style.display = 'none';
   document.getElementById('nestModal').style.display = 'flex';
 }
 
@@ -1070,11 +1069,11 @@ function selectNestTarget(cls) {
  */
 function analyzeNesting(targetCls) {
   const cfg        = CLASS_CFG[targetCls];
-  const includeEquip  = document.getElementById('includeEquip').checked;
-  const includeLeave  = document.getElementById('includeLeavedog').checked;
-  const ringW      = parseInt(document.getElementById('ringW').value);
-  const ringH      = parseInt(document.getElementById('ringH').value);
-  const minDist    = parseInt(document.getElementById('minDist').value);
+  const includeEquip  = document.getElementById('includeEquip')?.checked;
+  const includeLeave  = document.getElementById('includeLeavedog')?.checked;
+  const ringW      = parseInt(document.getElementById('ringW')?.value);
+  const ringH      = parseInt(document.getElementById('ringH')?.value);
+  const minDist    = parseInt(document.getElementById('minDist')?.value);
 
   const targetPool     = getPool(targetCls, includeEquip, includeLeave);
   const targetValidIds = new Set(targetPool.map(e => e.id));
@@ -1384,8 +1383,8 @@ function renderNestUI(result) {
 function openNestOverridePicker(planItem, result) {
   // Reuse the substitute modal but in "nest override" mode
   const targetPool = getPool(result.targetCls,
-    document.getElementById('includeEquip').checked,
-    document.getElementById('includeLeavedog').checked);
+    document.getElementById('includeEquip')?.checked,
+    document.getElementById('includeLeavedog')?.checked);
   const targetValidIds = new Set(targetPool.map(e => e.id));
 
   // Build usage counts excluding the sign at this position
@@ -1450,28 +1449,83 @@ function openNestOverridePicker(planItem, result) {
     });
   }
 
-  modal.style.display = 'flex';
+  if (modal) modal.style.display = 'flex';
 }
 
+/**
+ * previewNesting — activates the nesting overlay on the canvas.
+ *
+ * HOW NESTING WORKS:
+ * ─────────────────────────────────────────────────────────────────────
+ * A "nested" course reuses every stake position from the original course
+ * (same path, same layout, same ring). Only the SIGNS on the stakes change
+ * to be valid for the target class. This lets a judge set up one physical
+ * layout and run two (or more) class levels on the same morning without
+ * moving any cones or stakes — just swapping the sign cards.
+ *
+ * The preview works as a toggle:
+ *   ON  → canvas shows the NESTED signs (swapped IDs, new images)
+ *         Banner appears at the top; Nest button turns gold.
+ *   OFF → canvas shows the ORIGINAL signs (nothing moved)
+ *         Clicking the banner's ✕ or toggling off reverts instantly.
+ *
+ * The underlying currentCourse is NEVER modified.
+ * nestedDisplayCourse is a separate array used only for rendering.
+ * ─────────────────────────────────────────────────────────────────────
+ */
 function previewNesting() {
   if (!nestTargetCls || !lastNestResult) return;
-  // Build a preview plan incorporating overrides
+
+  // Apply any judge overrides on top of the auto-analysis plan
   const previewPlan = lastNestResult.plan.map(p => {
     const ov = nestOverrides[p.courseIdx];
     if (ov) return { ...p, action: 'swap', to: ov.id, toName: ov.n };
     return p;
   });
-  nestPreviewData = { ...lastNestResult, plan: previewPlan,
-    planByIdx: Object.fromEntries(previewPlan.map(p => [p.courseIdx, p])) };
+
+  // Build a REAL swapped course array so the canvas draws the correct sign images.
+  // Positions are identical to currentCourse — only sign IDs/names change.
+  const planByIdx = Object.fromEntries(previewPlan.map(p => [p.courseIdx, p]));
+  const swappedCourse = currentCourse.map((station, ci) => {
+    if (station.cat === 'start' || station.cat === 'finish') return { ...station };
+    const plan = planByIdx[ci];
+    if (!plan) return { ...station };
+
+    if (plan.action === 'swap' && plan.to) {
+      // Swap: replace sign data with the new sign — keep position/heading
+      const exData = EX[plan.to] || {};
+      return {
+        ...station,
+        id:   plan.to,
+        n:    plan.toName,
+        cat:  exData.cat  || station.cat,
+        stat: !!exData.stat,
+        eq:   exData.eq   || null,
+        seq:  exData.seq  || null,
+      };
+    }
+    // Keep: return as-is
+    return { ...station };
+  });
+
+  nestPreviewData = {
+    ...lastNestResult,
+    plan: previewPlan,
+    planByIdx,
+    swappedCourse,  // ← what the canvas renders when nesting is ON
+  };
+
   closeNestModal();
 
-  const banner = document.getElementById('nestBanner');
-  banner.classList.add('visible');
+  // Update the banner
   const swaps = previewPlan.filter(p => p.action === 'swap').length;
   const keeps = previewPlan.filter(p => p.action === 'keep').length;
+  const addTxt    = lastNestResult.countDelta > 0 ? ` · ${lastNestResult.countDelta} to add` : '';
+  const removeTxt = lastNestResult.removeCount > 0 ? ` · ${lastNestResult.removeCount} to remove` : '';
   document.getElementById('nestBannerMsg').textContent =
-    `${keeps} keep · ${swaps} swap · ${lastNestResult.countDelta > 0 ? lastNestResult.countDelta + ' to add' : ''} ${lastNestResult.removeCount > 0 ? lastNestResult.removeCount + ' to remove' : ''}`.trim();
-  document.getElementById('nestBtn').classList.add('nest-active');
+    `${CLASS_CFG[nestTargetCls].name} — ${keeps} keep · ${swaps} swap${addTxt}${removeTxt}  |  Click ✕ to return to original`;
+  document.getElementById('nestBanner')?.classList.add('visible');
+  document.getElementById('nestBtn')?.classList.add('nest-active');
   redraw();
 }
 
@@ -1518,11 +1572,11 @@ function saveNestedCourse() {
 
   const data = {
     version: 2, cls: nestTargetCls,
-    ringW: parseInt(document.getElementById('ringW').value),
-    ringH: parseInt(document.getElementById('ringH').value),
-    minDist: parseInt(document.getElementById('minDist').value),
-    includeEquip: document.getElementById('includeEquip').checked,
-    includeLeave: document.getElementById('includeLeavedog').checked,
+    ringW: parseInt(document.getElementById('ringW')?.value),
+    ringH: parseInt(document.getElementById('ringH')?.value),
+    minDist: parseInt(document.getElementById('minDist')?.value),
+    includeEquip: document.getElementById('includeEquip')?.checked,
+    includeLeave: document.getElementById('includeLeavedog')?.checked,
     nestedFrom: currentClass,
     course: nestedCourse.map(p => ({
       id: p.id, n: p.n, cat: p.cat, stat: !!p.stat,
@@ -1543,10 +1597,24 @@ function saveNestedCourse() {
   showToast(`💾 ${cfg.name} nested course saved — original ${CLASS_CFG[currentClass].name} course still loaded`);
 }
 
+/**
+ * nestToggle — called by the Nest button.
+ *   If nesting is currently ON → turn it off (show original).
+ *   If nesting is OFF → open the nest modal to pick a target class.
+ */
+function nestToggle() {
+  if (nestPreviewData) {
+    clearNestPreview();   // toggle OFF: back to original
+  } else {
+    openNestModal();      // toggle ON: open picker
+  }
+}
+
 function clearNestPreview() {
   nestPreviewData = null;
-  document.getElementById('nestBanner').classList.remove('visible');
-  document.getElementById('nestBtn').classList.remove('nest-active');
+  document.getElementById('nestBanner')?.classList.remove('visible');
+  document.getElementById('nestBtn')?.classList.remove('nest-active');
+  document.getElementById('nestBtn').title = 'Nest this layout to another class (same stakes/positions, swap sign cards only). Click again to return to original.';
   if (currentCourse.length > 0) redraw();
 }
 
@@ -1561,7 +1629,7 @@ function setGithubStatus(icon, msg, color) {
   document.getElementById('githubSignIcon').textContent = icon;
   const msgEl = document.getElementById('githubSignMsg');
   msgEl.textContent = msg;
-  msgEl.style.color = color || 'var(--text3)';
+  if (msgEl) msgEl.style.color = color || 'var(--text3)';
 }
 
 function autoLoadGithubSigns() {
@@ -1643,8 +1711,8 @@ let distViolators = new Set();
 
 function redraw() {
   if (!currentCourse || currentCourse.length === 0) return;
-  const ringW = parseInt(document.getElementById('ringW').value);
-  const ringH = parseInt(document.getElementById('ringH').value);
+  const ringW = parseInt(document.getElementById('ringW')?.value);
+  const ringH = parseInt(document.getElementById('ringH')?.value);
   renderCourse(currentCourse, ringW, ringH, CLASS_CFG[currentClass]);
 }
 
@@ -1657,8 +1725,8 @@ function canvasEvtPx(e) {
 
 function canvasEvtToFt(e) {
   const {x, y} = canvasEvtPx(e);
-  const ringW = parseInt(document.getElementById('ringW').value);
-  const ringH = parseInt(document.getElementById('ringH').value);
+  const ringW = parseInt(document.getElementById('ringW')?.value);
+  const ringH = parseInt(document.getElementById('ringH')?.value);
   return canvasToFt(x, y, ringW, ringH);
 }
 
@@ -1732,7 +1800,7 @@ document.addEventListener('DOMContentLoaded', () => {
   canvas.addEventListener('touchend', e => {
     if (dragIdx < 0) return;
     if (mouseDidMove) {
-      const minD = parseInt(document.getElementById('minDist').value);
+      const minD = parseInt(document.getElementById('minDist')?.value);
       const idx  = dragIdx;
       const prev = idx > 0                         ? currentCourse[idx - 1] : null;
       const next = idx < currentCourse.length - 1 ? currentCourse[idx + 1] : null;
@@ -1755,9 +1823,9 @@ function openSubstituteModal(idx) {
   const ex = currentCourse[idx];
   const cls = currentClass;
   const cfg = CLASS_CFG[cls];
-  const minDist = parseInt(document.getElementById('minDist').value);
-  const includeEquip = document.getElementById('includeEquip').checked;
-  const includeLeave = document.getElementById('includeLeavedog').checked;
+  const minDist = parseInt(document.getElementById('minDist')?.value);
+  const includeEquip = document.getElementById('includeEquip')?.checked;
+  const includeLeave = document.getElementById('includeLeavedog')?.checked;
   const pool = getPool(cls, includeEquip, includeLeave);
   const prevEx = idx > 0 ? currentCourse[idx - 1] : null;
   const nextEx = idx < currentCourse.length - 1 ? currentCourse[idx + 1] : null;
@@ -1815,7 +1883,7 @@ function openSubstituteModal(idx) {
       list.appendChild(row);
     });
   }
-  modal.style.display = 'flex';
+  if (modal) modal.style.display = 'flex';
 }
 
 function closeSubstituteModal() {
@@ -1840,11 +1908,11 @@ function saveCourse() {
   if (!currentCourse || currentCourse.length < 3) { alert('No course to save yet — generate one first.'); return; }
   const data = {
     version: 2, cls: currentClass,
-    ringW: parseInt(document.getElementById('ringW').value),
-    ringH: parseInt(document.getElementById('ringH').value),
-    minDist: parseInt(document.getElementById('minDist').value),
-    includeEquip: document.getElementById('includeEquip').checked,
-    includeLeave: document.getElementById('includeLeavedog').checked,
+    ringW: parseInt(document.getElementById('ringW')?.value),
+    ringH: parseInt(document.getElementById('ringH')?.value),
+    minDist: parseInt(document.getElementById('minDist')?.value),
+    includeEquip: document.getElementById('includeEquip')?.checked,
+    includeLeave: document.getElementById('includeLeavedog')?.checked,
     course: currentCourse.map(p => ({ id: p.id, n: p.n, cat: p.cat, stat: !!p.stat, eq: p.eq || null, seq: p.seq || null, heading: p.heading || 0, pos: { x: +p.pos.x.toFixed(2), y: +p.pos.y.toFixed(2) } }))
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -1976,26 +2044,32 @@ function renderCourse(placed, ringW, ringH, cfg) {
     });
   }
 
-  const exercises = placed.filter(p => p.cat !== 'start' && p.cat !== 'finish');
-  const allPoints = [placed[0], ...exercises, placed[placed.length-1]];
+  // When nesting is active use the swapped course for rendering so the correct
+  // sign images are shown. Positions are identical — only sign IDs differ.
+  const displayCourse = (nestPreviewData && nestPreviewData.swappedCourse) ? nestPreviewData.swappedCourse : placed;
+
+  const exercises = displayCourse.filter(p => p.cat !== 'start' && p.cat !== 'finish');
+  const allPoints = [displayCourse[0], ...exercises, displayCourse[displayCourse.length-1]];
 
   // Arrows
   for (let i = 0; i < allPoints.length - 1; i++) {
     const from = toCanvas(allPoints[i].pos);
-    const to = toCanvas(allPoints[i+1].pos);
+    const to   = toCanvas(allPoints[i+1].pos);
     const isViolating = distViolators.has(i) && distViolators.has(i + 1);
     drawArrow(ctx, from.x, from.y, to.x, to.y, isViolating ? arrowViol : arrowNorm, isViolating ? lineW + 1 : lineW);
   }
 
-  // Exercise nodes — ci is the course array index (used for nest status lookup)
+  // Exercise nodes
+  // nestStatusByIdx drives the coloured border (green=keep, orange=swap) so the
+  // judge can still see at a glance which signs changed even with nesting ON.
   let exOrdinal = 0;
-  for (let ci = 0; ci < placed.length; ci++) {
-    const ex = placed[ci];
+  for (let ci = 0; ci < displayCourse.length; ci++) {
+    const ex = displayCourse[ci];
     if (ex.cat === 'start' || ex.cat === 'finish') continue;
     exOrdinal++;
     const cp = toCanvas(ex.pos);
     const nestStatus = nestPreviewData ? (nestStatusByIdx[ci] || null) : null;
-    const nestToName = nestPreviewData ? (nestSwapToByIdx[ci] || null) : null;
+    const nestToName = null;  // no longer needed — we show the actual swapped sign image
     drawExercise(ctx, cp.x, cp.y, exOrdinal, ex, distViolators.has(exOrdinal), nodeFill, labelColor, isLight, nestStatus, nestToName);
   }
 
@@ -2006,7 +2080,10 @@ function renderCourse(placed, ringW, ringH, cfg) {
   drawStartFinish(ctx, finPt.x, finPt.y, 'F', '#f0a500', nodeFill, isLight, placed[placed.length-1].heading);
 
   ctx.fillStyle = titleColor; ctx.font = 'bold 14px Barlow Condensed, sans-serif'; ctx.textAlign = 'left';
-  ctx.fillText(cfg.name.toUpperCase() + ' COURSE' + (nestPreviewData ? ' — NESTING PREVIEW' : ''), PAD_C, PAD_C - 16);
+  const nestLabel = nestPreviewData
+    ? ` — NESTED → ${CLASS_CFG[nestPreviewData.targetCls].name.toUpperCase()}`
+    : '';
+  ctx.fillText(cfg.name.toUpperCase() + ' COURSE' + nestLabel, PAD_C, PAD_C - 16);
 }
 
 function drawArrow(ctx, x1, y1, x2, y2, color, width) {
@@ -2190,7 +2267,7 @@ function updateSidebar(placed, cls, cfg) {
     if (ex.cat === 'leave' && !(RECALL_MAP[ex.id] || []).includes(next.id)) { seqOk = false; seqNote = `${ex.id} must be followed by recall`; break; }
   }
   setVal('v-seq', seqNote, seqOk ? 'ok' : 'err');
-  const minD = parseInt(document.getElementById('minDist').value);
+  const minD = parseInt(document.getElementById('minDist')?.value);
   const allPoints = [placed[0], ...exercises, placed[placed.length - 1]];
   let minFound = Infinity, closestPair = null;
   for (let i = 0; i < allPoints.length - 1; i++) {
@@ -2219,7 +2296,7 @@ function updateSidebar(placed, cls, cfg) {
     distMsg = `Closest: ${minFound.toFixed(1)}ft (min ${minD}ft) ✓`;
   }
   setVal('v-dist', distMsg, distOk ? 'ok' : 'err');
-  document.getElementById('canvasMeta').textContent = `${count} exercises · ${cfg.leash ? 'On or Off Leash' : 'Off Leash'} · QQ: ${cfg.qual}+ pts · Ring: ${parseInt(document.getElementById('ringW').value)*parseInt(document.getElementById('ringH').value)} sq ft`;
+  document.getElementById('canvasMeta').textContent = `${count} exercises · ${cfg.leash ? 'On or Off Leash' : 'Off Leash'} · QQ: ${cfg.qual}+ pts · Ring: ${parseInt(document.getElementById('ringW')?.value)*parseInt(document.getElementById('ringH')?.value)} sq ft`;
 }
 
 function setVal(id, text, type) {
@@ -2264,8 +2341,8 @@ function exportPDF() {
   const imgData = canvas.toDataURL('image/png');
   const cls = currentClass;
   const cfg = CLASS_CFG[cls];
-  const ringW = parseInt(document.getElementById('ringW').value);
-  const ringH = parseInt(document.getElementById('ringH').value);
+  const ringW = parseInt(document.getElementById('ringW')?.value);
+  const ringH = parseInt(document.getElementById('ringH')?.value);
   const exercises = currentCourse.filter(p => p.cat !== 'start' && p.cat !== 'finish');
   const dateStr = new Date().toLocaleDateString('en-CA', { year:'numeric', month:'long', day:'numeric' });
   const clsColors = { S:'#2dd4a0', A:'#4fc3f7', P:'#a78bfa', ARF:'#fb923c', Z1:'#f472b6', Z15:'#f472b6', Z2:'#f472b6' };
