@@ -547,6 +547,21 @@ function selectClass(cls) {
 // ════════════════════════════════════════════════
 // GENERATION
 // ════════════════════════════════════════════════
+
+// 2D line-segment intersection test (excluding shared endpoints)
+function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
+  const cross = (ux, uy, vx, vy) => ux * vy - uy * vx;
+  const abx = bx-ax, aby = by-ay;
+  const cdx = dx-cx, cdy = dy-cy;
+  const acx = cx-ax, acy = cy-ay;
+  const d = cross(abx, aby, cdx, cdy);
+  if (Math.abs(d) < 1e-10) return false; // parallel
+  const t = cross(acx, acy, cdx, cdy) / d;
+  const u = cross(acx, acy, abx, aby) / d;
+  // Use a small inset (0.05) to avoid flagging segments that merely touch at endpoints
+  return t > 0.05 && t < 0.95 && u > 0.05 && u < 0.95;
+}
+
 function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave, randFactor) {
   const pool = getPool(cls, includeEquip, includeLeave);
   if (pool.length < 5) return null;
@@ -564,6 +579,9 @@ function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave
   const ownIds = CLASS_OWN_IDS[cls] || new Set();
   placed.push({ id:'START', n:'Start', pos:{...pos}, heading, cat:'start' });
   let stuckCount = 0;
+
+  // Track last N turn deltas to avoid consecutive heavy reversals
+  const recentTds = [];
 
   while (placed.length - 1 < target) {
     if (stuckCount > 60) return null;
@@ -590,6 +608,7 @@ function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave
 
     if (avail.length === 0) { stuckCount++; continue; }
 
+    // ── Wall avoidance ─────────────────────────────────────────────
     const room = wallRoom(pos, heading, ringW, ringH, minDist + 1);
     if (room < minDist + 4 && !needsFollowBy) {
       const turners = avail.filter(ex => {
@@ -599,12 +618,43 @@ function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave
       if (turners.length > 0) avail = turners;
     }
 
+    // ── Consecutive heavy-turn limiter ─────────────────────────────
+    // If the last 2 exercises were both heavy turns (|td|>=90°), strongly prefer
+    // something straight or gentle next so the path can flow forward.
+    // Only apply this as a preference (not a hard block) so we never get stuck.
+    if (!needsFollowBy && recentTds.length >= 2) {
+      const bothHeavy = recentTds.slice(-2).every(t => Math.abs(t) >= 90);
+      if (bothHeavy) {
+        const gentler = avail.filter(ex => Math.abs(ex.td) < 90);
+        if (gentler.length > 0) avail = gentler;
+      }
+    }
+
+    // ── Path-crossing prevention ───────────────────────────────────
+    // After picking a candidate position, reject it if the new segment
+    // (pos → newPos) crosses any existing segment in the placed path.
+    // Uses 2D line-segment intersection test.
+
     shuffle(avail);
     let placed_one = false;
 
     for (const ex of avail) {
       const newPos = tryPlaceExercise(pos, heading, ex.td, placed, ringW, ringH, minDist, randFactor, ex.cat);
       if (!newPos) continue;
+
+      // Path-crossing check: reject if new segment crosses any existing segment
+      if (placed.length >= 2) {
+        const ax = pos.x, ay = pos.y, bx = newPos.x, by = newPos.y;
+        let crosses = false;
+        for (let si = 0; si < placed.length - 2; si++) {
+          const cx = placed[si].pos.x,   cy = placed[si].pos.y;
+          const dx = placed[si+1].pos.x, dy = placed[si+1].pos.y;
+          if (segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy)) {
+            crosses = true; break;
+          }
+        }
+        if (crosses) continue;
+      }
 
       if (ex.cat === 'leave') {
         const recallOptions = RECALL_MAP[ex.id] || [];
@@ -626,6 +676,9 @@ function tryGenerate(cls, cfg, ringW, ringH, minDist, includeEquip, includeLeave
       if (PACE_AFTER[ex.id]) needsFollowBy = PACE_AFTER[ex.id];
       else if (ex.cat === 'leave') needsFollowBy = RECALL_MAP[ex.id] || null;
       else needsFollowBy = null;
+
+      recentTds.push(ex.td);
+      if (recentTds.length > 3) recentTds.shift();
 
       placed_one = true;
       break;
