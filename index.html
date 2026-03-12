@@ -106,6 +106,37 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
 #subModalList { overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
 #subModalHint { padding: 8px 16px 12px; font-size: 14px; color: var(--text3); border-top: 1px solid var(--border); }
 
+/* STATION HOVER TOOLTIP */
+#stationTooltip {
+  display: none;
+  position: fixed;
+  z-index: 2000;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  pointer-events: none;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.45);
+  min-width: 160px;
+  max-width: 260px;
+  line-height: 1.55;
+}
+#stationTooltip .tt-row { display: flex; align-items: center; gap: 7px; padding: 2px 0; }
+#stationTooltip .tt-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  font-size: 11px; font-weight: 900; flex-shrink: 0;
+  color: #fff;
+}
+#stationTooltip .tt-name { font-size: 13px; color: var(--text2); flex: 1; }
+#stationTooltip .tt-id   { font-size: 11px; color: var(--text3); }
+#stationTooltip .tt-header { font-size: 11px; font-weight: 700; color: var(--text3);
+  letter-spacing: 1.5px; padding-bottom: 5px; border-bottom: 1px solid var(--border);
+  margin-bottom: 4px; }
+
 /* NESTING MODAL */
 #nestModal { display: none; position: fixed; inset: 0; z-index: 1000; align-items: center; justify-content: center; background: rgba(0,0,0,0.65); }
 #nestModalBox { background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; width: 480px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 8px 40px rgba(0,0,0,0.5); }
@@ -218,6 +249,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
         <button class="action-btn" onclick="document.getElementById('loadFileInput').click()">📂 Load<input type="file" id="loadFileInput" accept=".json" style="display:none" onchange="loadCourse(this)"></button>
         <button class="action-btn" id="nestBtn" onclick="nestToggle()" title="Nest this layout to another class (same stakes/positions, swap sign cards only). Click again to return to original.">🔀 Nest Level</button>
         <button class="action-btn" onclick="generate()">↺ Regenerate</button>
+        <button class="action-btn" onclick="shuffleSigns()" title="Randomly swap 1–3 signs in the current course to mix it up">🎲 Shuffle Signs</button>
         <button class="action-btn" onclick="exportPDF()">⬇ Export PDF</button>
       </div>
     </div>
@@ -1598,6 +1630,109 @@ function saveNestedCourse() {
 }
 
 /**
+ * shuffleSigns — randomly swaps 1–3 exercise signs in the current course.
+ *
+ * How it works:
+ *   1. Pick 1–3 station positions at random (never Start or Finish).
+ *   2. For each picked station, find a legal substitute sign from the class
+ *      pool — same rules as the substitute modal (no duplicates, sequence
+ *      constraints, stationary cap, etc.).
+ *   3. Swap the sign in-place; positions/headings are untouched.
+ *   4. Re-render and update the sidebar so validation reflects the change.
+ *
+ * The judge can keep hitting the button to cycle through variations, then
+ * drag individual stations as normal to fine-tune.
+ */
+function shuffleSigns() {
+  if (!currentCourse || currentCourse.length < 3) {
+    showToast('Generate a course first before shuffling signs.');
+    return;
+  }
+
+  const cls = currentClass;
+  const cfg = CLASS_CFG[cls];
+  const includeEquip  = document.getElementById('includeEquip')?.checked ?? true;
+  const includeLeave  = document.getElementById('includeLeavedog')?.checked ?? true;
+  const pool          = getPool(cls, includeEquip, includeLeave);
+
+  // Gather all swappable exercise indices (not start/finish)
+  const exIndices = [];
+  for (let i = 0; i < currentCourse.length; i++) {
+    const s = currentCourse[i];
+    if (s.cat !== 'start' && s.cat !== 'finish') exIndices.push(i);
+  }
+  if (exIndices.length < 2) return;
+
+  // Pick 1–3 random stations to swap (more on larger courses)
+  const maxSwaps  = Math.min(3, Math.max(1, Math.floor(exIndices.length / 5)));
+  const numSwaps  = Math.floor(Math.random() * maxSwaps) + 1;
+  const shuffled  = shuffle([...exIndices]);
+  const targets   = shuffled.slice(0, numSwaps);
+
+  let swapped = 0;
+  const exercises = currentCourse.filter(s => s.cat !== 'start' && s.cat !== 'finish');
+
+  for (const ci of targets) {
+    const ex      = currentCourse[ci];
+    const prevEx  = ci > 0 ? currentCourse[ci - 1] : null;
+    const nextEx  = ci < currentCourse.length - 1 ? currentCourse[ci + 1] : null;
+    const exIdx   = exercises.indexOf(ex);
+
+    // Build current usage map excluding this position
+    const usedIds = {};
+    exercises.forEach((e, i) => {
+      if (i !== exIdx) usedIds[e.id] = (usedIds[e.id] || 0) + 1;
+    });
+    const statCount  = exercises.filter((e, i) => e.stat && i !== exIdx).length;
+    const maxStat    = Math.floor(exercises.length / 3);
+
+    // Find valid candidates — same filtering as openSubstituteModal
+    const candidates = pool.filter(c => {
+      if (c.id === ex.id) return false;
+      if (!c.mult && (usedIds[c.id] || 0) >= 1) return false;
+      if (c.mult  && (usedIds[c.id] || 0) >= 2) return false;
+      if (c.stat  && statCount >= maxStat) return false;
+      if (cfg.zoom && (c.stat || c.cat === 'halt')) return false;
+      if (RECALL_IDS.has(c.id) && (!prevEx || prevEx.cat !== 'leave')) return false;
+      if (prevEx?.cat === 'leave' && !(RECALL_MAP[prevEx.id]||[]).includes(c.id)) return false;
+      if (prevEx && PACE_AFTER[prevEx.id] && !PACE_AFTER[prevEx.id].includes(c.id)) return false;
+      if (nextEx && PACE_AFTER[c.id] && !PACE_AFTER[c.id].includes(nextEx.id)) return false;
+      if (c.cat === 'leave' && nextEx && !(RECALL_MAP[c.id]||[]).includes(nextEx.id)) return false;
+      if (!nextEx && (c.cat === 'leave' || PACE_AFTER[c.id])) return false;
+      return true;
+    });
+
+    if (candidates.length === 0) continue;
+
+    // Pick a random candidate (not the first — that would always pick the same sign)
+    const pick = candidates[Math.floor(Math.random() * candidates.length)];
+    currentCourse[ci] = {
+      ...ex,
+      id:   pick.id,
+      n:    pick.n,
+      cat:  pick.cat,
+      stat: !!pick.stat,
+      eq:   pick.eq   || null,
+      seq:  pick.seq  || null,
+    };
+    // Rebuild exercises array so next target sees updated usage
+    exercises[exIdx] = currentCourse[ci];
+    swapped++;
+  }
+
+  if (swapped === 0) {
+    showToast('No valid swaps found — try a different class or settings.');
+    return;
+  }
+
+  clearNestPreview();
+  recalcHeadings(currentCourse);
+  redraw();
+  updateSidebar(currentCourse, cls, cfg);
+  showToast(`🎲 Shuffled ${swapped} sign${swapped > 1 ? 's' : ''} — drag to reposition, or shuffle again.`);
+}
+
+/**
  * nestToggle — called by the Nest button.
  *   If nesting is currently ON → turn it off (show original).
  *   If nesting is OFF → open the nest modal to pick a target class.
@@ -1740,6 +1875,69 @@ function findStationAt(px, py) {
   return bestIdx;
 }
 
+// ════════════════════════════════════════════════
+// STATION HOVER TOOLTIP
+// ════════════════════════════════════════════════
+
+/**
+ * showStationTooltip — renders a floating panel listing every exercise in
+ * the current course with its number, sign ID, and sign name.
+ * Shown on any station hover so judges can quickly scan the full set-up list.
+ * Positioned near the cursor but nudged so it never clips off-screen.
+ */
+function showStationTooltip(clientX, clientY) {
+  const tip = document.getElementById('stationTooltip');
+  if (!tip || !currentCourse || currentCourse.length < 3) return;
+
+  const exercises = currentCourse.filter(s => s.cat !== 'start' && s.cat !== 'finish');
+  if (exercises.length === 0) return;
+
+  const isLight = document.body.classList.contains('light-mode');
+
+  // Build rows
+  let html = `<div class="tt-header">ALL STATIONS (${exercises.length})</div>`;
+  exercises.forEach((ex, i) => {
+    const num   = i + 1;
+    const color = ex.stat ? '#a78bfa'
+                : ex.eq   ? '#fb923c'
+                : (ex.cat === 'leave' || ex.cat === 'recall') ? '#f472b6'
+                : (isLight ? '#1a6bb5' : '#4fc3f7');
+
+    // Sign image thumbnail (16 px) if available
+    const imgEl = signImages[ex.id]
+      ? `<img src="${signImages[ex.id].src}"
+             style="width:18px;height:18px;object-fit:contain;border:1px solid ${color};
+                    background:#fff;border-radius:2px;flex-shrink:0;">`
+      : '';
+
+    html += `<div class="tt-row">
+      <span class="tt-num" style="background:${color}">${num}</span>
+      ${imgEl}
+      <span class="tt-name">${ex.n}</span>
+      <span class="tt-id">${ex.id}</span>
+    </div>`;
+  });
+
+  tip.innerHTML = html;
+  tip.style.display = 'block';
+
+  // Position: 14px right of cursor, nudge up if near bottom of viewport
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const tipW = 270, tipH = tip.offsetHeight || exercises.length * 26 + 36;
+  let left = clientX + 14;
+  let top  = clientY - 10;
+  if (left + tipW > vw - 8)  left = clientX - tipW - 14;
+  if (top  + tipH > vh - 8)  top  = vh - tipH - 8;
+  if (top < 8) top = 8;
+  tip.style.left = left + 'px';
+  tip.style.top  = top  + 'px';
+}
+
+function hideStationTooltip() {
+  const tip = document.getElementById('stationTooltip');
+  if (tip) tip.style.display = 'none';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const canvas = document.getElementById('courseCanvas');
 
@@ -1751,17 +1949,26 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   canvas.addEventListener('mousemove', e => {
-    if (dragIdx < 0) {
-      const {x, y} = canvasEvtPx(e);
-      const idx = findStationAt(x, y);
-      const hoverEx = idx >= 0 ? currentCourse[idx] : null;
-      canvas.style.cursor = (hoverEx && hoverEx.cat !== 'start' && hoverEx.cat !== 'finish') ? 'pointer' : 'crosshair';
+    if (dragIdx >= 0) {
+      // Dragging — move station, no tooltip
+      hideStationTooltip();
+      const ft = canvasEvtToFt(e);
+      const dx = Math.abs(ft.x - dragStartFt.x), dy = Math.abs(ft.y - dragStartFt.y);
+      if (dx > 0.5 || dy > 0.5) mouseDidMove = true;
+      if (mouseDidMove) { currentCourse[dragIdx].pos = { ...ft }; redraw(); updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]); }
       return;
     }
-    const ft = canvasEvtToFt(e);
-    const dx = Math.abs(ft.x - dragStartFt.x), dy = Math.abs(ft.y - dragStartFt.y);
-    if (dx > 0.5 || dy > 0.5) mouseDidMove = true;
-    if (mouseDidMove) { currentCourse[dragIdx].pos = { ...ft }; redraw(); updateSidebar(currentCourse, currentClass, CLASS_CFG[currentClass]); }
+
+    const {x, y} = canvasEvtPx(e);
+    const idx     = findStationAt(x, y);
+    const hoverEx = idx >= 0 ? currentCourse[idx] : null;
+    canvas.style.cursor = (hoverEx && hoverEx.cat !== 'start' && hoverEx.cat !== 'finish') ? 'pointer' : 'crosshair';
+
+    if (hoverEx && hoverEx.cat !== 'start' && hoverEx.cat !== 'finish') {
+      showStationTooltip(e.clientX, e.clientY);
+    } else {
+      hideStationTooltip();
+    }
   });
 
   canvas.addEventListener('mouseup', e => {
@@ -1781,6 +1988,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     dragIdx = -1;
   });
+
+  canvas.addEventListener('mouseleave', () => hideStationTooltip());
 
   canvas.addEventListener('touchstart', e => {
     const t = e.touches[0];
@@ -2087,37 +2296,59 @@ function renderCourse(placed, ringW, ringH, cfg) {
 }
 
 function drawArrow(ctx, x1, y1, x2, y2, color, width) {
+  // Solid line with a filled arrowhead at the destination end.
+  // Start/end are offset by the station dot radius so the line begins and
+  // ends at the dot edge, not its centre.
   const dx = x2 - x1, dy = y2 - y1;
   const len = Math.sqrt(dx*dx + dy*dy);
-  if (len < 1) return;
+  if (len < 4) return;
   const nx = dx/len, ny = dy/len;
-  const stopDist = 14;
-  const ex2 = x2 - nx * stopDist, ey2 = y2 - ny * stopDist;
-  const startX = x1 + nx * 14, startY = y1 + ny * 14;
-  ctx.strokeStyle = color; ctx.lineWidth = width;
-  ctx.setLineDash([6, 4]);
-  ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(ex2, ey2); ctx.stroke();
+  const DOT_R = 14;    // offset from dot centre so line meets dot edge
+  const AH = 10;       // arrowhead length (px)
+  const AW = 5;        // arrowhead half-width (px)
+
+  const startX = x1 + nx * DOT_R;
+  const startY = y1 + ny * DOT_R;
+  // Arrowhead tip sits at the dot edge of the destination
+  const tipX = x2 - nx * DOT_R;
+  const tipY = y2 - ny * DOT_R;
+  // Line body ends where the arrowhead base begins
+  const baseX = tipX - nx * AH;
+  const baseY = tipY - ny * AH;
+
+  // Solid line from source dot edge to arrowhead base
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
   ctx.setLineDash([]);
-  const ah = 8, aw = 4;
+  ctx.beginPath();
+  ctx.moveTo(startX, startY);
+  ctx.lineTo(baseX, baseY);
+  ctx.stroke();
+
+  // Filled arrowhead triangle
   ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.moveTo(ex2 + nx * ah, ey2 + ny * ah);
-  ctx.lineTo(ex2 - ny * aw, ey2 + nx * aw);
-  ctx.lineTo(ex2 + ny * aw, ey2 - nx * aw);
-  ctx.closePath(); ctx.fill();
+  ctx.moveTo(tipX,             tipY);              // tip
+  ctx.lineTo(baseX - ny * AW,  baseY + nx * AW);  // left wing
+  ctx.lineTo(baseX + ny * AW,  baseY - nx * AW);  // right wing
+  ctx.closePath();
+  ctx.fill();
 }
 
 function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isLight, nestStatus, nestToName) {
-  const r = 13;
+  // The station dot IS the number bubble.
+  // Dot radius is sized to comfortably hold a 2-digit number.
+  // Sign thumbnail sits to the right of the dot as a separate element.
+  const r = 14;  // dot radius — big enough for two digits
   const normalColor = ex.stat ? '#a78bfa' : (ex.eq ? '#fb923c' : (ex.cat === 'leave' || ex.cat === 'recall' ? '#f472b6' : (isLight ? '#1a6bb5' : '#4fc3f7')));
   let ringColor = normalColor;
-  if (nestStatus === 'keep')       ringColor = '#2dd4a0';
-  else if (nestStatus === 'swap')  ringColor = '#fb923c';
-  else if (nestStatus === 'insert')ringColor = '#4fc3f7';
+  if (nestStatus === 'keep')            ringColor = '#2dd4a0';
+  else if (nestStatus === 'swap')       ringColor = '#fb923c';
+  else if (nestStatus === 'insert')     ringColor = '#4fc3f7';
   else if (nestStatus === 'unresolved') ringColor = '#ff5252';
   const strokeW = isLight ? 2.5 : 2;
 
-  // ── Violation glow ────────────────────────────────────────────────────
+  // ── Violation glow ──────────────────────────────────────────────────
   if (highlight) {
     ctx.beginPath(); ctx.arc(cx, cy, r + 6, 0, Math.PI * 2);
     ctx.fillStyle = isLight ? 'rgba(217,48,37,0.12)' : 'rgba(255,82,82,0.18)'; ctx.fill();
@@ -2125,7 +2356,7 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
     ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
   }
 
-  // ── Nesting outer ring ────────────────────────────────────────────────
+  // ── Nesting outer ring ──────────────────────────────────────────────
   if (nestStatus) {
     ctx.beginPath(); ctx.arc(cx, cy, r + 5, 0, Math.PI * 2);
     ctx.fillStyle = nestStatus === 'keep' ? 'rgba(45,212,160,0.12)' :
@@ -2135,30 +2366,29 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
     ctx.setLineDash([3, 2]); ctx.stroke(); ctx.setLineDash([]);
   }
 
-  // ── Position dot ──────────────────────────────────────────────────────
+  // ── Numbered dot — filled with sign colour, number centred inside ───
+  // Number is always visible regardless of showSigns toggle.
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle = nodeFill; ctx.fill();
-  ctx.strokeStyle = ringColor; ctx.lineWidth = nestStatus ? strokeW + 1 : strokeW; ctx.stroke();
+  ctx.fillStyle   = nestStatus ? ringColor : normalColor; ctx.fill();
+  ctx.strokeStyle = nodeFill; ctx.lineWidth = nestStatus ? strokeW + 1 : strokeW; ctx.stroke();
+  ctx.fillStyle   = nodeFill;  // white (dark) or dark (light) so number contrasts
+  ctx.font        = `bold ${num >= 10 ? '10' : '12'}px Arial, sans-serif`;
+  ctx.textAlign   = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(num, cx, cy);
+  ctx.textBaseline = 'alphabetic';
 
-  // ── Compact strip layout: ⬤ [SIGN] 7  ─────────────────────────────────
-  // Sign sits immediately to the right of the dot (screen-right, upright, no rotation).
-  // Number is plain bold text just past the sign's right edge.
-  // No bubble, no connector line — clean and space-saving.
-  const thumbSize = Math.round(Math.max(26, Math.min(46, currentScale * 2.8)));
-  const gap = 5;                                    // px between dot edge and sign left edge
-  const signX = cx + r + gap + thumbSize / 2;       // sign centre X
-  const signY = cy;                                  // sign centre Y (same as dot)
-
+  // ── Sign thumbnail to the right ─────────────────────────────────────
   if (showSigns) {
+    const thumbSize = Math.round(Math.max(26, Math.min(44, currentScale * 2.7)));
+    const gap  = 5;
+    const signX = cx + r + gap + thumbSize / 2;
+    const signY = cy;
     const img = signImages[ex.id];
     if (img) {
       const hw = thumbSize / 2;
       const aspect = img.naturalWidth / img.naturalHeight;
       let dw = thumbSize, dh = thumbSize;
-      if (aspect > 1) dh = thumbSize / aspect;
-      else dw = thumbSize * aspect;
-
-      // White backing, coloured border
+      if (aspect > 1) dh = thumbSize / aspect; else dw = thumbSize * aspect;
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
       if (ctx.roundRect) ctx.roundRect(signX - hw - 1, signY - hw - 1, thumbSize + 2, thumbSize + 2, 3);
@@ -2166,24 +2396,8 @@ function drawExercise(ctx, cx, cy, num, ex, highlight, nodeFill, labelColor, isL
       ctx.fill();
       ctx.strokeStyle = ringColor; ctx.lineWidth = nestStatus ? 2 : 1.5; ctx.stroke();
       ctx.drawImage(img, signX - dw / 2, signY - dh / 2, dw, dh);
-
-      if (nestStatus === 'swap' && nestToName) {
-        ctx.fillStyle = '#fb923c'; ctx.font = 'bold 8px Barlow, sans-serif';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-        ctx.fillText('→ ' + nestToName.substring(0, 14), signX, signY + thumbSize / 2 + 3);
-      }
     }
   }
-
-  // ── Station number — plain bold text to the right of the sign ─────────
-  // No circle/bubble. Drawn last so always on top.
-  const numX = cx + r + gap + thumbSize + gap + 2;  // right of sign + small pad
-  const numY = cy;
-  ctx.fillStyle = nestStatus ? ringColor : normalColor;
-  ctx.font = `bold ${num >= 10 ? '11' : '13'}px Arial, sans-serif`;
-  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.fillText(num, numX, numY);
-  ctx.textBaseline = 'alphabetic';
 }
 
 function drawStartFinish(ctx, cx, cy, label, color, nodeFill, isLight, heading) {
@@ -2404,5 +2618,6 @@ window.onload = () => {
   }
 };
 </script>
+<div id="stationTooltip"></div>
 </body>
 </html>
