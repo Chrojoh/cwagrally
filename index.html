@@ -258,7 +258,6 @@ body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-se
         <button class="action-btn" onclick="document.getElementById('loadFileInput').click()">📂 Load<input type="file" id="loadFileInput" accept=".json" style="display:none" onchange="loadCourse(this)"></button>
         <button class="action-btn" id="nestBtn" onclick="nestToggle()" title="Toggle nest mode — keep same path, generate a valid course for a second class level">🔀 Nest Level</button>
         <button class="action-btn" onclick="generate()">↺ Regenerate</button>
-        <button class="action-btn" onclick="shuffleSigns()" title="Randomly swap 1–3 signs in the current course to mix it up">🎲 Shuffle Signs</button>
         <button class="action-btn" onclick="exportPDF()">⬇ Export PDF</button>
       </div>
     </div>
