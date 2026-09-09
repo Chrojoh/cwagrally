@@ -224,3 +224,11 @@ distance lane, not as an equipment footprint.
 The on-screen course canvas now expands to the actual center panel dimensions. This avoids the
 old fixed 1100x760 landscape canvas shrinking portrait/near-square rings, and gives the map the
 maximum practical area between the left controls and right station list.
+
+
+## Station-list setup distances
+
+The right-hand station list now shows the practical setup distance instead of the internal stable
+station identifier. Each numbered station displays the route distance from the previous numbered
+station (or from Start for station 1), followed by the station x/y coordinates in feet. The internal
+stable ID remains hidden from normal view and is only available as hover/title metadata.

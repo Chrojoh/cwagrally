@@ -272,3 +272,19 @@ button:disabled{opacity:.45;cursor:not-allowed}.edit-actions{margin-bottom:9px}.
     max-width:none;
   }
 }
+
+
+/* Judge-friendly station setup details */
+.station-distance{
+  margin-top:4px;
+  font-size:11px;
+  line-height:1.25;
+  font-weight:750;
+  color:#33425a;
+}
+.station-coords{
+  margin-top:2px;
+  font-size:9.5px;
+  line-height:1.2;
+  color:#8a95a7;
+}

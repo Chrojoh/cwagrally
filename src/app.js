@@ -425,6 +425,32 @@ function removeStationById(stationId) {
   render();
 }
 
+
+function stationSetupDistance(nodeIndex, ordinal) {
+  if(!course?.nodes?.[nodeIndex]) return null;
+
+  let prevIndex=-1;
+  for(let i=nodeIndex-1;i>=0;i--){
+    const k=course.nodes[i]?.kind;
+    if(k==='station' || k==='start'){
+      prevIndex=i;
+      break;
+    }
+  }
+  if(prevIndex<0) return null;
+
+  let feet=0;
+  for(let i=prevIndex+1;i<=nodeIndex;i++){
+    const a=course.nodes[i-1], b=course.nodes[i];
+    if(!a||!b) continue;
+    feet+=Math.hypot((b.x??0)-(a.x??0),(b.y??0)-(a.y??0));
+  }
+
+  const previous=course.nodes[prevIndex];
+  const fromLabel=previous.kind==='start' ? 'Start' : `#${Math.max(1,ordinal-1)}`;
+  return {feet,fromLabel};
+}
+
 function renderStations(problemIds=new Set()) {
   const list=$('stationList');list.innerHTML='';
   let ord=0;
@@ -467,8 +493,20 @@ function renderStations(problemIds=new Set()) {
 
     const detail=document.createElement('div');
     detail.appendChild(select);
-    const code=document.createElement('div');code.className='station-code';code.textContent=`Stable station: ${node.stationId.slice(-12)}`;
-    detail.appendChild(code);
+
+    const setup=stationSetupDistance(nodeIndex,ord);
+    const distanceLine=document.createElement('div');
+    distanceLine.className='station-distance';
+    distanceLine.textContent=setup
+      ? `${setup.feet.toFixed(1)} ft from ${setup.fromLabel}`
+      : 'Distance unavailable';
+    detail.appendChild(distanceLine);
+
+    const coords=document.createElement('div');
+    coords.className='station-coords';
+    coords.textContent=`x ${Number(node.x).toFixed(1)} ft · y ${Number(node.y).toFixed(1)} ft`;
+    coords.title=`Internal station ID: ${node.stationId}`;
+    detail.appendChild(coords);
     const num=document.createElement('div');num.className='station-num';num.textContent=ord;
     const del=document.createElement('button');del.className='station-delete';del.type='button';del.title=`Remove station ${ord}`;del.textContent='×';
     del.onclick=e=>{e.stopPropagation();removeStationById(node.stationId);};
