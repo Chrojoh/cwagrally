@@ -2,9 +2,10 @@ import { cloneCourse, makeId, stationNodes, touchCourse } from './model.js';
 import { angleDiff, distance, equipmentPlacementConflicts, headingBetween, normalizeAngle, recalcHeadings, requiredTurnAt, segmentsCross, signFitsTurn } from './geometry.js';
 import { maxUsesFor } from './rules.js';
 import { isCourseValid, validateCourse } from './validator.js';
-import { assignSignsToNodes } from './generator.js';
+import { assignSignsToNodes, progressionReserveFits } from './generator.js';
+import { stationNodeRange } from './pack.js';
 
-function insertIntoLargestGap(course) {
+function insertIntoLargestGap(course, pack = null, reserveLevelId = null) {
   const minSpacing = course.ring.minSpacing;
   const margin = 2;
   const gaps = [];
@@ -13,6 +14,24 @@ function insertIntoLargestGap(course) {
     gaps.push({ i, d: distance(a, b), a, b });
   }
   gaps.sort((a, b) => b.d - a.d);
+
+  function preservesExistingEquipment(nodes) {
+    if (!pack) return true;
+    const placements = [];
+    for (let nodeIndex = 1; nodeIndex < nodes.length - 1; nodeIndex++) {
+      const node = nodes[nodeIndex];
+      if (node?.kind !== 'station' || !node.signId) continue;
+      const sign = pack.signs[node.signId];
+      if (!sign?.space?.footprint) continue;
+      const conflicts = equipmentPlacementConflicts({
+        nodes, nodeIndex, sign, ring:course.ring,
+        otherPlacements:placements, buffer:1
+      });
+      if (conflicts.length) return false;
+      placements.push({ nodeIndex, sign });
+    }
+    return true;
+  }
 
   for (const gap of gaps) {
     const mx = (gap.a.x + gap.b.x) / 2;
@@ -38,14 +57,31 @@ function insertIntoLargestGap(course) {
         const cv = Math.min(v.x, course.ring.width-v.x, v.y, course.ring.height-v.y);
         return cv - cu;
       });
-    if (!inside.length) continue;
-    const pos = inside[0];
-    const node = {
-      kind: 'station', stationId: makeId('st'), signId: null,
-      x: pos.x, y: pos.y, heading: 0, locked: false, upgradeAdded: true
-    };
-    course.nodes.splice(gap.i + 1, 0, node);
-    return node.stationId;
+
+    for (const pos of inside) {
+      const node = {
+        kind: 'station', stationId: makeId('st'), signId: null,
+        x: pos.x, y: pos.y, heading: 0, locked: false, upgradeAdded: true
+      };
+      const trialNodes = course.nodes.map(n => ({ ...n }));
+      trialNodes.splice(gap.i + 1, 0, node);
+      recalcHeadings(trialNodes);
+
+      // Adding a station is supposed to be a cheap physical change. Never put
+      // that new sign inside the working envelope of an existing obstacle just
+      // because that happens to be the numerically largest gap.
+      if (!preservesExistingEquipment(trialNodes)) continue;
+
+      // If the lower/current level deliberately reserved future equipment bays,
+      // keep those reservations intact while adding the required station count.
+      // This is critical for CKC Excellent→Master: the extra Master station must
+      // not consume one of the two existing nonconsecutive jump bays.
+      if (pack && reserveLevelId && !progressionReserveFits(pack, reserveLevelId, trialNodes, course.ring)) continue;
+
+      course.nodes.splice(gap.i + 1, 0, node);
+      recalcHeadings(course.nodes);
+      return node.stationId;
+    }
   }
   return null;
 }
@@ -255,6 +291,8 @@ function diffCourses(before, after) {
 export function upgradeCourse(current, pack, targetLevelId) {
   const target = pack.levels[targetLevelId];
   if (!target) throw new Error(`Unknown target level ${targetLevelId}`);
+  if (target.generationEnabled === false) throw new Error(target.generationMessage || `Automatic level-up is not enabled for ${target.name} yet.`);
+  const targetRange = stationNodeRange(target);
 
   const before = cloneCourse(current);
 
@@ -267,8 +305,14 @@ export function upgradeCourse(current, pack, targetLevelId) {
     next.rulePackVersion = pack.version;
     next.organizationId = pack.id;
 
-    while (stationNodes(next).length < target.stationCount.min) insertIntoLargestGap(next);
-    while (stationNodes(next).length > target.stationCount.max) removeLeastDisruptive(next, pack);
+    const reserveLevelId = source.levelId;
+    while (stationNodes(next).length < targetRange.min) {
+      const inserted = insertIntoLargestGap(next, pack, reserveLevelId);
+      if (!inserted) {
+        throw new Error(`Could not add the required ${target.name} station without consuming an existing equipment working area or a reserved future-equipment bay.`);
+      }
+    }
+    while (stationNodes(next).length > targetRange.max) removeLeastDisruptive(next, pack);
     recalcHeadings(next.nodes);
     return next;
   }
@@ -279,13 +323,18 @@ export function upgradeCourse(current, pack, targetLevelId) {
     );
 
     let best = null;
-    // Try both a plain assignment and one complete legal sequence. ARF often
-    // needs a sequence-class exercise such as PR7/PR8 when no equipment can
-    // physically fit the retained Pro layout.
-    const modes = [false, true];
+    // Only packs/levels with actual sequence templates need the forced-sequence
+    // search. CARO and CKC currently have no chain templates, so skipping the
+    // empty forced pass keeps organization progression responsive.
+    const hasSequenceTemplates = (pack.chainTemplates?.[targetLevelId] || []).length > 0;
+    const modes = hasSequenceTemplates ? [false, true] : [false];
 
     for (const forceSequence of modes) {
-      for (let attempt = 0; attempt < 8; attempt++) {
+      // Multiple organizations have overlapping quota families (for example
+      // CKC stationary + level + jump quotas). A few more independent greedy
+      // starts dramatically reduces false "no legal upgrade" failures without
+      // changing the physical-layout preference model.
+      for (let attempt = 0; attempt < 32; attempt++) {
         const assignment = assignSignsToNodes({
           pack,
           levelId: targetLevelId,
@@ -307,6 +356,11 @@ export function upgradeCourse(current, pack, targetLevelId) {
         });
         touchCourse(solved);
         recalcHeadings(solved.nodes);
+        if (typeof pack.makeAuxiliary === 'function') solved.auxiliary = pack.makeAuxiliary(solved, pack) || [];
+
+        // Do not spend a future mandatory-equipment bay merely to save a sign
+        // swap at the current level. This keeps series progression practical.
+        if (!progressionReserveFits(pack, targetLevelId, solved.nodes, solved.ring)) continue;
 
         const validation = validateCourse(solved, pack);
         if (validation.some(r => !r.ok && r.severity === 'error')) continue;
@@ -338,7 +392,7 @@ export function upgradeCourse(current, pack, targetLevelId) {
   if (sameCount) solutions.push(sameCount);
 
   const baseCount = stationNodes(base).length;
-  const room = Math.max(0, target.stationCount.max - baseCount);
+  const room = Math.max(0, targetRange.max - baseCount);
   const maxExtras = Math.min(3, room);
 
   // Candidate family B: add one station at the end when possible.
@@ -358,7 +412,7 @@ export function upgradeCourse(current, pack, targetLevelId) {
     const variant = cloneCourse(base);
     let inserted = 0;
     for (let n = 0; n < extras; n++) {
-      const id = insertIntoLargestGap(variant);
+      const id = insertIntoLargestGap(variant, pack, targetLevelId);
       if (!id) break;
       inserted++;
       recalcHeadings(variant.nodes);
@@ -379,7 +433,7 @@ export function upgradeCourse(current, pack, targetLevelId) {
     if (variant) {
       let inserted = 1;
       for (let n = 1; n < maxExtras; n++) {
-        const id = insertIntoLargestGap(variant);
+        const id = insertIntoLargestGap(variant, pack, targetLevelId);
         if (!id) break;
         inserted++;
         recalcHeadings(variant.nodes);

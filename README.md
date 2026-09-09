@@ -5,7 +5,7 @@ This is the modular replacement foundation for the earlier single-file `Chrojoh/
 ## What this build demonstrates
 
 - Versioned organization rule packs (`src/orgs/`)
-- C-WAGS Rally 2021 as the first pack
+- Three installed rule packs: C-WAGS 2021, CARO 2025 + Dec. amendments, and CKC 2025
 - Stable station IDs and course lineage
 - Strict path/sign geometry matching
 - Random course generation
@@ -66,10 +66,39 @@ src/
     pdf.js          real PDF encoder/export
   orgs/
     registry.js
-    cwags-2021.js   first organization rule pack
+    cwags-2021.js
+    caro-2025.js
+    ckc-2025.js
+  assets/
+    caro-2025/      development/reference sign images
+    ckc-2025/       development/reference sign images
   ui/
     canvas.js       course/path/sign rendering + drag hit-testing
 ```
+
+
+## Multi-organization status
+
+The same editor/generator core now switches between organization-specific rule packs instead of trying to reinterpret one organization through another organization's rules. Switching the Organization selector resets the active course and loads that pack's levels, ring defaults, sign palette, count semantics, validation, and artwork mapping.
+
+Current automatic-generation status:
+
+- **C-WAGS 2021:** Starter, Advanced, Pro, ARF, Zoom 1, Zoom 1.5, Zoom 2
+- **CARO 2025 + Dec. 2025 amendments:** Novice, Intermediate, Advanced, Excellent
+- **CARO Versatility / Versatility Excellent:** available in the pack for reference/manual work, but automatic generation is intentionally disabled until the left/right-side state solver is complete
+- **CKC 2025:** Rally Novice, Intermediate, Advanced, Excellent and Master
+
+CARO progression can branch from Novice. The UI now has an **Advance current course to** selector instead of assuming that every organization has one linear next level. Disabled targets are shown as manual-only.
+
+CARO Novice and Intermediate use a 50 × 40 ft program default. That is a practical progression default, not an additional CARO rule: it leaves a future working bay for the mandatory Advanced jump while remaining above CARO's official minimum ring area.
+
+CKC Excellent and Master use a separate non-counted auxiliary Stay item after Finish so the Stay is not incorrectly numbered as a normal course exercise.
+
+### Beta / audit status
+
+The multi-organization engine is functional, but the organization packs should still be treated as **beta rule packs** until every sign and special-case rule has received a final sign-by-sign audit against the supplied source documents. C-WAGS is explicitly versioned to the available 2021 source material.
+
+The CARO/CKC image folders in this development build are reference assets extracted from user-supplied rule/sign material for testing. Artwork/licensing is deliberately separate from rule data. Before commercial distribution, replace these with the project's own recognizable facsimile set or an authorized official-art pack.
 
 ## Important rule-version note
 
@@ -121,10 +150,60 @@ The core does not need to change when those rules are added.
 - ARF R10 Tunnel and R11 Table are host-optional exercises; neither is individually required to satisfy the eight-ARF-exercise minimum.
 - Upgrade solving checks equipment footprint feasibility before selecting an equipment exercise.
 
-### Pro → ARF upgrade correction
-- R11 Table and R10 Tunnel are host-optional ARF exercises; neither is individually required.
-- ARF requires 19–22 exercises with at least 8 ARF-class exercises.
-- Pro-only exercises are not treated as ARF-legal simply because the course is being advanced from Pro.
-- The upgrade solver now checks equipment-footprint feasibility while assigning signs, not only after the whole target course has been assembled.
-- Sequence placement can contribute to ARF quota requirements so an optional equipment exercise is not forced merely to reach the eight-exercise minimum.
-- A18 Return to Dog no longer imposes an artificial 180-degree course exit; the rule describes the handler returning to heel at the dog.
+- C-WAGS ordinary exercises enforce the 10-ft minimum from the 2021 Course Guidelines; joined and stated-distance exercises are exceptions.
+- Front-position continuations such as S14 Call Front → S15/S16/S17 are marked JOINED on screen and PDF.
+- Generated joined front sequences use a small visual separation so the course map clearly shows they are performed together.
+
+- Station number/sign graphics automatically offset when they would overlap; a leader line points back to the true physical station location, so course geometry is unchanged.
+
+
+- Route style selector is organization-aware. C-WAGS supports Classic, Angled Flow, Mixed, and the experimental X Crossover where appropriate. Zoom uses its dedicated Zoom Angled Flow. CARO/CKC currently use the route styles enabled by their own packs rather than inheriting C-WAGS route assumptions.
+- Angled/X routes are generated as a continuous polyline first, then stations are distributed along it while preserving every intentional turn vertex.
+- X crossings are allowed as route crossings, but physical station anchors are kept away from the crossing and equipment footprints may not be placed where an unrelated route leg cuts through them.
+
+- Desktop UI uses a three-panel judge workspace: setup/validation left, large map center, running-order station list right; side panels scroll independently.
+
+
+## Judge-quality scoring
+
+Legal validation and course-design quality are intentionally separate.
+
+The quality engine grades:
+- **Space use** — route coverage, ring balance, large unused regions, clustering
+- **Flow** — excessive crossings, reversals, and abrupt sharp-turn combinations
+- **Working space** — unrelated stations and unrelated route legs crowding one another
+- **Map clarity** — route complexity and close unrelated stations that can make a map hard to read
+
+Overall quality is weighted:
+- Space use 30%
+- Flow 30%
+- Working space 25%
+- Map clarity 15%
+
+The generator aims for **80/100 or better**. If an explicitly selected route family cannot reach
+that score, the best fully legal candidate is still returned and the quality panel explains why it
+needs improvement.
+
+These are judge/course-design heuristics, not additional C-WAGS rules. Organization-specific
+legality remains in the rule pack and validator.
+
+
+## Angled route families
+
+- **Angled Flow** is the production angled route: broad ring use, non-crossing diagonals,
+  45°/90°/135° changes, and quality-targeted working space.
+- **Mixed** chooses between Angled Flow and Classic variable. The generator still requires
+  legal sign geometry and aims for an overall judge-quality score of at least 80.
+- **X Crossover** remains available as an experimental explicit route because it can create
+  central congestion even when technically legal.
+
+
+## Zoom Angled Flow
+
+Zoom 1, Zoom 1.5 and Zoom 2 now have a dedicated angled route family. It uses broad horizontal lanes with 90°, 45° and 135° transitions plus two interior long-gap working bays so Zoom 2 obstacle choices can fit without crowding. Mixed mode alternates between this family and Classic variable.
+
+## CKC progression reserve
+
+CKC Advanced requires exactly one jump; Excellent and Master require exactly two jumps and those jumps may not be consecutive. The progression planner now reserves **two separated, footprint-compatible jump bays** before Excellent. When advancing Advanced → Excellent, the reserve is anchored to the actual Advanced #103 jump so that the second jump can be added without consuming or moving the first jump's working area. When Excellent needs one extra counted exercise for Master, station insertion skips gaps that would intrude into either existing jump working envelope.
+
+The CKC Excellent Sit Stay and Master Stand Stay remain non-counted auxiliary exercises after Finish, matching the rulebook's counting model.

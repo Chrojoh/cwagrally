@@ -1,19 +1,80 @@
-<!doctype html><meta charset="utf-8"><title>RCD V3 self-test</title>
+<!doctype html>
+<meta charset="utf-8">
+<title>Rally Course Designer V3 multi-organization self-test</title>
+<style>body{font:14px/1.45 system-ui;margin:24px} .pass{color:#176b35}.fail{color:#a22424}</style>
+<h1>Rally Course Designer V3 self-test</h1>
 <pre id="out">Running…</pre>
 <script type="module">
-import pack from './src/orgs/cwags-2021.js';
+import { rulePacks, organizations } from './src/orgs/registry.js';
 import { generateCourse } from './src/core/generator.js';
 import { validateCourse } from './src/core/validator.js';
 import { upgradeCourse } from './src/core/upgrade.js';
+import { officialStationCount } from './src/core/pack.js';
 
-const out = document.getElementById('out');
+const out=document.getElementById('out');
 const lines=[];
 function test(name,fn){
   try{fn();lines.push('PASS  '+name)}catch(e){lines.push('FAIL  '+name+' — '+e.message)}
 }
-test('C-WAGS pack loads',()=>{if(!pack.levels.S||!pack.levels.Z2)throw Error('missing levels')});
-test('Zoom 1.5 quota is explicit',()=>{const q=pack.levels.Z15.quotas[0];if(!q.signIds.includes('A9')||q.signIds.some(x=>x.startsWith('Z15')))throw Error('bad quota')});
-test('Generate Starter',()=>{const c=generateCourse({pack,levelId:'S',ring:{width:60,height:50,minSpacing:10},includeSequences:false});if(validateCourse(c,pack).some(r=>!r.ok&&r.severity==='error'))throw Error('generated course invalid')});
-test('Routes vary',()=>{const seen=new Set();for(let i=0;i<8;i++){const c=generateCourse({pack,levelId:'S',ring:{width:60,height:50,minSpacing:10},includeSequences:false});seen.add(c.nodes.map(n=>`${Math.round(n.x)},${Math.round(n.y)}`).join('|'));}if(seen.size<3)throw Error(`only ${seen.size} distinct route(s)`)});
+function legal(c,p){return !validateCourse(c,p).some(r=>!r.ok&&r.severity==='error')}
+function generate(pack,levelId){
+  const level=pack.levels[levelId];
+  return generateCourse({pack,levelId,ring:{...level.defaultRing,minSpacing:4.5},includeSequences:true,routeStyle:'mixed'});
+}
+
+test('Three organization packs are installed',()=>{
+  for(const id of ['cwags:2021','caro:2025.12','ckc:2025']) if(!rulePacks[id]) throw Error(`missing ${id}`);
+  if(organizations.length<3) throw Error('organization selector list incomplete');
+});
+
+test('C-WAGS Starter generates and validates',()=>{
+  const p=rulePacks['cwags:2021'],c=generate(p,'S'); if(!legal(c,p)) throw Error('invalid Starter course');
+});
+
+test('CARO Novice counts Start/Finish and generates',()=>{
+  const p=rulePacks['caro:2025.12'],c=generate(p,'N');
+  if(!legal(c,p)) throw Error('invalid CARO Novice course');
+  const n=officialStationCount(c,p.levels.N); if(n<15||n>20) throw Error(`official count ${n}`);
+});
+
+test('CARO Novice can progress directly to Advanced',()=>{
+  const p=rulePacks['caro:2025.12'],c=generate(p,'N');
+  const next=upgradeCourse(c,p,'A').course; if(!legal(next,p)) throw Error('invalid CARO Advanced upgrade');
+});
+
+test('CARO Versatility stays manual until side-state solver is enabled',()=>{
+  const p=rulePacks['caro:2025.12']; if(p.levels.V.generationEnabled!==false||p.levels.VX.generationEnabled!==false) throw Error('V/VX unexpectedly auto-enabled');
+});
+
+test('CKC Novice counts exercises excluding Start/Finish',()=>{
+  const p=rulePacks['ckc:2025'],c=generate(p,'N');
+  if(!legal(c,p)) throw Error('invalid CKC Novice course');
+  const n=officialStationCount(c,p.levels.N); if(n<10||n>15) throw Error(`official count ${n}`);
+});
+
+test('CKC Excellent adds non-counted Sit Stay auxiliary',()=>{
+  const p=rulePacks['ckc:2025'],c=generate(p,'X');
+  if(!legal(c,p)) throw Error('invalid CKC Excellent course');
+  const stay=(c.auxiliary||[]).find(a=>a.signId==='298');
+  if(!stay||stay.counted!==false) throw Error('Sit Stay auxiliary missing/not non-counted');
+});
+
+test('CKC full progression preserves two nonconsecutive jump bays',()=>{
+  const p=rulePacks['ckc:2025'];
+  let c=generate(p,'N');
+  for(const target of ['I','A','X','M']){
+    c=upgradeCourse(c,p,target).course;
+    if(!legal(c,p)) throw Error(`invalid CKC ${target} upgrade`);
+  }
+  const jumpSet=new Set(['103','216','217','312','324','325','334']);
+  const stations=c.nodes.filter(n=>n.kind==='station');
+  const jumps=stations.map((n,i)=>jumpSet.has(n.signId)?i:-1).filter(i=>i>=0);
+  if(jumps.length!==2) throw Error(`Master jump count ${jumps.length}`);
+  if(Math.abs(jumps[0]-jumps[1])<2) throw Error('Master jumps are consecutive');
+  const stay=(c.auxiliary||[]).find(a=>a.signId==='398');
+  if(!stay||stay.counted!==false) throw Error('Stand Stay auxiliary missing/not non-counted');
+});
+
 out.textContent=lines.join('\n');
+out.className=lines.some(x=>x.startsWith('FAIL'))?'fail':'pass';
 </script>

@@ -65,3 +65,30 @@ export function transitionAllows(pack, levelId, signId, nextId, isFinish = false
   if (isFinish) return !!rule.allowFinish;
   return !!nextId && (rule.next || []).includes(nextId);
 }
+
+
+export function joinedRuleFor(pack, fromId, toId) {
+  return (pack.joinedPairRules || []).find(rule =>
+    rule.from.includes(fromId) && rule.to.includes(toId)
+  ) || null;
+}
+
+export function refreshJoinedFlags(course, pack) {
+  if (!course?.nodes) return course;
+  let previousStation = null;
+  for (const node of course.nodes) {
+    if (node.kind !== 'station') continue;
+    const rule = previousStation
+      ? joinedRuleFor(pack, previousStation.signId, node.signId)
+      : null;
+    if (rule) {
+      node.joinedToPrevious = true;
+      node.joinedReason = rule.label || 'Joined exercise';
+    } else {
+      delete node.joinedToPrevious;
+      delete node.joinedReason;
+    }
+    previousStation = node;
+  }
+  return course;
+}

@@ -28,8 +28,12 @@ export function requiredTurnAt(nodes, nodeIndex) {
 }
 
 export function signFitsTurn(sign, requiredTurn, tolerance = 28) {
-  const td = sign.motion?.turnDelta ?? 0;
-  return circularDeltaError(td, requiredTurn) <= (sign.motion?.tolerance ?? tolerance);
+  if (sign?.motion?.flexibleExit) return true;
+  const allowed = Array.isArray(sign?.motion?.turnOptions)
+    ? sign.motion.turnOptions
+    : [sign?.motion?.turnDelta ?? 0];
+  const tol = sign?.motion?.tolerance ?? tolerance;
+  return allowed.some(td => circularDeltaError(td, requiredTurn) <= tol);
 }
 
 export function recalcHeadings(nodes) {
@@ -283,7 +287,7 @@ function weightedShuffle(items, scoreFn) {
     .map(x => x.item);
 }
 
-export function makeVariedRoute({ count, width, height, margin = 5 }) {
+export function makeVariedRoute({ count, width, height, margin = 5, style = 'mixed', drawingFloor = 8 }) {
   const total = count + 2; // start + stations + finish
   const usableW = width - margin * 2;
   const usableH = height - margin * 2;
@@ -292,12 +296,9 @@ export function makeVariedRoute({ count, width, height, margin = 5 }) {
     throw new Error('Ring is too small for a practical rally layout.');
   }
 
-  // IMPORTANT:
-  // There is NO universal ordinary C-WAGS sign spacing here.
-  // The route is built from the ring dimensions and station count only.
-  // A small 4.5 ft internal floor prevents drawn markers from stacking on top
-  // of one another; it is NOT a C-WAGS rule and is not exposed as a user setting.
-  const DRAWING_FLOOR = 4.5;
+  // This is a route-layout heuristic, not an organization legality rule.
+  // Organization-specific minimum distances belong in the rule pack validator.
+  const DRAWING_FLOOR = Math.max(4.5, Number(drawingFloor) || 8);
 
   function rand(a, b) {
     return a + Math.random() * (b - a);
@@ -315,27 +316,33 @@ export function makeVariedRoute({ count, width, height, margin = 5 }) {
       const avgRunGap = runLength / Math.max(1, avgPerLane - 1);
       const crossGap = crossLength / Math.max(1, lanes - 1);
 
-      // Prefer 4–5 points per lane and enough separation between lanes for
-      // equipment working areas. This is layout quality, not a rule minimum.
+      // Reject lane patterns that would force route anchors under the preferred layout floor.
+      if (avgRunGap < DRAWING_FLOOR - 0.01 || crossGap < DRAWING_FLOOR - 0.01) continue;
+
+      // Prefer 4–5 points per lane while preserving useful open areas.
       let score = 0;
       score -= Math.abs(avgPerLane - 4.6) * 1.4;
-      score -= Math.max(0, 7 - crossGap) * 2.5;
-      score -= Math.max(0, 6 - avgRunGap) * 2.5;
+      score -= Math.max(0, 12 - crossGap) * 0.45;
+      score -= Math.max(0, 12 - avgRunGap) * 0.45;
       score += Math.random() * 1.8;
       candidates.push({ lanes, score });
+    }
+    if (!candidates.length) {
+      throw new Error(`Ring cannot fit this station count with the ${DRAWING_FLOOR.toFixed(1)}-ft route-layout floor.`);
     }
     candidates.sort((a, b) => b.score - a.score);
     const pool = candidates.slice(0, Math.min(3, candidates.length));
     return pool[Math.floor(Math.random() * pool.length)].lanes;
   }
 
-  function allocatePointsAcrossLanes(lanes) {
+  function allocatePointsAcrossLanes(lanes, runLength) {
     // Start with two points per lane so every run has an entry and exit.
     const counts = Array(lanes).fill(2);
     let remaining = total - lanes * 2;
 
     // Vary density by lane. Some sparse lanes create long runs where jumps,
     // weaves, figures 8, and recall exercises can actually fit.
+    const maxPerLane = Math.floor(runLength / DRAWING_FLOOR) + 1;
     const order = shuffled(Array.from({ length: lanes }, (_, i) => i));
     while (remaining > 0) {
       const weighted = shuffled(order).sort((a, b) => {
@@ -344,13 +351,15 @@ export function makeVariedRoute({ count, width, height, margin = 5 }) {
       });
       let placed = false;
       for (const i of weighted) {
-        if (counts[i] >= 7) continue;
+        if (counts[i] >= Math.min(7, maxPerLane)) continue;
         counts[i]++;
         remaining--;
         placed = true;
         break;
       }
-      if (!placed) break;
+      if (!placed) {
+        throw new Error('Unable to distribute stations within the preferred route-layout floor.');
+      }
     }
     return counts;
   }
@@ -374,15 +383,14 @@ export function makeVariedRoute({ count, width, height, margin = 5 }) {
       remaining -= Math.min(extra, remaining);
     }
 
-    // Reserve a short/medium gap sometimes as well. This creates legal places
-    // for exercises described around 5 ft, 8–10 ft, or ~12 ft.
+    // Reserve a medium gap sometimes while keeping the preferred layout floor.
     if (remaining > 0 && gapCount >= 2 && Math.random() < 0.75) {
       const available = gaps
         .map((_, i) => i)
         .filter(i => gaps[i] <= floor + 0.01);
       if (available.length) {
         const i = available[Math.floor(Math.random() * available.length)];
-        const target = [5, 9, 12][Math.floor(Math.random() * 3)];
+        const target = [DRAWING_FLOOR, Math.max(DRAWING_FLOOR + 2, 10), Math.max(DRAWING_FLOOR + 5, 13)][Math.floor(Math.random() * 3)];
         const extra = Math.max(0, target - gaps[i]);
         const add = Math.min(extra, remaining);
         gaps[i] += add;
@@ -441,9 +449,307 @@ export function makeVariedRoute({ count, width, height, margin = 5 }) {
     return positionsFromGaps(start, gaps);
   }
 
+
+  function distributePolylinePoints(controls, options = {}) {
+    const segmentCount = controls.length - 1;
+    if (segmentCount < 1) return null;
+
+    const lengths = [];
+    for (let i = 0; i < segmentCount; i++) {
+      const a = controls[i], b = controls[i + 1];
+      lengths.push(Math.hypot(b.x - a.x, b.y - a.y));
+    }
+    if (lengths.some(L => L + 1e-6 < DRAWING_FLOOR)) return null;
+
+    const minIntervals = options.minIntervals || {};
+    const maxIntervals = options.maxIntervals || {};
+    const intervals = Array.from({length:segmentCount}, (_, i) => Math.max(1, minIntervals[i] || 1));
+    const capacities = lengths.map((L, i) => {
+      const natural = Math.max(1, Math.floor((L + 1e-6) / DRAWING_FLOOR));
+      return Math.max(intervals[i], Math.min(natural, maxIntervals[i] || natural));
+    });
+    let remaining = (total - 1) - intervals.reduce((s,n)=>s+n,0);
+    if (remaining < 0) return null;
+    if (capacities.reduce((s, n) => s + n, 0) < total - 1) return null;
+
+    // Add intervals where the resulting gap remains largest. A little jitter
+    // prevents every generated X course from placing signs at identical spots.
+    while (remaining > 0) {
+      const choices = [];
+      for (let i = 0; i < segmentCount; i++) {
+        if (intervals[i] >= capacities[i]) continue;
+        const nextGap = lengths[i] / (intervals[i] + 1);
+        choices.push({ i, score: nextGap + Math.random() * 2.5 });
+      }
+      if (!choices.length) return null;
+      choices.sort((a, b) => b.score - a.score);
+      intervals[choices[0].i]++;
+      remaining--;
+    }
+
+    function gapsFor(length, n) {
+      if (n <= 1) return [length];
+      const base = DRAWING_FLOOR;
+      const gaps = Array(n).fill(base);
+      let extra = length - base * n;
+      if (extra <= 1e-6) {
+        gaps[gaps.length - 1] += extra;
+        return gaps;
+      }
+
+      // Uneven distribution keeps the path organic while never dropping below
+      // the selected layout floor.
+      const weights = Array.from({ length:n }, () => 0.4 + Math.random());
+      const sum = weights.reduce((a,b) => a+b, 0);
+      for (let i=0;i<n;i++) gaps[i] += extra * weights[i] / sum;
+      return gaps;
+    }
+
+    const points = [{ ...controls[0] }];
+    for (let s = 0; s < segmentCount; s++) {
+      const a = controls[s], b = controls[s + 1];
+      const L = lengths[s];
+      const ux = (b.x - a.x) / L, uy = (b.y - a.y) / L;
+      const gaps = options.balancedSegments?.has?.(s)
+        ? Array(intervals[s]).fill(L / intervals[s])
+        : gapsFor(L, intervals[s]);
+      let traveled = 0;
+      for (let k = 0; k < gaps.length; k++) {
+        traveled += gaps[k];
+        // Snap the final point of each segment exactly to its control vertex,
+        // preserving the intended 45/90/135-degree geometry.
+        if (k === gaps.length - 1) points.push({ ...b });
+        else points.push({ x:a.x + ux * traveled, y:a.y + uy * traveled });
+      }
+    }
+    return points.length === total ? points : null;
+  }
+
+  function routeHasClearStationAnchors(points, minNonAdjacent = 6) {
+    // X lines are allowed to cross, but do not place physical station anchors
+    // on top of each other at the crossing.
+    for (let i = 0; i < points.length; i++) {
+      for (let j = i + 2; j < points.length; j++) {
+        if (i === 0 && j === points.length - 1) continue;
+        const d = Math.hypot(points[i].x - points[j].x, points[i].y - points[j].y);
+        if (d < minNonAdjacent) return false;
+      }
+    }
+    return true;
+  }
+
+
+  function buildZoomAngledFlow() {
+    // Zoom-specific angled route. Four broad lanes are connected with a mix
+    // of 90°, 135° and 45° direction changes. Two interior straight "bays"
+    // keep long approach/run-out gaps available for Zoom 2 obstacle choices.
+    // The route is non-crossing and deliberately uses the ring vertically as
+    // well as horizontally.
+    if (usableW < 48 || usableH < 38) return null;
+
+    const left = margin;
+    const right = width - margin;
+    const bottom = height - margin;
+    const lower = bottom - 10;
+    const upper = margin + 10;
+    const top = margin;
+
+    // Interior bay x-positions stay away from boundaries and from one another.
+    const bayLowX = left + 20;
+    const bayLowExitX = left + 40;
+    const bayHighX = right - 20;
+    const bayHighExitX = right - 40;
+
+    if (bayLowExitX > right - 8 || bayHighExitX < left + 8) return null;
+
+    const controls = [
+      { x:right, y:bottom },
+      { x:left,  y:bottom },          // +90 corner
+      { x:left,  y:lower },           // +90 corner into lower interior lane
+      { x:bayLowX,     y:lower },
+      { x:bayLowExitX, y:lower },     // long bay around previous control
+      { x:right, y:lower },           // -90 corner
+      { x:right, y:upper },           // -90 corner into upper interior lane
+      { x:bayHighX,     y:upper },
+      { x:bayHighExitX, y:upper },    // second long bay
+      { x:left, y:upper },            // +135 into diagonal
+      { x:left + 10, y:top },         // +45 out of diagonal
+      { x:right, y:top },             // deliberate 180° hairpin station
+      { x:right - 20, y:top }         // short retrace to Finish
+    ];
+
+    // The four 20-ft segments around the two bay stations are kept as single
+    // intervals. The final two top segments are also kept sparse so the 180°
+    // hairpin can support a legal leave-dog -> turn/call-to-heel sequence used
+    // by the Zoom 2 pool without placing another station on the retraced line.
+    const options = {
+      maxIntervals: { 2:1, 3:1, 6:1, 7:1, 10:1, 11:1 }
+    };
+
+    // Mirror horizontally/vertically for variety without changing the angles.
+    let transformed = controls.map(p => ({ ...p }));
+    if (Math.random() < 0.5) transformed = transformed.map(p => ({ x:width - p.x, y:p.y }));
+    if (Math.random() < 0.5) transformed = transformed.map(p => ({ x:p.x, y:height - p.y }));
+    if (Math.random() < 0.35) transformed.reverse();
+
+    for (let attempt=0; attempt<50; attempt++) {
+      const points = distributePolylinePoints(transformed, options);
+      if (!points) continue;
+      if (!routeHasClearStationAnchors(points, 6)) continue;
+
+      let crossed=false;
+      for (let i=0;i<points.length-1 && !crossed;i++) {
+        for (let j=i+2;j<points.length-1;j++) {
+          if (segmentsCross(points[i],points[i+1],points[j],points[j+1])) {
+            crossed=true; break;
+          }
+        }
+      }
+      if (!crossed) return points;
+    }
+    return null;
+  }
+
+  function buildAngledFlow() {
+    // Broad, non-crossing angled route intended to feel like a judge-designed
+    // course rather than a ladder. It uses a long perimeter sweep plus a large
+    // diagonal through the ring, then finishes on an open outside lane.
+    //
+    // The number of actual direction changes is deliberately modest so the
+    // route remains compatible with sign-use limits for 45°/135° exercises.
+    if (usableW < 50 || usableH < 40) return null;
+
+    const left = margin;
+    const right = width - margin;
+    const top = margin;
+    const bottom = height - margin;
+
+    const controls = [
+      { x:right,     y:bottom },      // lower-right start
+      { x:left,      y:bottom },      // long run across bottom
+      { x:left + 30, y:top + 10 },    // broad 45° diagonal through the ring
+      { x:left,      y:top + 10 },    // west across upper-left lane
+      { x:left + 10, y:top },         // short diagonal into top lane
+      { x:right,     y:top },         // long run across top
+      { x:right,     y:bottom - 10 }, // down right side
+      { x:left + 20, y:bottom - 10 }  // finish on lower-middle lane
+    ];
+
+    for (let i = 0; i < controls.length - 1; i++) {
+      const L = Math.hypot(
+        controls[i + 1].x - controls[i].x,
+        controls[i + 1].y - controls[i].y
+      );
+      if (L + 1e-6 < DRAWING_FLOOR) return null;
+    }
+
+    let transformed = controls.map(p => ({ ...p }));
+
+    // Mirroring/reversal produces multiple visibly different angled courses
+    // while preserving exact 45°/90°/135° turn geometry.
+    if (Math.random() < 0.5) {
+      transformed = transformed.map(p => ({ x: width - p.x, y: p.y }));
+    }
+    if (Math.random() < 0.5) {
+      transformed = transformed.map(p => ({ x: p.x, y: height - p.y }));
+    }
+    if (Math.random() < 0.35) transformed.reverse();
+
+    for (let attempt = 0; attempt < 60; attempt++) {
+      const points = distributePolylinePoints(transformed);
+      if (!points) continue;
+      if (!routeHasClearStationAnchors(points, 6)) continue;
+
+      let crossed = false;
+      for (let i = 0; i < points.length - 1 && !crossed; i++) {
+        for (let j = i + 2; j < points.length - 1; j++) {
+          if (segmentsCross(points[i], points[i + 1], points[j], points[j + 1])) {
+            crossed = true;
+            break;
+          }
+        }
+      }
+      if (!crossed) return points;
+    }
+    return null;
+  }
+
+  function buildAngledX() {
+    // Template based on a practical X-with-outside-path course:
+    // bottom-right start -> straight up -> left 135 -> right 135 ->
+    // successive 90s around the outside/middle -> right 135 across the
+    // opposite diagonal. The two diagonals cross without requiring a station
+    // at the crossing point.
+    const routeW = Math.min(usableW - 5, usableH * 1.25);
+    if (routeW < 40) return null;
+    const left = margin + Math.max(0, (usableW - 5 - routeW) / 2);
+    const right = left + routeW;
+    const top = margin;
+    const bottom = height - margin;
+
+    // The opening vertical is deliberately 5 ft farther inside the ring than
+    // the old perimeter route. That creates at least one genuinely usable
+    // straight equipment slot (jump/table/etc.) without putting its working
+    // footprint through the ring edge.
+    const d = Math.min(routeW - 20, usableH * 0.625);
+    if (d < 20) return null;
+
+    const firstDiagX = right - d;
+    const innerRight = right - 5;
+    const midY = top + usableH / 2;
+    const secondDiagStartX = left + 10;
+    const hookTurnX = secondDiagStartX + 5;
+
+    const controls = [
+      { x:right,            y:bottom },  // start: bottom-right area
+      { x:right,            y:top },     // straight up; equipment-friendly corridor
+      { x:firstDiagX,       y:top + d }, // left 135: first diagonal
+      { x:firstDiagX,       y:top },     // right 135: straight up
+      { x:innerRight,       y:top },     // right 90
+      { x:innerRight,       y:midY },    // right 90
+      { x:hookTurnX + 5,    y:midY },    // continue west
+      { x:left,             y:midY },    // 180 about-turn at outside spur
+      { x:secondDiagStartX, y:midY },    // retrace east, then left 90
+      { x:secondDiagStartX, y:top },     // straight up
+      { x:secondDiagStartX + d, y:top + d } // right 135: opposite X diagonal / finish
+    ];
+
+    // Make sure the geometry remains practical for the current ring.
+    for (let i=0;i<controls.length-1;i++) {
+      if (Math.hypot(
+        controls[i+1].x-controls[i].x,
+        controls[i+1].y-controls[i].y
+      ) < DRAWING_FLOOR - 1e-6) return null;
+    }
+
+    // Randomly mirror and/or reverse the whole route. This produces all four
+    // start corners while retaining exact turn angles.
+    let transformed = controls.map(p => ({...p}));
+    if (Math.random() < 0.5) transformed = transformed.map(p => ({ x:width-p.x, y:p.y }));
+    if (Math.random() < 0.5) transformed = transformed.map(p => ({ x:p.x, y:height-p.y }));
+
+    // Segment 0 is the equipment-friendly opening corridor. Three balanced
+    // intervals create two straight stations about 13.3 ft apart on a 40-ft
+    // leg: enough room for the more demanding Zoom/ARF quota equipment while
+    // retaining the selected route-layout floor.
+    const pointOptions = {
+      minIntervals:{0:3},
+      maxIntervals:{0:3},
+      balancedSegments:new Set([0])
+    };
+
+    // Try multiple point distributions so no station lands directly on the X
+    // crossing or too close to a non-adjacent station.
+    for (let attempt=0; attempt<100; attempt++) {
+      const points = distributePolylinePoints(transformed, pointOptions);
+      if (points && routeHasClearStationAnchors(points, 2.5)) return points;
+    }
+    return null;
+  }
+
   function buildRowSnake() {
     const lanes = laneCountFor(usableW, usableH);
-    const counts = allocatePointsAcrossLanes(lanes);
+    const counts = allocatePointsAcrossLanes(lanes, usableW);
     const ys = variedLanePositions(usableH, lanes, margin);
     const pts = [];
 
@@ -464,7 +770,7 @@ export function makeVariedRoute({ count, width, height, margin = 5 }) {
 
   function buildColSnake() {
     const lanes = laneCountFor(usableH, usableW);
-    const counts = allocatePointsAcrossLanes(lanes);
+    const counts = allocatePointsAcrossLanes(lanes, usableH);
     const xs = variedLanePositions(usableW, lanes, margin);
     const pts = [];
 
@@ -482,16 +788,59 @@ export function makeVariedRoute({ count, width, height, margin = 5 }) {
     return pts.slice(0, total);
   }
 
-  // Two distinct physical families, then mirror/reverse them for more variety.
-  // Both preserve exact 90-degree corner geometry while allowing completely
-  // different distances from station to station.
-  let pts = Math.random() < 0.5 ? buildRowSnake() : buildColSnake();
+  const classicRoute = () => {
+    let pts = Math.random() < 0.5 ? buildRowSnake() : buildColSnake();
+    if (Math.random() < 0.5) pts = pts.map(p => ({ x: width - p.x, y: p.y }));
+    if (Math.random() < 0.5) pts = pts.map(p => ({ x: p.x, y: height - p.y }));
+    if (Math.random() < 0.5) pts.reverse();
+    pts.routeFamily = 'classic-variable';
+    return pts;
+  };
 
-  if (Math.random() < 0.5) pts = pts.map(p => ({ x: width - p.x, y: p.y }));
-  if (Math.random() < 0.5) pts = pts.map(p => ({ x: p.x, y: height - p.y }));
-  if (Math.random() < 0.5) pts.reverse();
+  if (style === 'zoom-mixed') {
+    if (Math.random() < 0.62) {
+      const angled = buildZoomAngledFlow();
+      if (angled) {
+        angled.routeFamily = 'zoom-angled-flow';
+        return angled;
+      }
+    }
+    return classicRoute();
+  }
 
-  return pts;
+  if (style === 'zoom-angled-flow') {
+    const pts = buildZoomAngledFlow();
+    if (!pts) throw new Error('This ring/station count cannot fit the Zoom Angled Flow route with the selected layout geometry.');
+    pts.routeFamily = 'zoom-angled-flow';
+    return pts;
+  }
+
+  if (style === 'angled-flow') {
+    const pts = buildAngledFlow();
+    if (!pts) throw new Error('This ring/station count cannot fit the Angled Flow route with the selected layout geometry.');
+    pts.routeFamily = 'angled-flow';
+    return pts;
+  }
+
+  if (style === 'angled-x') {
+    const pts = buildAngledX();
+    if (!pts) throw new Error('This ring/station count cannot fit the angled X route with the selected layout geometry.');
+    pts.routeFamily = 'angled-x';
+    return pts;
+  }
+
+  if (style === 'classic') return classicRoute();
+
+  // Mixed mode now favors the judge-quality Angled Flow family instead of the
+  // crowded X crossover. The X remains available as an explicit choice.
+  if (Math.random() < 0.62) {
+    const angled = buildAngledFlow();
+    if (angled) {
+      angled.routeFamily = 'angled-flow';
+      return angled;
+    }
+  }
+  return classicRoute();
 }
 
 export function adjacentSpacingViolations(nodes, minSpacing) {

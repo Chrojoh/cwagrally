@@ -16,7 +16,7 @@
   </header>
 
   <main class="layout">
-    <aside class="sidebar">
+    <aside class="sidebar left-sidebar">
       <section class="panel">
         <h2>Course setup</h2>
 
@@ -26,6 +26,15 @@
 
         <label>Level
           <select id="level"></select>
+        </label>
+
+        <label>Route style
+          <select id="routeStyle">
+            <option value="mixed">Mixed — classic + angled flow</option>
+            <option value="angled-flow">Angled flow</option>
+            <option value="classic">Classic variable</option>
+            <option value="angled-x">X crossover — experimental</option>
+          </select>
         </label>
 
         <div class="grid2">
@@ -46,12 +55,46 @@
           <button id="generateBtn" class="primary">Generate course</button>
           <button id="upgradeBtn">Advance level</button>
         </div>
+
+        <label id="advanceTargetWrap" class="advance-target">Advance current course to
+          <select id="advanceTarget"></select>
+        </label>
+      </section>
+
+
+      <section class="panel edit-panel">
+        <h2>Edit course</h2>
+        <div class="actions wrap edit-actions">
+          <button id="undoBtn" type="button">Undo</button>
+          <button id="redoBtn" type="button">Redo</button>
+          <button id="insertStationBtn" type="button">Insert after selected</button>
+          <button id="deleteStationBtn" type="button">Delete selected</button>
+        </div>
+        <div class="muted edit-help">
+          <b>Move:</b> drag a numbered station on the course.<br>
+          <b>Add:</b> drag a sign below onto the route.<br>
+          <b>Replace:</b> drop a sign onto an existing station.<br>
+          Red stations have a validation issue; click the red status message to find them.
+        </div>
+        <input id="signFilter" class="sign-filter" type="search" placeholder="Find sign or exercise…" autocomplete="off">
+        <div id="signPalette" class="sign-palette" aria-label="Allowed sign palette"></div>
       </section>
 
       <section class="panel">
         <h2>Course status</h2>
         <div id="summary" class="summary"></div>
         <div id="validation" class="validation"></div>
+      </section>
+
+
+      <section class="panel quality-panel">
+        <h2>Course quality</h2>
+        <div id="qualitySummary"></div>
+        <div id="qualityScores" class="quality-scores"></div>
+        <div id="qualityFindings" class="quality-findings"></div>
+        <div class="muted quality-note">
+          Judge-quality heuristic, separate from organization legality. Course Status uses the selected rule pack.
+        </div>
       </section>
 
       <section class="panel">
@@ -77,21 +120,26 @@
           <strong id="courseTitle">Course</strong>
           <span id="courseMeta"></span>
         </div>
-        <div class="muted">Drag stations to edit the physical layout. Change signs in the station list.</div>
+        <div class="muted">Drag stations to reshape the route. Red outlines mark stations that need attention.</div>
       </div>
 
       <div class="canvas-shell">
         <canvas id="courseCanvas" width="1100" height="760"></canvas>
       </div>
 
+    </section>
+
+    <aside class="station-sidebar" aria-label="Station list">
       <section class="station-panel">
         <div class="station-header">
-          <h2>Stations</h2>
-          <span class="muted">Substitutions shown here are filtered by level and path geometry.</span>
+          <div>
+            <h2>Stations</h2>
+            <div class="muted">Top-to-bottom running order. Change signs here or drag stations on the map.</div>
+          </div>
         </div>
         <div id="stationList" class="station-list"></div>
       </section>
-    </section>
+    </aside>
   </main>
 
   <script type="module" src="./src/app.js"></script>

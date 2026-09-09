@@ -1921,6 +1921,21 @@ const Z2 = ["S1", "S2", "S3", "S4", "S7", "S8", "S18", "S19", "S20", "S21", "S22
 
 
 
+
+// C-WAGS permits two or more exercises to be joined and requires joined
+// exercises to be indicated on the course map. These pairings are the
+// front-position continuations where the first exercise ends with the dog in
+// front and the next exercise begins in front; there is no intervening heeling.
+const joinedPairRules = [
+  {
+    from:['S14','P5','A15','A16','P14','P15','S17'],
+    to:['S15','S16','S17','A12','A13','A18','A19','P13'],
+    displayGap:3,
+    displayWarnAbove:6,
+    label:'Front-position exercises performed as a joined sequence'
+  }
+];
+
 const adjacentDistanceRules = [
   // Approximate/direct distances from the C-WAGS 2021 exercise descriptions.
   // These apply when the listed exercises are adjacent on the course.
@@ -2021,6 +2036,12 @@ const chainTemplates = {
     ['A24','A18'],
     ['PR7','P18'],
     ['PR8','P18'],
+    ['PR7','A17'],
+    ['PR8','A18'],
+    // Two straight leave-dog sequences provide two Zoom-2-introduced
+    // exercises without requiring a 180° hairpin or optional equipment.
+    ['PR7','A17','PR8','A18'],
+    ['PR8','A18','PR7','A17'],
     ['A24','R5','S15'],
     ['PR7','R5','A19']
   ]
@@ -2038,6 +2059,7 @@ export const cwags2021 = {
   dependentSigns,
   chainTemplates,
   adjacentDistanceRules,
+  joinedPairRules,
   transitionRules,
   sequenceNext,
   sequenceFollowers: buildFollowers(sequenceNext),

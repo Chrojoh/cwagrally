@@ -1,3 +1,4 @@
+import { officialStationCount, stationCountLabel } from './pack.js';
 function asciiBytes(s) {
   return new TextEncoder().encode(s);
 }
@@ -74,7 +75,8 @@ export async function exportCoursePdf({ course, pack, drawCourseToContext, image
   ctx.fillText(`${pack.name} — ${pack.levels[course.levelId].name}`, 120, 105);
   ctx.font = '32px Arial';
   ctx.fillStyle = '#596579';
-  ctx.fillText(`Rules ${pack.version} · Ring ${course.ring.width} × ${course.ring.height} ft · ${course.nodes.filter(n => n.kind === 'station').length} stations`, 120, 155);
+  const level=pack.levels[course.levelId];
+  ctx.fillText(`Rules ${pack.version} · Ring ${course.ring.width} × ${course.ring.height} ft · ${officialStationCount(course,level)} ${stationCountLabel(level)}`, 120, 155);
 
   // Course map, left 72% of page.
   const mapBox = { x: 90, y: 210, w: 2240, h: 2200 };
@@ -101,6 +103,13 @@ export async function exportCoursePdf({ course, pack, drawCourseToContext, image
     ctx.fillStyle = '#172033'; ctx.font = '25px Arial';
     drawWrapped(ctx, pack.signs[node.signId]?.name || node.signId, sx + 190, y + 35, 560, 28, 2);
   });
+
+  const aux = course.auxiliary || [];
+  if (aux.length) {
+    const ay = 2320;
+    ctx.fillStyle='#5f447f';ctx.font='bold 24px Arial';
+    ctx.fillText(`Auxiliary / non-counted: ${aux.map(a=>`${a.signId} ${a.label||''}`).join(' · ')}`, sx + 35, ay);
+  }
 
   ctx.fillStyle = '#7b8799'; ctx.font = '22px Arial';
   ctx.fillText(`Course ID: ${course.courseId}`, 120, 2490);
