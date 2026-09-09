@@ -232,3 +232,12 @@ The right-hand station list now shows the practical setup distance instead of th
 station identifier. Each numbered station displays the route distance from the previous numbered
 station (or from Start for station 1), followed by the station x/y coordinates in feet. The internal
 stable ID remains hidden from normal view and is only available as hover/title metadata.
+
+
+## CARO ring dimensions
+
+CARO's installed rule pack uses a minimum ring area of 1,500 sq ft rather than a fixed 50 x 40 ft
+shape. The UI now makes this explicit. 50 x 40 ft remains the program's default/recommended
+automatic-layout size, but judges may enter other dimensions that satisfy the CARO minimum.
+The setup panel shows live square footage and rule compliance, and legal custom dimensions are
+preserved when switching between levels in the same organization.

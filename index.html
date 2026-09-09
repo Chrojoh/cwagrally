@@ -39,12 +39,14 @@
 
         <div class="grid2">
           <label>Ring width (ft)
-            <input id="ringW" type="number" min="20" max="200" step="1">
+            <input id="ringW" type="number" min="20" max="200" step="0.5">
           </label>
           <label>Ring height (ft)
-            <input id="ringH" type="number" min="20" max="200" step="1">
+            <input id="ringH" type="number" min="20" max="200" step="0.5">
           </label>
         </div>
+
+        <div id="ringGuidance" class="ring-guidance" aria-live="polite"></div>
 
         <label class="check">
           <input id="includeSequences" type="checkbox">

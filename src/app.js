@@ -9,7 +9,7 @@ import { exportCoursePdf } from './core/pdf.js';
 import { recalcHeadings } from './core/geometry.js';
 import { makeId, touchCourse } from './core/model.js';
 import { drawCourse, drawCourseToContext, loadSignImage, getImageCache, canvasPointToRing, findNodeAt } from './ui/canvas.js';
-import { officialStationCount, nextLevelsFor, ringRuleText, routeStylesFor, signImageUrl, stationCountLabel } from './core/pack.js';
+import { officialStationCount, nextLevelsFor, ringRuleIssues, ringRuleText, routeStylesFor, signImageUrl, stationCountLabel } from './core/pack.js';
 
 const $ = id => document.getElementById(id);
 const orgEl=$('organization'), levelEl=$('level'), routeStyleEl=$('routeStyle'), ringW=$('ringW'), ringH=$('ringH'), advanceTargetEl=$('advanceTarget');
@@ -94,12 +94,51 @@ function updateAdvanceTargets() {
   $('advanceTargetWrap').hidden=targets.length===0;
 }
 
-function applyLevelDefaults() {
+function updateRingGuidance() {
+  const el=$('ringGuidance');
+  if(!el || !pack) return;
   const level=pack.levels[levelEl.value];
-  ringW.value=level.defaultRing.width;
-  ringH.value=level.defaultRing.height;
+  if(!level) return;
+
+  const width=Number(ringW.value);
+  const height=Number(ringH.value);
+  if(!Number.isFinite(width) || !Number.isFinite(height) || width<=0 || height<=0) {
+    el.className='ring-guidance warn';
+    el.textContent='Enter ring width and height.';
+    return;
+  }
+
+  const area=width*height;
+  const ring={width,height};
+  const issues=ringRuleIssues(level,ring);
+  const areaText=area.toLocaleString(undefined,{maximumFractionDigits:1});
+
+  if(issues.length) {
+    el.className='ring-guidance error';
+    el.innerHTML=`<b>${width} × ${height} ft = ${areaText} sq ft</b> · Does not meet ${ringRuleText(level)}: ${issues.join('; ')}.`;
+  } else {
+    el.className='ring-guidance ok';
+    const guidance=pack.ringGuidance ? ` ${pack.ringGuidance}` : '';
+    el.innerHTML=`<b>${width} × ${height} ft = ${areaText} sq ft</b> · ✓ Meets ${ringRuleText(level)}.${guidance}`;
+  }
+}
+
+function applyLevelDefaults({ preserveRing=false } = {}) {
+  const level=pack.levels[levelEl.value];
+  const current={width:Number(ringW.value),height:Number(ringH.value)};
+  const currentUsable=
+    Number.isFinite(current.width) && Number.isFinite(current.height) &&
+    current.width>0 && current.height>0 &&
+    ringRuleIssues(level,current).length===0;
+
+  if(!preserveRing || !currentUsable) {
+    ringW.value=level.defaultRing.width;
+    ringH.value=level.defaultRing.height;
+  }
+
   updateRouteStyleAvailability();
   updateAdvanceTargets();
+  updateRingGuidance();
   if($('generateBtn')) {
     $('generateBtn').disabled=level.generationEnabled===false;
     $('generateBtn').title=level.generationEnabled===false ? (level.generationMessage||'Automatic generation is not enabled for this level yet.') : '';
@@ -284,6 +323,7 @@ function render(loadImages=true) {
   if(!course) return;
   resizeCourseCanvas();
   updateAdvanceTargets();
+  updateRingGuidance();
   refreshJoinedFlags(course,pack);
   if(loadImages) ensureImages();
   const results=validateCourse(course,pack);
@@ -291,7 +331,8 @@ function render(loadImages=true) {
   const problemIds=allProblemStationIds(results);
   drawCourse(canvas,course,pack,{highlightStationIds:problemIds,selectedStationId});
   $('courseTitle').textContent=`${pack.levels[course.levelId].name} Course`;
-  $('courseMeta').textContent=`${officialStationCount(course,pack.levels[course.levelId])} official stations · ${course.ring.width}×${course.ring.height} ft`;
+  const ringArea=course.ring.width*course.ring.height;
+  $('courseMeta').textContent=`${officialStationCount(course,pack.levels[course.levelId])} official stations · ${course.ring.width}×${course.ring.height} ft (${ringArea.toLocaleString(undefined,{maximumFractionDigits:1})} sq ft)`;
   renderStations(problemIds);
   renderValidation(results);
   renderQuality(quality,results);
@@ -315,7 +356,7 @@ function renderSummary() {
     <b>${pack.name}</b><br>
     ${level.name} · Rules ${pack.version}<br>
     Source: ${pack.sourceLabel||'installed rule pack'}<br>
-    Ring: ${course.ring.width} × ${course.ring.height} ft · ${ringRuleText(level)}<br>
+    Ring: ${course.ring.width} × ${course.ring.height} ft = ${(course.ring.width*course.ring.height).toLocaleString(undefined,{maximumFractionDigits:1})} sq ft · ${ringRuleText(level)}<br>
     Count: ${officialCount} ${stationCountLabel(level)}<br>
     Route: ${course.routeFamily||'custom'}<br>
     Path gap range: ${gapRange}<br>
@@ -653,7 +694,9 @@ function doUpgrade() {
 }
 
 orgEl.addEventListener('change',()=>{setPack(orgEl.value);doGenerate();});
-levelEl.addEventListener('change',()=>{applyLevelDefaults();renderPalette(levelEl.value);});
+levelEl.addEventListener('change',()=>{applyLevelDefaults({preserveRing:true});renderPalette(levelEl.value);});
+ringW.addEventListener('input',updateRingGuidance);
+ringH.addEventListener('input',updateRingGuidance);
 $('generateBtn').onclick=doGenerate;
 $('upgradeBtn').onclick=doUpgrade;
 $('undoBtn').onclick=doUndo;

@@ -3228,6 +3228,7 @@ const caro2025 = {
   sourceLabel: '2025 Rally Handbook + amendments effective Dec. 14, 2025 + 2026 Trial Officials Guide',
   assetBase: './assets/caro-2025/',
   layout: { preferredGap: 8 },
+  ringGuidance: '50 × 40 ft is the program default for automatic course layout, not a required CARO ring shape. Any dimensions that meet the 1,500 sq ft minimum are rule-valid.',
   // Reserve one future jump bay in Novice/Intermediate so the required #220
   // Jump can be added at Advanced without rebuilding the physical course.
   progressionReserve: {
