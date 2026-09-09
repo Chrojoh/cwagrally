@@ -15,6 +15,24 @@ const $ = id => document.getElementById(id);
 const orgEl=$('organization'), levelEl=$('level'), routeStyleEl=$('routeStyle'), ringW=$('ringW'), ringH=$('ringH'), advanceTargetEl=$('advanceTarget');
 const canvas=$('courseCanvas');
 
+const canvasShell=canvas?.closest('.canvas-shell');
+let canvasResizeFrame=0;
+
+function resizeCourseCanvas() {
+  if(!canvas || !canvasShell) return false;
+  const cs=getComputedStyle(canvasShell);
+  const px=v=>Number.parseFloat(v)||0;
+  const availableW=Math.floor(canvasShell.clientWidth-px(cs.paddingLeft)-px(cs.paddingRight));
+  const availableH=Math.floor(canvasShell.clientHeight-px(cs.paddingTop)-px(cs.paddingBottom));
+  const targetW=Math.max(420,availableW);
+  const targetH=Math.max(480,availableH);
+  if(Math.abs(canvas.width-targetW)<2 && Math.abs(canvas.height-targetH)<2) return false;
+  canvas.width=targetW;
+  canvas.height=targetH;
+  return true;
+}
+
+
 let pack=null, course=null, lastReport=null, dragIndex=-1, dragBefore=null;
 let selectedStationId=null;
 const undoStack=[];
@@ -264,6 +282,7 @@ function ensureImages() {
 
 function render(loadImages=true) {
   if(!course) return;
+  resizeCourseCanvas();
   updateAdvanceTargets();
   refreshJoinedFlags(course,pack);
   if(loadImages) ensureImages();
@@ -689,6 +708,22 @@ window.addEventListener('keydown',e=>{
   if(!typing && (e.key==='Delete'||e.key==='Backspace') && selectedStationId){
     e.preventDefault();removeStationById(selectedStationId);
   }
+});
+
+if(canvasShell && 'ResizeObserver' in window){
+  const canvasObserver=new ResizeObserver(()=>{
+    cancelAnimationFrame(canvasResizeFrame);
+    canvasResizeFrame=requestAnimationFrame(()=>{
+      if(resizeCourseCanvas() && course) render(false);
+    });
+  });
+  canvasObserver.observe(canvasShell);
+}
+window.addEventListener('resize',()=>{
+  cancelAnimationFrame(canvasResizeFrame);
+  canvasResizeFrame=requestAnimationFrame(()=>{
+    if(resizeCourseCanvas() && course) render(false);
+  });
 });
 
 initOrganizations();

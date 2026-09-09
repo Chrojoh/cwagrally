@@ -207,3 +207,20 @@ Zoom 1, Zoom 1.5 and Zoom 2 now have a dedicated angled route family. It uses br
 CKC Advanced requires exactly one jump; Excellent and Master require exactly two jumps and those jumps may not be consecutive. The progression planner now reserves **two separated, footprint-compatible jump bays** before Excellent. When advancing Advanced → Excellent, the reserve is anchored to the actual Advanced #103 jump so that the second jump can be added without consuming or moving the first jump's working area. When Excellent needs one extra counted exercise for Master, station insertion skips gaps that would intrude into either existing jump working envelope.
 
 The CKC Excellent Sit Stay and Master Stand Stay remain non-counted auxiliary exercises after Finish, matching the rulebook's counting model.
+
+
+## CKC post-Finish Stay layout
+
+For Rally Excellent and Rally Master, the mandatory non-counted Stay exercise is now laid out as
+part of the real post-Finish workflow:
+
+`Finish -> Sit/Stand Stay -> 15 ft minimum leash retrieval point`
+
+The Stay remains outside the numbered course and the 15-ft guide is shown as a purple dashed
+distance lane, not as an equipment footprint.
+
+## Responsive map workspace
+
+The on-screen course canvas now expands to the actual center panel dimensions. This avoids the
+old fixed 1100x760 landscape canvas shrinking portrait/near-square rings, and gives the map the
+maximum practical area between the left controls and right station list.

@@ -89,6 +89,29 @@ test('CKC Excellent and Master require exactly two nonconsecutive jumps',()=>{
   }
 });
 
+
+test('CKC Excellent Sit Stay follows Finish with a 15 ft leash lane',()=>{
+  const p=rulePacks['ckc:2025'],c=generate(p,'X');
+  const aux=(c.auxiliary||[]).find(a=>a.signId==='298');
+  const finish=c.nodes.find(n=>n.kind==='finish');
+  if(!aux||!finish) throw Error('Sit Stay or Finish missing');
+  const finishGap=Math.hypot(aux.x-finish.x,aux.y-finish.y);
+  const leashGap=Math.hypot(aux.leashX-aux.x,aux.leashY-aux.y);
+  if(!aux.afterFinish||finishGap<3||finishGap>10) throw Error(`Sit Stay is not in the post-Finish flow (${finishGap.toFixed(1)} ft)`);
+  if(leashGap<14.95) throw Error(`leash lane only ${leashGap.toFixed(1)} ft`);
+});
+
+test('CKC Master Stand Stay follows Finish with a 15 ft leash lane',()=>{
+  const p=rulePacks['ckc:2025'],c=generate(p,'M');
+  const aux=(c.auxiliary||[]).find(a=>a.signId==='398');
+  const finish=c.nodes.find(n=>n.kind==='finish');
+  if(!aux||!finish) throw Error('Stand Stay or Finish missing');
+  const finishGap=Math.hypot(aux.x-finish.x,aux.y-finish.y);
+  const leashGap=Math.hypot(aux.leashX-aux.x,aux.leashY-aux.y);
+  if(!aux.afterFinish||finishGap<3||finishGap>10) throw Error(`Stand Stay is not in the post-Finish flow (${finishGap.toFixed(1)} ft)`);
+  if(leashGap<14.95) throw Error(`leash lane only ${leashGap.toFixed(1)} ft`);
+});
+
 test('CKC full progression preserves two nonconsecutive jump bays',()=>{
   const p=rulePacks['ckc:2025'];
   let c=generate(p,'N');

@@ -403,19 +403,63 @@ export function drawCourseToContext(ctx, course, pack, box, imageCache = cache, 
   });
 
   // Draw non-counted companion/auxiliary exercises separately from the
-  // numbered route. This is used for organization-specific items such as the
-  // CKC Excellent Sit Stay and Master Stand Stay.
+  // numbered route. CKC Excellent/Master are represented as real post-Finish
+  // flow: Finish -> Stay -> minimum 15-ft leash retrieval lane.
   for (const aux of course.auxiliary || []) {
     if (aux.x == null || aux.y == null) continue;
     const p = pt(aux);
     const thumb = opts.print ? 100 : 44;
     const img = aux.signId ? imageFor(pack, aux.signId) : null;
     ctx.save();
-    ctx.setLineDash(opts.print ? [14,10] : [6,4]);
+
+    // Retrieval lane. This is a distance guide, not an obstacle footprint.
+    if (aux.leashX != null && aux.leashY != null) {
+      const leash = pt({x:aux.leashX,y:aux.leashY});
+      const dx=leash.x-p.x,dy=leash.y-p.y,len=Math.hypot(dx,dy)||1;
+      const ux=dx/len,uy=dy/len;
+      ctx.strokeStyle='#7b5aa6';
+      ctx.fillStyle='#7b5aa6';
+      ctx.lineWidth=opts.print?5:2;
+      ctx.setLineDash(opts.print?[16,10]:[7,5]);
+      ctx.beginPath();
+      ctx.moveTo(p.x,p.y);
+      ctx.lineTo(leash.x,leash.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const arrow=opts.print?22:9;
+      ctx.beginPath();
+      ctx.moveTo(leash.x,leash.y);
+      ctx.lineTo(leash.x-ux*arrow-uy*arrow*.55,leash.y-uy*arrow+ux*arrow*.55);
+      ctx.lineTo(leash.x-ux*arrow+uy*arrow*.55,leash.y-uy*arrow-ux*arrow*.55);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(leash.x,leash.y,opts.print?12:5,0,Math.PI*2);
+      ctx.fill();
+
+      const mx=(p.x+leash.x)/2,my=(p.y+leash.y)/2;
+      ctx.font=`bold ${opts.print?20:9}px Arial`;
+      ctx.textAlign='center';
+      ctx.textBaseline='bottom';
+      ctx.fillText(`${aux.distanceFt||15} ft min to leash`,mx,my-(opts.print?10:5));
+
+      ctx.font=`${opts.print?18:8}px Arial`;
+      ctx.textBaseline='top';
+      ctx.fillText('LEASH',leash.x,leash.y+(opts.print?14:6));
+    }
+
+    // Stay sign: subtle outline only so it cannot be mistaken for a square
+    // equipment footprint.
+    ctx.setLineDash(opts.print ? [12,8] : [5,4]);
     ctx.strokeStyle='#7b5aa6';
-    ctx.lineWidth=opts.print?4:2;
-    ctx.strokeRect(p.x-thumb/2-5,p.y-thumb/2-5,thumb+10,thumb+10);
+    ctx.lineWidth=opts.print?3:1.5;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,thumb/2+(opts.print?8:4),0,Math.PI*2);
+    ctx.stroke();
     ctx.setLineDash([]);
+
     if (img?.complete && img.naturalWidth) {
       ctx.fillStyle='#fff';ctx.fillRect(p.x-thumb/2,p.y-thumb/2,thumb,thumb);
       ctx.drawImage(img,p.x-thumb/2,p.y-thumb/2,thumb,thumb);
@@ -424,6 +468,7 @@ export function drawCourseToContext(ctx, course, pack, box, imageCache = cache, 
       ctx.fillStyle='#5f447f';ctx.font=`bold ${opts.print?22:10}px Arial`;
       ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(aux.signId||'AUX',p.x,p.y);
     }
+
     ctx.fillStyle='#5f447f';
     ctx.font=`bold ${opts.print?22:10}px Arial`;
     ctx.textAlign='center';ctx.textBaseline='top';

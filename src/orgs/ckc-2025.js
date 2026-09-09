@@ -2702,25 +2702,106 @@ function pointToSegmentDistance(p, a, b) {
 function makeAuxiliary(course) {
   const sid = course.levelId === 'X' ? '298' : course.levelId === 'M' ? '398' : null;
   if (!sid) return [];
-  const inset=5;
-  const candidates=[];
-  for(let x=inset;x<=course.ring.width-inset;x+=5) {
-    for(let y=inset;y<=course.ring.height-inset;y+=5) {
-      candidates.push({x,y});
-    }
-  }
-  const score=p=>{
+
+  const finishIndex=course.nodes.findIndex(n=>n.kind==='finish');
+  const finish=finishIndex>=0?course.nodes[finishIndex]:course.nodes[course.nodes.length-1];
+  const prev=finishIndex>0?course.nodes[finishIndex-1]:course.nodes[course.nodes.length-2];
+  if(!finish||!prev) return [];
+
+  const dx=finish.x-prev.x,dy=finish.y-prev.y;
+  const len=Math.hypot(dx,dy)||1;
+  const incoming={x:dx/len,y:dy/len};
+
+  const stayOffset=5;       // nearby after Finish; not an official CKC distance
+  const leashDistance=15;   // CKC minimum
+  const inset=2;
+
+  const rotate=(v,degrees)=>{
+    const r=degrees*Math.PI/180,c=Math.cos(r),s=Math.sin(r);
+    return {x:v.x*c-v.y*s,y:v.x*s+v.y*c};
+  };
+  const inRing=p=>p.x>=inset&&p.y>=inset&&p.x<=course.ring.width-inset&&p.y<=course.ring.height-inset;
+
+  const pathClearance=p=>{
     let d=Infinity;
-    for(let i=0;i<course.nodes.length-1;i++) d=Math.min(d,pointToSegmentDistance(p,course.nodes[i],course.nodes[i+1]));
+    for(let i=0;i<course.nodes.length-1;i++){
+      d=Math.min(d,pointToSegmentDistance(p,course.nodes[i],course.nodes[i+1]));
+    }
     return d;
   };
-  candidates.sort((a,b)=>score(b)-score(a));
-  const p=candidates[0];
+
+  const corridorClearance=(a,b)=>{
+    const steps=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.y-a.y)));
+    let d=Infinity;
+    for(let k=0;k<=steps;k++){
+      const t=k/steps;
+      const p={x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t};
+      d=Math.min(d,pathClearance(p));
+    }
+    return d;
+  };
+
+  // Prefer continuing naturally through Finish. If the Finish is close to a
+  // boundary, progressively turn the post-Finish stay/retrieval lane until it
+  // fits safely inside the ring and remains away from the numbered course.
+  const angles=[0,45,-45,90,-90,135,-135,180];
+  const candidates=[];
+
+  for(const angle of angles){
+    const dir=rotate(incoming,angle);
+    const stay={x:finish.x+dir.x*stayOffset,y:finish.y+dir.y*stayOffset};
+    const leash={x:stay.x+dir.x*leashDistance,y:stay.y+dir.y*leashDistance};
+    if(!inRing(stay)||!inRing(leash)) continue;
+
+    const stayClear=pathClearance(stay);
+    const corridorClear=corridorClearance(stay,leash);
+    if(stayClear<2||corridorClear<1.5) continue;
+
+    const boundary=Math.min(
+      stay.x,stay.y,course.ring.width-stay.x,course.ring.height-stay.y,
+      leash.x,leash.y,course.ring.width-leash.x,course.ring.height-leash.y
+    );
+
+    // Lower turn from the Finish direction is strongly preferred, then
+    // maximize clearance from the numbered route and ring boundary.
+    const score=Math.abs(angle)*4 - stayClear*3 - corridorClear*2 - boundary;
+    candidates.push({stay,leash,dir,angle,score,stayClear,corridorClear});
+  }
+
+  // Extremely unusual hand-edited geometry can leave no clear 15-ft lane.
+  // Keep the exercise near Finish and choose the least-conflicting direction
+  // rather than dropping it randomly elsewhere in the ring.
+  if(!candidates.length){
+    for(const angle of angles){
+      const dir=rotate(incoming,angle);
+      const stay={x:finish.x+dir.x*stayOffset,y:finish.y+dir.y*stayOffset};
+      const leash={x:stay.x+dir.x*leashDistance,y:stay.y+dir.y*leashDistance};
+      if(!inRing(stay)||!inRing(leash)) continue;
+      candidates.push({
+        stay,leash,dir,angle,
+        score:Math.abs(angle)*4-pathClearance(stay)*2-corridorClearance(stay,leash)
+      });
+    }
+  }
+
+  const chosen=candidates.sort((a,b)=>a.score-b.score)[0];
+  if(!chosen) return [];
+
   return [{
-    kind:'auxiliary', id:sid==='298'?'sit-stay':'stand-stay', signId:sid,
+    kind:'auxiliary',
+    id:sid==='298'?'sit-stay':'stand-stay',
+    signId:sid,
     label:sid==='298'?'Sit Stay after Finish':'Stand Stay after Finish',
-    x:p.x,y:p.y, distanceFt:15, counted:false,
-    note:'Mandatory after Finish; not included in the counted exercises and placed outside the main course path.'
+    x:chosen.stay.x,
+    y:chosen.stay.y,
+    leashX:chosen.leash.x,
+    leashY:chosen.leash.y,
+    distanceFt:leashDistance,
+    counted:false,
+    afterFinish:true,
+    finishX:finish.x,
+    finishY:finish.y,
+    note:'Mandatory after Finish; non-counted. Handler proceeds to the Stay sign, then walks forward at least 15 ft to retrieve the leash.'
   }];
 }
 
@@ -2750,6 +2831,34 @@ function ckcCourseValidator(course, pack) {
       !!aux && minPath>=2,
       !aux?'Mandatory stay sign is missing':minPath<2?'Mandatory stay sign is in/too close to the main course path':'Mandatory stay sign is outside the main course path',
       aux?{signId:aux.signId,minPath}:null
+    ));
+
+    const finish=course.nodes.find(n=>n.kind==='finish');
+    const finishGap=aux&&finish?Math.hypot(aux.x-finish.x,aux.y-finish.y):0;
+    out.push(makeResult(
+      'ckc:stay-after-finish',
+      !!aux && !!finish && aux.afterFinish===true && finishGap>=3 && finishGap<=10,
+      !aux?'Mandatory stay sign is missing':!finish?'Finish is missing':'Stay sign should be placed immediately after Finish in the post-Finish flow',
+      aux&&finish?{signId:aux.signId,finishGap}:null
+    ));
+
+    const leashDistance=aux&&aux.leashX!=null&&aux.leashY!=null
+      ? Math.hypot(aux.leashX-aux.x,aux.leashY-aux.y)
+      : 0;
+    out.push(makeResult(
+      'ckc:stay-leash-distance',
+      !!aux && leashDistance>=15-0.05,
+      !aux?'Mandatory stay sign is missing':leashDistance<15?'Leash retrieval point must be at least 15 ft forward from the Stay sign':'Leash retrieval lane is at least 15 ft',
+      aux?{signId:aux.signId,leashDistance}:null
+    ));
+
+    const leashInRing=!!aux && aux.leashX>=0 && aux.leashY>=0 &&
+      aux.leashX<=course.ring.width && aux.leashY<=course.ring.height;
+    out.push(makeResult(
+      'ckc:stay-leash-in-ring',
+      leashInRing,
+      leashInRing?'Leash retrieval point is inside the ring':'Leash retrieval point falls outside the ring',
+      aux?{x:aux.leashX,y:aux.leashY}:null
     ));
   }
   return out;
