@@ -10,6 +10,7 @@ import { generateCourse } from './src/core/generator.js';
 import { validateCourse } from './src/core/validator.js';
 import { upgradeCourse } from './src/core/upgrade.js';
 import { officialStationCount } from './src/core/pack.js';
+import { maxUsesFor } from './src/core/rules.js';
 
 const out=document.getElementById('out');
 const lines=[];
@@ -57,6 +58,35 @@ test('CKC Excellent adds non-counted Sit Stay auxiliary',()=>{
   if(!legal(c,p)) throw Error('invalid CKC Excellent course');
   const stay=(c.auxiliary||[]).find(a=>a.signId==='298');
   if(!stay||stay.counted!==false) throw Error('Sit Stay auxiliary missing/not non-counted');
+});
+
+test('CKC Master sign 103 may be used twice',()=>{
+  const p=rulePacks['ckc:2025'];
+  if(maxUsesFor(p,'M','103')!==2) throw Error(`sign 103 max uses is ${maxUsesFor(p,'M','103')}, expected 2`);
+  for(const id of ['5','6','9','10']){
+    if(maxUsesFor(p,'M',id)!==1) throw Error(`Master sign ${id} should be limited to one use`);
+  }
+});
+
+test('CKC Intermediate excludes sign 103',()=>{
+  const p=rulePacks['ckc:2025'];
+  if(p.levels.I.allowedSigns.includes('103')) throw Error('sign 103 must not be available in Intermediate');
+});
+
+test('CKC Advanced allows exactly one jump',()=>{
+  const p=rulePacks['ckc:2025'];
+  const q=p.levels.A.quotas.find(q=>q.id==='jumps');
+  if(!q||q.min!==1||q.max!==1||!q.signIds.includes('103')) throw Error('Advanced jump quota is incorrect');
+});
+
+test('CKC Excellent and Master require exactly two nonconsecutive jumps',()=>{
+  const p=rulePacks['ckc:2025'];
+  for(const levelId of ['X','M']){
+    const q=p.levels[levelId].quotas.find(q=>q.id==='jumps');
+    if(!q||q.min!==2||q.max!==2) throw Error(`${levelId} jump quota is not exactly two`);
+    const nc=p.levels[levelId].nonConsecutiveSets?.find(r=>r.id==='jump-spacing');
+    if(!nc||nc.minStationSeparation<2) throw Error(`${levelId} nonconsecutive jump rule missing`);
+  }
 });
 
 test('CKC full progression preserves two nonconsecutive jump bays',()=>{
