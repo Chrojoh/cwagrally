@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rally Course Designer V3</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="brand">Rally Course Designer <span>V3 Foundation</span></div>
+      <div class="subtitle">Rule-pack driven course generation and minimum-change level progression</div>
+    </div>
+    <div id="ruleBadge" class="badge">Loading rules…</div>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <section class="panel">
+        <h2>Course setup</h2>
+
+        <label>Organization
+          <select id="organization"></select>
+        </label>
+
+        <label>Level
+          <select id="level"></select>
+        </label>
+
+        <div class="grid2">
+          <label>Ring width (ft)
+            <input id="ringW" type="number" min="20" max="200" step="1">
+          </label>
+          <label>Ring height (ft)
+            <input id="ringH" type="number" min="20" max="200" step="1">
+          </label>
+        </div>
+
+        <label class="check">
+          <input id="includeSequences" type="checkbox">
+          Include Leave Dog / pace sequence exercises
+        </label>
+
+        <div class="actions primary-actions">
+          <button id="generateBtn" class="primary">Generate course</button>
+          <button id="upgradeBtn">Advance level</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Course status</h2>
+        <div id="summary" class="summary"></div>
+        <div id="validation" class="validation"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Last level change</h2>
+        <div id="changeReport" class="muted">No level change yet.</div>
+      </section>
+
+      <section class="panel">
+        <h2>File</h2>
+        <div class="actions wrap">
+          <button id="saveBtn">Save JSON</button>
+          <label class="buttonlike">Load JSON
+            <input id="loadInput" type="file" accept=".json,application/json" hidden>
+          </label>
+          <button id="pdfBtn">Export PDF</button>
+        </div>
+      </section>
+    </aside>
+
+    <section class="workspace">
+      <div class="canvas-toolbar">
+        <div>
+          <strong id="courseTitle">Course</strong>
+          <span id="courseMeta"></span>
+        </div>
+        <div class="muted">Drag stations to edit the physical layout. Change signs in the station list.</div>
+      </div>
+
+      <div class="canvas-shell">
+        <canvas id="courseCanvas" width="1100" height="760"></canvas>
+      </div>
+
+      <section class="station-panel">
+        <div class="station-header">
+          <h2>Stations</h2>
+          <span class="muted">Substitutions shown here are filtered by level and path geometry.</span>
+        </div>
+        <div id="stationList" class="station-list"></div>
+      </section>
+    </section>
+  </main>
+
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>

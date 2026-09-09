@@ -1,0 +1,19 @@
+<!doctype html><meta charset="utf-8"><title>RCD V3 self-test</title>
+<pre id="out">Running…</pre>
+<script type="module">
+import pack from './src/orgs/cwags-2021.js';
+import { generateCourse } from './src/core/generator.js';
+import { validateCourse } from './src/core/validator.js';
+import { upgradeCourse } from './src/core/upgrade.js';
+
+const out = document.getElementById('out');
+const lines=[];
+function test(name,fn){
+  try{fn();lines.push('PASS  '+name)}catch(e){lines.push('FAIL  '+name+' — '+e.message)}
+}
+test('C-WAGS pack loads',()=>{if(!pack.levels.S||!pack.levels.Z2)throw Error('missing levels')});
+test('Zoom 1.5 quota is explicit',()=>{const q=pack.levels.Z15.quotas[0];if(!q.signIds.includes('A9')||q.signIds.some(x=>x.startsWith('Z15')))throw Error('bad quota')});
+test('Generate Starter',()=>{const c=generateCourse({pack,levelId:'S',ring:{width:60,height:50,minSpacing:10},includeSequences:false});if(validateCourse(c,pack).some(r=>!r.ok&&r.severity==='error'))throw Error('generated course invalid')});
+test('Routes vary',()=>{const seen=new Set();for(let i=0;i<8;i++){const c=generateCourse({pack,levelId:'S',ring:{width:60,height:50,minSpacing:10},includeSequences:false});seen.add(c.nodes.map(n=>`${Math.round(n.x)},${Math.round(n.y)}`).join('|'));}if(seen.size<3)throw Error(`only ${seen.size} distinct route(s)`)});
+out.textContent=lines.join('\n');
+</script>
