@@ -591,7 +591,7 @@ function renderQuality(quality,legalResults) {
       </div>
     </div>
     <div class="quality-legal ${legal?'pass':'fail'}">
-      Legal validation: <b>${legal?'PASS':'NEEDS ATTENTION'}</b>
+      Implemented rule checks: <b>${legal?'PASS':'NEEDS ATTENTION'}</b>
     </div>
   `;
 

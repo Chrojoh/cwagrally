@@ -1,6 +1,6 @@
 {
   "type": "module",
   "scripts": {
-    "test": "node tests/generation.mjs && node tests/legacy.mjs && node tests/progression.mjs && node tests/worker.mjs"
+    "test": "node tests/generation.mjs && node tests/legacy.mjs && node tests/progression.mjs && node tests/worker.mjs && node tests/rule-enforcement.mjs"
   }
 }

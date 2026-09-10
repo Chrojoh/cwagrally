@@ -353,7 +353,7 @@ export function upgradeCourse(current, pack, targetLevelId) {
       // CKC stationary + level + jump quotas). A few more independent greedy
       // starts dramatically reduces false "no legal upgrade" failures without
       // changing the physical-layout preference model.
-      for (let attempt = 0; attempt < 32; attempt++) {
+      for (let attempt = 0; attempt < 96; attempt++) {
         const assignment = assignSignsToNodes({
           pack,
           levelId: targetLevelId,

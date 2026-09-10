@@ -2054,6 +2054,9 @@ export const cwags2021 = {
   discipline: 'rally',
   version: '2021',
   sourceNote: 'Normalized from the user-provided C-WAGS 2021 Rally rule set. Treat this as a versioned historical rules pack until a newer rulebook is supplied.',
+  // Course Guidelines, PDF p.12: 'should', with joined/stated-distance exceptions.
+  ordinarySpacing: { min:10, severity:'warning', source:'Rally-Rules-and-Guidelines-2021.pdf, p.12' },
+  layout: { preferredGap:10 },
   assetBase: 'https://raw.githubusercontent.com/Chrojoh/cwagrally/main/Signs/',
   signs,
   dependentSigns,
@@ -2165,8 +2168,7 @@ export const cwags2021 = {
         });
       }
 
-      // 2) Exercise-specific adjacent distances. C-WAGS does not use one
-      // universal 10-ft sign spacing; these named exercises control their own gaps.
+      // 2) Exercise-specific distances take precedence over the ordinary 10-ft guideline.
       for (let i = 0; i < stations.length - 1; i++) {
         const a = stations[i], b = stations[i+1];
         const rule = (pack.adjacentDistanceRules || []).find(r => r.from.includes(a.signId) && r.to.includes(b.signId));

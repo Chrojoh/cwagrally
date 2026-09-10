@@ -1,3 +1,5 @@
+let seed=Number(process.env.SEED || 20260910);
+Math.random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
 import {readFileSync,writeFileSync} from 'node:fs';
 const html=readFileSync(new URL('../self-test.html',import.meta.url),'utf8');
 let script=html.match(/<script type="module">([\s\S]*?)<\/script>/)[1];

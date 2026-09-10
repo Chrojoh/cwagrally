@@ -1,4 +1,4 @@
-import { distance, equipmentFootprintFor, pointInEquipmentFootprint, requiredTurnAt, segmentsCross, signFitsTurn } from './geometry.js';
+import { distance, equipmentPlacementConflicts, equipmentFootprintFor, pointInEquipmentFootprint, requiredTurnAt, segmentsCross, signFitsTurn } from './geometry.js';
 import { joinedRuleFor, maxUsesFor, quotaCount, signById, transitionRuleFor } from './rules.js';
 import { officialStationCount, ringRuleIssues, ringRuleText, stationCountLabel } from './pack.js';
 import { rectCorners, routeNoGoConflicts } from './venue.js';
@@ -8,6 +8,7 @@ function result(code, ok, message, severity = 'error', details = null) {
 }
 
 export function validateCourse(course, pack) {
+
   const level = pack.levels[course.levelId];
   if (!level) return [result('level', false, `Unknown level ${course.levelId}`)];
 
@@ -89,6 +90,27 @@ export function validateCourse(course, pack) {
     ));
   }
 
+  // Generation and manual editing use the same working-envelope checks.
+  const placements=[];
+  const equipmentIssues=[];
+  course.nodes.forEach((node,nodeIndex)=>{
+    const sign=pack.signs[node.signId];
+    if(node.kind!=='station' || !sign?.space?.footprint) return;
+    for(const conflict of equipmentPlacementConflicts({nodes:course.nodes,nodeIndex,sign,ring:course.ring,otherPlacements:placements,buffer:1})) {
+      equipmentIssues.push({stationId:node.stationId,signId:node.signId,...conflict});
+    }
+    placements.push({nodeIndex,sign});
+  });
+  if(placements.length) results.push(result('equipment-clearance',!equipmentIssues.length,
+    equipmentIssues.length?`${equipmentIssues.length} equipment working-envelope conflict(s)`:'Modeled equipment working envelopes are clear','error',equipmentIssues));
+
+  const predecessorIssues=[];
+  stations.forEach((node,i)=>{
+    const required=pack.signs[node.signId]?.requiredPrevious;
+    if(required && !required.includes(stations[i-1]?.signId)) predecessorIssues.push({stationId:node.stationId,signId:node.signId,previous:stations[i-1]?.signId,required});
+  });
+  if(predecessorIssues.length) results.push(result('required-predecessor',false,'A companion sign is missing its required preceding exercise','error',predecessorIssues));
+
   const allowed = new Set(level.allowedSigns);
   const bad = stations.filter(s => !allowed.has(s.signId));
   results.push(result(
@@ -156,7 +178,7 @@ export function validateCourse(course, pack) {
       spacingBad.length
         ? `${spacingBad.length} ordinary station gap(s) are under the ${spacingRule.min}-ft organization minimum`
         : `Ordinary station spacing meets the ${spacingRule.min}-ft organization minimum`,
-      'error',
+      spacingRule.severity || 'error',
       spacingBad
     ));
   }
@@ -244,7 +266,7 @@ export function validateCourse(course, pack) {
       break;
     }
   }
-  if (Object.keys(pack.transitionRules || {}).length || Object.keys(pack.sequenceNext || {}).length) {
+  if ((Object.keys(pack.transitionRules || {}).length || Object.keys(pack.sequenceNext || {}).length)) {
     results.push(result(
       'sequence',
       !sequenceError,

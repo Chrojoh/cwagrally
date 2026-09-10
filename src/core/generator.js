@@ -1,8 +1,8 @@
 import { COURSE_SHAPES, makeProceduralRoute, generationHistory, rememberCourse, pickShape, routeSignature, silhouetteDistance } from './procedural.js';
 import { makeCourse, makeId } from './model.js';
 import { equipmentPlacementConflicts, makeCompactCorridorRoute, makeEdgeEquipmentRoute, makeVariedRoute, segmentsCross, recalcHeadings, requiredTurnAt, signFitsTurn } from './geometry.js';
-import { joinedRuleFor, maxUsesFor, refreshJoinedFlags } from './rules.js';
-import { isCourseValid } from './validator.js';
+import { joinedRuleFor, maxUsesFor, refreshJoinedFlags, transitionRuleFor } from './rules.js';
+import { isCourseValid, validateCourse } from './validator.js';
 import { evaluateCourseQuality } from './quality.js';
 import { ringRuleIssues, ringRuleText, stationNodeRange } from './pack.js';
 import { equipmentNoGoConflicts, relocateGeneratedAnchors, rerouteAroundNoGoZones, routeNoGoConflicts } from './venue.js';
@@ -202,6 +202,18 @@ function assignSigns({ pack, levelId, nodes, ring, includeSequences, preferredBy
   const stationOrdinal = new Map(stationIndices.map((nodeIndex, ordinal) => [nodeIndex, ordinal]));
 
   function assignmentCompatible(sign, nodeIndex, assignments) {
+    // Prune impossible required-next/companion sequences during assignment,
+    // including the course boundaries, rather than waiting for final validation.
+    const ord=stationOrdinal.get(nodeIndex);
+    const before=assignments.get(stationIndices[ord-1]);
+    const after=assignments.get(stationIndices[ord+1]);
+    const nextRule=transitionRuleFor(pack,levelId,sign.id);
+    if(nextRule && ((ord===stationIndices.length-1 && !nextRule.allowFinish) || (after && !nextRule.next.includes(after)))) return false;
+    const previousRule=before && transitionRuleFor(pack,levelId,before);
+    if(previousRule && !previousRule.next.includes(sign.id)) return false;
+    if(sign.requiredPrevious && (ord===0 || (before && !sign.requiredPrevious.includes(before)))) return false;
+    if(after && pack.signs[after]?.requiredPrevious && !pack.signs[after].requiredPrevious.includes(sign.id)) return false;
+
     // Organization/level packs can mark a family of exercises as nonconsecutive.
     // This is intentionally generic: CKC uses it for the two Excellent/Master
     // jump exercises, while other organizations can use the same mechanism.
@@ -543,17 +555,17 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
     : ['angled-x','angled-flow'].includes(effectiveRouteStyle)
       ? 90
       : Object.keys(pack.progressionReserve || {}).length
-        ? 140
+        ? 480
         : 100;
   let bestLegalCourse = null;
   let bestQuality = -1;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const count = procedural && pack.id === 'cwags' ? chooseCount(pack,levelId) : procedural && pack.id === 'ckc' ? chooseCountForRoute(pack,levelId,'mixed') : procedural ? stationNodeRange(level).min + Math.floor(Math.random()*Math.min(3,stationNodeRange(level).max-stationNodeRange(level).min+1)) : chooseCountForRoute(pack, levelId, effectiveRouteStyle);
+    const count = pack.id === 'caro' && (Math.min(ring.width,ring.height)<=38 || noGoZones.length) ? stationNodeRange(level).min + attempt % 3 : procedural && pack.id === 'cwags' ? chooseCount(pack,levelId) : procedural && pack.id === 'ckc' ? chooseCountForRoute(pack,levelId,'mixed') : procedural ? stationNodeRange(level).min + Math.floor(Math.random()*Math.min(3,stationNodeRange(level).max-stationNodeRange(level).min+1)) : chooseCountForRoute(pack, levelId, effectiveRouteStyle);
     diagnostics.attempts=attempt+1;
     let points;
     try {
-      if (procedural) points = makeProceduralRoute({count, width:ring.width, height:ring.height, shape:pickShape(routeStyle,history,attempt), pack, levelId});
+      if (procedural) points = makeProceduralRoute({count, width:ring.width, height:ring.height, shape:pickShape(routeStyle,history,attempt), pack, levelId, includeSequences});
       // CARO permits compact legal ring shapes that can be difficult for a
       // generic multi-lane route once a jump/equipment footprint is considered.
       // Mix in a dedicated sparse-center corridor on those rings. Normal 50×40
@@ -581,9 +593,66 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
         });
       }
     } catch {
-      continue;
+      // Keep a proven legal fallback for unusually constrained rings/obstacles.
+      // The exercise-skeleton path is always attempted first; this preserves
+      // reliability when its bounded search cannot place every resource.
+      if (!procedural) continue;
+      try {
+        points = makeVariedRoute({
+          count, width: ring.width, height: ring.height,
+          style: 'classic',
+          drawingFloor: level.layout?.preferredGap ?? pack.layout?.preferredGap ?? 8
+        });
+        points.routeFamily = 'classic-fallback';
+      } catch {
+        continue;
+      }
     }
 
+    // Reserve the approach before Start and run-out beyond Finish by sliding
+    // their opening/closing runs along the existing travel lines.
+    if (pack.id === 'caro') {
+      for (const [i,j] of [[0,1],[points.length-1,points.length-2]]) {
+        const a=points[i],b=points[j],length=Math.hypot(b.x-a.x,b.y-a.y);
+        if (!length) continue;
+        const ux=(b.x-a.x)/length,uy=(b.y-a.y)/length;
+        let shift=0;
+        for (const [v,u,max] of [[a.x,ux,ring.width],[a.y,uy,ring.height]]) {
+          if(u>1e-9) shift=Math.max(shift,8-v/u);
+          if(u<-1e-9) shift=Math.max(shift,8-(max-v)/(-u));
+        }
+        if(shift>0) {
+          const step=j-i;
+          let last=j;
+          while(last+step>=0 && last+step<points.length) {
+            const next=points[last+step];
+            if(Math.abs((next.x-a.x)*uy-(next.y-a.y)*ux)>1e-6) break;
+            if((next.x-a.x)*ux+(next.y-a.y)*uy<=0) break;
+            last+=step;
+          }
+          const span=Math.hypot(points[last].x-a.x,points[last].y-a.y), intervals=Math.abs(last-i);
+          if((span-shift)/intervals>=4) {
+            const ox=a.x,oy=a.y;
+            for(let k=0;k<intervals;k++) {
+              const d=shift+1e-7+(span-shift-1e-7)*k/intervals;
+              points[i+k*step].x=ox+ux*d; points[i+k*step].y=oy+uy*d;
+            }
+          } else if(last+step>=0 && last+step<points.length && intervals>1 && (span-shift)/(intervals-1)>=4) {
+            const turn=points[last],next=points[last+step];
+            if(Math.hypot(next.x-turn.x,next.y-turn.y)>=8) {
+              const moved=points.splice(i+step,1)[0];
+              moved.x=(turn.x+next.x)/2; moved.y=(turn.y+next.y)/2;
+              points.splice(step>0?last:last+1,0,moved);
+              const ox=a.x,oy=a.y;
+              for(let k=0;k<intervals-1;k++) {
+                const d=shift+1e-7+(span-shift-1e-7)*k/(intervals-1);
+                points[i+k*step].x=ox+ux*d; points[i+k*step].y=oy+uy*d;
+              }
+            }
+          }
+        }
+      }
+    }
     diagnostics.proposals=(diagnostics.proposals||0)+1;
     // Preserve which generated points are real course anchors, then route the
     // travel legs around venue obstacles. Detour points are waypoints only: they
@@ -605,7 +674,7 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
       if (p.routeRole === 'start') return { kind:'start', stationId:makeId('start'), x:p.x, y:p.y, heading:0 };
       if (p.routeRole === 'finish') return { kind:'finish', stationId:makeId('finish'), x:p.x, y:p.y, heading:0 };
       if (p.routeRole === 'waypoint') return { kind:'waypoint', stationId:makeId('wp'), x:p.x, y:p.y, heading:0, venueDetour:true };
-      return { kind:'station', stationId:makeId('st'), signId:null, x:p.x, y:p.y, heading:0, locked:false };
+      return { kind:'station', stationId:makeId('st'), signId:p.signId||null, x:p.x, y:p.y, heading:0, locked:false };
     });
     recalcHeadings(nodes);
 
@@ -621,7 +690,11 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
     if (!reserveOk) continue;
     diagnostics.reserve=(diagnostics.reserve||0)+1;
 
-    const assignments = assignSigns({ pack, levelId, nodes, ring, includeSequences, noGoZones });
+    const skeletonRoute = procedural && points.skeletonPlanned;
+    if (!skeletonRoute) diagnostics.postRouteSignSearches=(diagnostics.postRouteSignSearches||0)+1;
+    const assignments = skeletonRoute
+      ? new Map(nodes.map((n,i)=>[i,n]).filter(([,n])=>n.kind==='station').map(([i,n])=>[i,n.signId]))
+      : assignSigns({ pack, levelId, nodes, ring, includeSequences, noGoZones });
     if (!assignments) continue;
     diagnostics.assigned=(diagnostics.assigned||0)+1;
     assignments.forEach((id, idx) => nodes[idx].signId = id);
@@ -633,11 +706,19 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
     course.routeFamily = routed.routeFamily || rawFamily || routeStyle;
     course.venueDetourCount = routed.venueDetourCount || 0;
     refreshJoinedFlags(course, pack);
-    if (!isCourseValid(course, pack)) continue;
+    if (!isCourseValid(course, pack)) {
+      diagnostics.validationFailures ||= {};
+      for (const r of validateCourse(course, pack).filter(r=>!r.ok && r.severity==='error')) {
+        diagnostics.validationFailures[r.code]=(diagnostics.validationFailures[r.code]||0)+1;
+      }
+      continue;
+    }
     diagnostics.valid=(diagnostics.valid||0)+1;
 
     if (procedural && history.some(h=>silhouetteDistance(routeSignature(course.nodes),h.signature)<0.042)) continue;
     course.courseShape = routeStyle;
+    course.planner = skeletonRoute ? 'exercise-skeleton' : 'legacy-fallback';
+    course.generationDiagnostics = {...diagnostics,postRouteSignSearches:diagnostics.postRouteSignSearches||0};
     const quality = evaluateCourseQuality(course, pack);
     if (quality.overall > bestQuality) {
       bestQuality = quality.overall;

@@ -2697,6 +2697,15 @@ const levels = {
   }
 };
 
+// Appendix B, PDF p.128: A/X class minima are in addition to jumps.
+// Master jump exercises explicitly also count toward the Master-class minimum.
+for(const levelId of ['A','X','M']) {
+  for(const quota of levels[levelId].quotas) {
+    if(quota.id==='advanced') quota.signIds=quota.signIds.filter(id=>id!=='103');
+    if(quota.id==='excellent') quota.signIds=quota.signIds.filter(id=>!['216','217'].includes(id));
+  }
+}
+
 function makeResult(code, ok, message, details = null, severity = 'error') {
   return { code, ok, message, details, severity };
 }

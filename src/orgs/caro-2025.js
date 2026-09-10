@@ -1,3 +1,4 @@
+import { routeNoGoConflicts } from '../core/venue.js';
 const signs = {
   "100": {
     "id": "100",
@@ -3178,6 +3179,27 @@ const levels = {
   }
 };
 
+// Source audit: Handbook p.36 (PDF p.40), crossing diagonal loops exit
+// backward-left / backward-right, not a forward 45-degree bearing.
+signs['221'].motion.turnDelta=-135;
+signs['222'].motion.turnDelta=135;
+for(const id of ['214','309','310','317']) signs[id].motion.turnDelta=180;
+
+const sourceTransitions={
+  '118':{next:['119','120'],allowFinish:true},
+  '119':{next:['118','120'],allowFinish:true},
+  '200':{next:['118','120'],allowFinish:true},
+  '201':{next:['223']},'212':{next:['213']},
+  '214':{next:['216','217','218','219']},
+  '215':{next:['216','217','218','219']},
+  '303':{next:['223']},'304':{next:['223']},'317':{next:['223']},
+  '306':{next:['307','308','309','310']}
+};
+for(const id of ['216','217','218','219']) signs[id].requiredPrevious=['214','215'];
+signs['213'].requiredPrevious=['212'];
+signs['223'].requiredPrevious=['201','303','304','317'];
+for(const id of ['307','308','309','310']) signs[id].requiredPrevious=['306'];
+
 function makeResult(code, ok, message, details = null, severity = 'error') {
   return { code, ok, message, details, severity };
 }
@@ -3186,6 +3208,19 @@ function caroCourseValidator(course, pack) {
   const level = pack.levels[course.levelId];
   const stations = course.nodes.filter(n => n.kind === 'station');
   const results = [];
+  // Trial Officials Guide 2026, PDF p.11: 8 feet before Start and after Finish.
+  for(const kind of ['start','finish']) {
+    const i=course.nodes.findIndex(n=>n.kind===kind);
+    const node=course.nodes[i],neighbor=course.nodes[kind==='start'?i+1:i-1];
+    if(!node || !neighbor) continue;
+    const dx=node.x-neighbor.x,dy=node.y-neighbor.y,len=Math.hypot(dx,dy);
+    const end={x:node.x+8*dx/(len||1),y:node.y+8*dy/(len||1)};
+    const clear=len>0 && end.x>=0 && end.y>=0 && end.x<=course.ring.width && end.y<=course.ring.height &&
+      routeNoGoConflicts([node,end],course.noGoZones||[],0.5).length===0;
+    const severity = 'error';
+    results.push(makeResult(`caro:${kind}-clearance`,clear,`${kind==='start'?'Start approach':'Finish run-out'} requires 8 ft of clear space inside the ring`,{stationId:node.stationId,end},severity));
+  }
+
 
   // CARO course-design quality rules that are geometric rather than sign-pool rules.
   const obstacleIds = new Set(['220','311','312','313','314','439','440','441','442']);
@@ -3239,7 +3274,7 @@ const caro2025 = {
   signs,
   levels,
   sequenceNext: {},
-  transitionRules: {},
+  transitionRules: sourceTransitions,
   joinedPairRules: [],
   adjacentDistanceRules: [],
   chainTemplates: {},

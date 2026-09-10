@@ -5,8 +5,23 @@ This release replaces the default template selector with **Course Shape**:
 
 Run `start.cmd` on Windows, then use the local address it opens. Keep the server
 window running. The complete folder can also be deployed to GitHub Pages as a
-static site; include `src/core/generation-worker.js` and `src/core/procedural.js`.
+static site; include `src/core/generation-worker.js`, `src/core/procedural.js`, and `src/core/skeleton.js`.
 Opening `index.html` directly with a file URL does not support module workers.
+
+## Current rule and planner update
+
+Procedural search now selects exercise blocks before placing the route, accounting
+for quotas and required companion signs. A bounded Classic fallback remains.
+Every candidate passes the same implemented rule checks, regardless of shape.
+CARO Start/Finish approaches are reserved inside the ring; compact layouts can
+redistribute stations along adjacent straight runs to make room. Four-foot gaps
+can occur in those constrained layouts and remain subject to the quality score.
+CARO companion transitions and turn metadata, CKC jump/class quotas, and C-WAGS
+recommended spacing were updated from the supplied source documents.
+
+The validator checks equipment clearance after manual edits too. Its PASS label
+means the implemented checks passed; it does not certify that every handbook
+provision or judge decision is automated. CARO Versatility remains manual.
 
 ## What changed
 
@@ -34,18 +49,30 @@ Opening `index.html` directly with a file URL does not support module workers.
 ## Verification
 
 Run `npm test` with Node.js. No dependency installation or build is required.
+If npm is unavailable, run these directly from the project folder:
+
+```
+node tests/generation.mjs
+node tests/legacy.mjs
+node tests/progression.mjs
+node tests/worker.mjs
+node tests/rule-enforcement.mjs
+```
+
+Generation prints batch progress; a full run takes several minutes. Legacy tests
+use a repeatable random seed; set `SEED` to reproduce another run.
 The deterministic generation suite creates **50 consecutive courses per
 organization** at its entry level and default ring, validates all 150, checks
 crossings and exact headings, and tests every enabled level plus every selector
 option at entry levels. It also writes `test-results/generation-report.json` and
 `test-results/route-gallery.html` for review.
 
-The recorded run produced **46 C-WAGS, 24 CARO and 40 CKC silhouette clusters**
+The recorded run produced **32 C-WAGS, 30 CARO and 35 CKC silhouette clusters**
 using a stricter comparison threshold than the recent-course rejection filter.
-All 150 generated successfully; no profile exceeded 42% of its organization's
+All 150 generated successfully; no profile exceeded 32% of its organization's
 batch. These are automated similarity clusters, not a claim that visual judgment
 is objective. CARO's reserved future jump space still favors long corridors in a
-50×40 ring. Open the gallery to judge the variety yourself.
+50×40 ring. Classic fallback supplied 9/50 C-WAGS, 10/50 CARO, and 8/50 CKC courses. The slowest CARO generation took about 15 seconds. Open the gallery to judge the variety yourself.
 
 Additional checks cover the 26 existing non-browser regressions, procedural level
 progression through C-WAGS Pro / CARO Excellent / CKC Master, and worker response,

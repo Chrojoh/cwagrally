@@ -1,3 +1,4 @@
+import { planSkeleton } from './skeleton.js';
 import { segmentsCross, requiredTurnAt, signFitsTurn, equipmentPlacementConflicts } from './geometry.js';
 import { maxUsesFor } from './rules.js';
 
@@ -76,17 +77,21 @@ function pointSegment(p,a,b) {
 // A bounded self-avoiding walk generates its own topology. Equal lattice spacing
 // preserves exact 45-degree headings even in rectangular rings. Random pitch,
 // origin, heading, turn bias and run lengths change the control polygon itself.
-export function makeProceduralRoute({count,width,height,shape,pack,levelId}) {
+export function makeProceduralRoute({count,width,height,shape,pack,levelId,includeSequences=false}) {
   const level=pack.levels[levelId];
+  const plan=planSkeleton({pack,levelId,count,includeSequences,shape});
+  if(!plan) throw Error('No feasible exercise skeleton');
+  const available=new Set(plan.blocks.map((_,i)=>i));
+  let initialPending=[];
   const ordinary=level.ordinarySpacing?.min ?? pack.ordinarySpacing?.min ?? 0;
-  const pitch=rand(Math.max(6.5,ordinary),Math.max(10.8,ordinary+1.5));
+  const pitch=ordinary || rand(6.5,10.4);
   const cols=Math.floor((width-8)/pitch), rows=Math.floor((height-8)/pitch);
   if((cols+1)*(rows+1)<count+2) throw Error('Insufficient procedural grid capacity');
   const ox=rand(3,width-cols*pitch-3),oy=rand(3,height-rows*pitch-3);
   const dirs=Array.from({length:8},(_,i)=>({x:Math.round(Math.cos(i*Math.PI/4)),y:Math.round(Math.sin(i*Math.PI/4))}));
   const signs=level.allowedSigns.map(id=>pack.signs[id]).filter(s=>s && s.generatorEligible!==false && !pack.dependentSigns?.has(s.id));
   const capacities=new Map();
-  for(const turn of [-90,-45,0,45,90]) capacities.set(turn,signs.filter(s=>signFitsTurn(s,turn)).reduce((n,s)=>n+Math.min(count,maxUsesFor(pack,levelId,s.id)),0));
+  for(const turn of [-135,-90,-45,0,45,90,135]) capacities.set(turn,signs.filter(s=>signFitsTurn(s,turn)).reduce((n,s)=>n+Math.min(count,maxUsesFor(pack,levelId,s.id)),0));
   const chirality=Math.random()<0.5?-1:1;
   const start={x:Math.floor(rand(0,cols+1)),y:Math.floor(rand(0,rows+1))};
   const grid=[start], points=[{x:ox+start.x*pitch,y:oy+start.y*pitch}];
@@ -113,15 +118,21 @@ export function makeProceduralRoute({count,width,height,shape,pack,levelId}) {
       turnCounts.set(0,1);
     }
   }
-  let budget=1800;
+  if(initialHeading!=null) {
+    const starters=[...available].filter(i=>signFitsTurn(pack.signs[plan.blocks[i][0]],0));
+    if(!starters.length) throw Error('Skeleton has no straight equipment-bay anchor');
+    const first=starters[Math.floor(Math.random()*starters.length)];
+    points[1].signId=plan.blocks[first][0];available.delete(first);initialPending=plan.blocks[first].slice(1);
+  }
+  let budget=3500;
   const clearance=Math.max(4.5,ordinary*0.48);
-  function walk(heading) {
-    if(points.length===count+2) return true;
+  function walk(heading,pending=[]) {
+    if(points.length===count+2) return available.size===0 && pending.length===0;
     if(--budget<=0) return false;
     const options=[];
     for(let dir=0;dir<8;dir++) for(const stride of [1,2,3]) {
       let delta=heading==null?0:((dir-heading+12)%8-4)*45;
-      if(Math.abs(delta)>90 || (heading!=null && (turnCounts.get(delta)||0)>=(capacities.get(delta)||0))) continue;
+      if(Math.abs(delta)>135 || (heading!=null && (turnCounts.get(delta)||0)>=(capacities.get(delta)||0))) continue;
       if(shape==='geometric' && dir%2) continue;
       const last=grid.at(-1),next={x:last.x+dirs[dir].x*stride,y:last.y+dirs[dir].y*stride};
       if(next.x<0||next.x>cols||next.y<0||next.y>rows||used.has(`${next.x},${next.y}`)) continue;
@@ -133,27 +144,69 @@ export function makeProceduralRoute({count,width,height,shape,pack,levelId}) {
       }
       if(blocked) continue;
       if(initialHeading!=null && equipmentPlacementConflicts({nodes:[...points,p],nodeIndex:1,sign:longEquipment,ring:{width,height},buffer:1}).length) continue;
+      const currentIndex=points.length-1;
+      let exercises=currentIndex===0?[{id:null,block:null,tail:[]}]:pending.length?[{id:pending[0],block:null,tail:pending.slice(1)}]:
+        [...available].map(i=>({id:plan.blocks[i][0],block:i,tail:plan.blocks[i].slice(1)}));
+      exercises=exercises.filter(e=>e.id==null || signFitsTurn(pack.signs[e.id],delta));
+      exercises=exercises.filter(e=>{
+        if(currentIndex<2 || !e.id) return true;
+        const previous=points[currentIndex-1],current=points[currentIndex];
+        const rule=(pack.adjacentDistanceRules||[]).find(r=>r.from.includes(previous.signId)&&r.to.includes(e.id));
+        if(!rule) return true;
+        const gap=Math.hypot(current.x-previous.x,current.y-previous.y);
+        return (rule.min==null||gap+1e-6>=rule.min) && (rule.max==null||gap-1e-6<=rule.max) &&
+          (rule.target==null||Math.abs(gap-rule.target)<=(rule.tolerance??1));
+      });
+      if(!exercises.length) continue;
+      // Check actual committed equipment, including the new sign's approach and
+      // exit. A later route segment cannot consume an earlier working bay.
+      exercises=exercises.filter(e=>{
+        const trial=[...points.map(n=>({...n})),p];
+        trial[currentIndex].signId=e.id;
+        const placements=[];
+        for(let i=1;i<trial.length-1;i++) {
+          const sign=pack.signs[trial[i].signId];
+          if(!sign?.space?.footprint) continue;
+          if(equipmentPlacementConflicts({nodes:trial,nodeIndex:i,sign,ring:{width,height},otherPlacements:placements,buffer:1}).length) return false;
+          placements.push({nodeIndex:i,sign});
+        }
+        return true;
+      });
+      if(!exercises.length) continue;
       let weight=delta===0?6:1;
       if(shape==='flowing') weight*=Math.abs(delta)===45?2:Math.abs(delta)===90?0.55:1;
       if(shape==='diagonal') weight*=dir%2?3:0.8;
       if(shape==='spiral') weight*=delta*chirality>0?4:delta*chirality<0?0.04:1;
       if(shape==='freeform') weight=delta===0?2:1.5;
       weight*=stride===1?1:stride===2?0.35:0.16;
-      options.push({dir,delta,next,p,key:-Math.log(Math.random() || 1e-9)/weight});
+      options.push({dir,delta,next,p,exercises,key:-Math.log(Math.random() || 1e-9)/weight});
     }
     options.sort((a,b)=>a.key-b.key);
     for(const o of options) {
-      grid.push(o.next);points.push(o.p);used.add(`${o.next.x},${o.next.y}`);
-      if(heading!=null) turnCounts.set(o.delta,(turnCounts.get(o.delta)||0)+1);
-      if(walk(o.dir)) return true;
-      if(heading!=null) turnCounts.set(o.delta,turnCounts.get(o.delta)-1);
-      grid.pop();points.pop();used.delete(`${o.next.x},${o.next.y}`);
+      const seen=new Set();
+      const choices=o.exercises.sort(()=>Math.random()-0.5).filter(e=>{
+        const key=JSON.stringify([e.id,...e.tail].map(id=>[pack.signs[id]?.motion,pack.signs[id]?.space,pack.signs[id]?.requiredPrevious]));if(seen.has(key))return false;seen.add(key);return true;
+      }).slice(0,3);
+      for(const e of choices) {
+        const current=points.at(-1),oldId=current.signId;
+        if(e.id) current.signId=e.id;
+        if(e.block!=null) available.delete(e.block);
+        grid.push(o.next);points.push(o.p);used.add(`${o.next.x},${o.next.y}`);
+        if(heading!=null) turnCounts.set(o.delta,(turnCounts.get(o.delta)||0)+1);
+        if(walk(o.dir,e.tail)) return true;
+        if(heading!=null) turnCounts.set(o.delta,turnCounts.get(o.delta)-1);
+        grid.pop();points.pop();used.delete(`${o.next.x},${o.next.y}`);
+        if(e.block!=null) available.add(e.block);
+        current.signId=oldId;
+        if(budget<=0) return false;
+      }
     }
     return false;
   }
-  if(!walk(initialHeading)) throw Error('No self-avoiding route found in this search');
+  if(!walk(initialHeading,initialPending)) throw Error('No self-avoiding route found in this search');
   // Leave meaningful straight working runs for equipment and sign quotas.
   if(points.slice(1,-1).filter((_,i)=>Math.abs(requiredTurnAt(points,i+1))<1).length<count*0.45) throw Error('Too few straight working stations');
+  points.skeletonPlanned=true;
   points.routeFamily=`procedural-${shape}`;
   return points;
 }

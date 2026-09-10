@@ -19,6 +19,7 @@ for(const {pack:p} of organizations) {
   const levelId=Object.keys(p.levels)[0],families={},clusters=[],times=[];
   let failures=0;
   for(let i=0;i<50;i++) {
+    if(i%10===0) console.log('BATCH',p.id,i,'of 50');
     const start=Date.now();
     try {
       const c=generateCourse({pack:p,levelId,ring:p.levels[levelId].defaultRing});
@@ -35,6 +36,7 @@ for(const {pack:p} of organizations) {
 for(const {pack:p} of organizations) for(const [levelId,level] of Object.entries(p.levels)) {
   if(level.generationEnabled===false) continue;
   for(const shape of ['surprise',...(levelId===Object.keys(p.levels)[0]?['flowing','geometric','spiral','diagonal','classic']:[])]) {
+
     const start=Date.now();
     try {
       const c=generateCourse({pack:p,levelId,ring:level.defaultRing,routeStyle:shape,includeSequences:true});check(c,p);
