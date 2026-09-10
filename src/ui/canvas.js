@@ -593,7 +593,7 @@ export function findNodeAt(canvas, course, clientX, clientY) {
   const ringPt = canvasPointToRing(canvas,course,clientX,clientY);
   let best=-1,bestD=Infinity;
   course.nodes.forEach((n,i)=>{
-    if(!isNumberedStationNode(n)) return;
+    if(!isNumberedStationNode(n) && !['start','finish'].includes(n.kind)) return;
     const d=Math.hypot(n.x-ringPt.x,n.y-ringPt.y);
     if(d<bestD){bestD=d;best=i;}
   });

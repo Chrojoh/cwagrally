@@ -36,3 +36,14 @@ export function touchCourse(course) {
 export function stationNodes(course) {
   return course.nodes.filter(n => n.kind === 'station');
 }
+
+export function makeBlankCourse({pack,levelId,ring,noGoZones=[]}) {
+  if(!pack.levels[levelId]) throw new Error('Choose a valid course level.');
+  if(!Number.isFinite(ring.width)||!Number.isFinite(ring.height)||ring.width<=0||ring.height<=0) throw new Error('Enter a positive ring width and height.');
+  const course=makeCourse({pack,levelId,ring,noGoZones,nodes:[
+    {kind:'start',stationId:makeId('start'),x:ring.width*0.25,y:ring.height*0.5,heading:90},
+    {kind:'finish',stationId:makeId('finish'),x:ring.width*0.75,y:ring.height*0.5,heading:90}
+  ]});
+  course.creationMode='manual';
+  return course;
+}

@@ -6,7 +6,7 @@ import { candidateSignsForNode, refreshJoinedFlags } from './core/rules.js';
 import { downloadJson, readCourseFile } from './core/storage.js';
 import { exportCoursePdf, exportCourseSetupPdf } from './core/pdf.js';
 import { recalcHeadings } from './core/geometry.js';
-import { makeId, touchCourse } from './core/model.js';
+import { makeId, touchCourse, makeBlankCourse } from './core/model.js';
 import { drawCourse, drawCourseToContext, loadSignImage, getImageCache, canvasPointToRing, findNodeAt } from './ui/canvas.js';
 import { officialStationCount, nextLevelsFor, ringRuleIssues, ringRuleText, routeStylesFor, signImageUrl, stationCountLabel } from './core/pack.js';
 
@@ -518,7 +518,7 @@ function render(loadImages=true) {
   const help=$('canvasHelp');
   if(help) help.textContent=setupMode
     ? 'Setup mode: path distances are shown directly on the ring. Coordinates and distances are also listed at right.'
-    : 'Drag stations to reshape the route. Red outlines mark stations that need attention.';
+    : course.creationMode==='manual' ? 'Drag signs from the palette onto the ring in course order. Drag Start and Finish to position them. Undo restores your previous course.' : 'Drag stations, Start, or Finish to reshape the route. Red outlines mark stations that need attention.';
 }
 
 function renderSummary() {
@@ -847,7 +847,7 @@ function nearestSegmentIndex(p) {
 function insertSignAtPoint(signId,p) {
   if(!course || !pack.signs[signId]) return;
   const before=snapshotCourse();
-  const seg=nearestSegmentIndex(p);
+  const seg=course.creationMode==='manual' ? course.nodes.length-2 : nearestSegmentIndex(p);
   const node={kind:'station',stationId:makeId('st'),signId,x:p.x,y:p.y,heading:0,locked:false};
   course.nodes.splice(seg+1,0,node);
   selectedStationId=node.stationId;
@@ -929,6 +929,25 @@ async function doGenerate() {
   finally{if(request>=generationRequest){button.disabled=false;button.textContent='Generate course';}}
 }
 
+function doBlankCourse() {
+  try {
+    generationRequest++;
+    course = makeBlankCourse({
+      pack,
+      levelId: levelEl.value,
+      ring: ringSettings(),
+      noGoZones: cloneZones(venueZones)
+    });
+    lastReport = null;
+    showLevelChanges = false;
+    setupMode = false;
+    resetHistory();
+    render();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
 function nextLevelId() {
   const selected=advanceTargetEl?.value;
   if(selected && nextLevelsFor(pack.levels[course.levelId]).includes(selected)) return selected;
@@ -956,6 +975,7 @@ levelEl.addEventListener('change',()=>{applyLevelDefaults({preserveRing:true});r
 ringW.addEventListener('input',updateRingGuidance);
 ringH.addEventListener('input',updateRingGuidance);
 $('generateBtn').onclick=doGenerate;
+$('blankCourseBtn').onclick=doBlankCourse;
 $('upgradeBtn').onclick=doUpgrade;
 $('undoBtn').onclick=doUndo;
 $('redoBtn').onclick=doRedo;
@@ -1044,10 +1064,10 @@ canvas.addEventListener('pointerdown',e=>{
   }
 
   const i=findNodeAt(canvas,course,e.clientX,e.clientY);
-  if(i>=0&&course.nodes[i].kind==='station'){
+  if(i>=0&&['station','start','finish'].includes(course.nodes[i].kind)){
     dragIndex=i;
     dragBefore=snapshotCourse();
-    selectedStationId=course.nodes[i].stationId;
+    selectedStationId=course.nodes[i].kind==='station'?course.nodes[i].stationId:null;
     updateEditButtons();
     canvas.setPointerCapture(e.pointerId);
     drawCourse(canvas,course,pack,{selectedStationId,setupMode,changeStatusByStationId:changeStatusMap()});
