@@ -101,6 +101,57 @@ function insideRing(point, ring, margin = 1) {
          point.x <= ring.width - margin && point.y <= ring.height - margin;
 }
 
+
+export function relocateGeneratedAnchors(points, zones = [], ring, { buffer = 0.5, margin = 1.5, minGap = 4.5 } = {}) {
+  const clean=(zones||[]).map(normalizeNoGoZone).filter(z=>z && z.width>0 && z.height>0);
+  if(!clean.length) return points;
+  if(!ring?.width || !ring?.height || !points?.length) return null;
+
+  const out=points.map(p=>({...p}));
+  const safe=p=>insideRing(p,ring,Math.min(0.5,buffer)) && !clean.some(z=>pointInNoGoZone(p,z,buffer));
+  const gapOk=(p,i)=>{
+    const prev=i>0?out[i-1]:null;
+    const next=i<out.length-1?out[i+1]:null;
+    if(prev && Math.hypot(p.x-prev.x,p.y-prev.y)<minGap) return false;
+    if(next && Math.hypot(p.x-next.x,p.y-next.y)<minGap) return false;
+    return true;
+  };
+
+  for(let i=0;i<out.length;i++){
+    if(safe(out[i])) continue;
+    const original={...out[i]};
+    const candidates=[];
+    for(const z of clean){
+      if(!pointInNoGoZone(original,z,buffer)) continue;
+      const pad=buffer+margin;
+      const left=z.x-pad,right=z.x+z.width+pad;
+      const top=z.y-pad,bottom=z.y+z.height+pad;
+      candidates.push(
+        {x:left,y:original.y},{x:right,y:original.y},
+        {x:original.x,y:top},{x:original.x,y:bottom},
+        {x:left,y:top},{x:left,y:bottom},{x:right,y:top},{x:right,y:bottom}
+      );
+    }
+
+    const usable=candidates
+      .filter(safe)
+      .filter(p=>gapOk(p,i))
+      .map(p=>({
+        ...p,
+        score:Math.hypot(p.x-original.x,p.y-original.y)
+          + (i>0?0.08*Math.abs(Math.hypot(p.x-out[i-1].x,p.y-out[i-1].y)-Math.hypot(original.x-out[i-1].x,original.y-out[i-1].y)):0)
+          + (i<out.length-1?0.08*Math.abs(Math.hypot(p.x-out[i+1].x,p.y-out[i+1].y)-Math.hypot(original.x-out[i+1].x,original.y-out[i+1].y)):0)
+      }))
+      .sort((a,b)=>a.score-b.score);
+    if(!usable.length) return null;
+    out[i]={...original,x:usable[0].x,y:usable[0].y,venueAdjusted:true};
+  }
+
+  out.routeFamily=points.routeFamily;
+  out.venueAnchorAdjustCount=out.filter(p=>p.venueAdjusted).length;
+  return out;
+}
+
 function visibleSegment(a, b, zones, buffer) {
   return !zones.some(zone => segmentIntersectsNoGoZone(a, b, zone, buffer));
 }

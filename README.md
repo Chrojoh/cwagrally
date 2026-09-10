@@ -276,3 +276,18 @@ unchanged and setup distances follow the detoured travel line. Required equipmen
 also screened against no-go zones during sign assignment. If a mandatory equipment footprint truly
 cannot fit, the generation error identifies required equipment as a likely constraint instead of
 suggesting venue obstacles when none exist.
+
+
+## Venue-generation reliability hardening
+
+Venue detours are now treated as travel-path waypoints rather than rally exercises, so routing
+around a pillar does not accidentally create a 45/90-degree sign requirement at the neighboring
+station. CARO compact-ring generation now also has both long-axis/short-axis and asymmetric
+edge-equipment corridor fallbacks. This lets the generator preserve a usable future jump/obstacle
+bay on compact legal rings when a central venue obstacle consumes the normal equipment corridor.
+
+Generated station anchors that initially land inside a no-go rectangle may be minimally nudged out
+of that rectangle before the route is solved. Existing user-edited stations are never silently moved
+by this helper; it only acts on fresh generator candidate geometry. CARO Novice/Intermediate
+progression with venue zones now enforces the future Advanced jump-bay reservation instead of
+skipping that reservation whenever a no-go zone exists.

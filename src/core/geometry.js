@@ -22,8 +22,19 @@ export function circularDeltaError(a, b) {
 
 export function requiredTurnAt(nodes, nodeIndex) {
   if (nodeIndex <= 0 || nodeIndex >= nodes.length - 1) return 0;
-  const incoming = headingBetween(nodes[nodeIndex - 1], nodes[nodeIndex]);
-  const outgoing = headingBetween(nodes[nodeIndex], nodes[nodeIndex + 1]);
+
+  // Venue detour waypoints shape the walking line between exercises; they are
+  // not rally stations and therefore must not manufacture a turn requirement
+  // at the neighboring sign. Determine exercise geometry from the nearest real
+  // route anchors on each side of the station.
+  let prevIndex=nodeIndex-1;
+  while(prevIndex>=0 && nodes[prevIndex]?.kind==='waypoint') prevIndex--;
+  let nextIndex=nodeIndex+1;
+  while(nextIndex<nodes.length && nodes[nextIndex]?.kind==='waypoint') nextIndex++;
+  if(prevIndex<0 || nextIndex>=nodes.length) return 0;
+
+  const incoming = headingBetween(nodes[prevIndex], nodes[nodeIndex]);
+  const outgoing = headingBetween(nodes[nodeIndex], nodes[nextIndex]);
   return angleDiff(incoming, outgoing);
 }
 
@@ -856,61 +867,125 @@ export function adjacentSpacingViolations(nodes, minSpacing) {
 // deliberately contains one long, straight equipment bay while the outer lanes
 // carry most of the stations. This is a layout heuristic, not an organization
 // rule, and is currently used only as a CARO fallback for compact legal rings.
-export function makeCompactCorridorRoute({ count, width, height }) {
+export function makeCompactCorridorRoute({ count, width, height, axis = 'long' }) {
   const totalStations=Math.max(1,Number(count)||1);
-  const transpose=height>width;
-  const long=transpose?height:width;
-  const short=transpose?width:height;
+  const runAlongX = axis === 'short' ? width <= height : width >= height;
+  const run = runAlongX ? width : height;
+  const cross = runAlongX ? height : width;
 
   // The largest current CARO footprint needs about 8 ft of lateral clearance
-  // including design buffer. Keep the outer lanes just outside that envelope.
-  const sideMargin=Math.max(1.25,Math.min(5,short/2-8.5));
-  const longMargin=Math.max(3,Math.min(5,(long-28)/2));
-  const left=longMargin,right=long-longMargin;
-  const top=sideMargin,bottom=short-sideMargin;
-  const corridorMin=top+8.25,corridorMax=bottom-8.25;
+  // including design buffer. Keep the outer lanes outside that envelope.
+  const sideMargin=Math.max(1.25,Math.min(5,cross/2-8.5));
+
+  // A 24-ft equipment envelope plus the 1-ft ring-edge buffer can fit in a
+  // 26-ft run. The original long-axis route used a 3-5 ft end margin, but a
+  // short-axis fallback needs to use more of a compact legal ring.
+  const endSlack=(run-26)/2;
+  const runMargin=axis==='short' ? 1 : Math.max(1,Math.min(5,endSlack));
+  const near=runMargin,far=run-runMargin;
+  const low=sideMargin,high=cross-sideMargin;
+  const corridorMin=low+8.25,corridorMax=high-8.25;
   if(corridorMin>corridorMax) return null;
   const mid=corridorMin + Math.random()*(corridorMax-corridorMin);
-  const span=right-left;
-  if(span<27) return null;
+  const span=far-near;
+  if(span<25.5) return null;
 
   // Four structural station locations are reserved for the two lane changes
   // and the center equipment corridor; the rest are split over the outer lanes.
   const remaining=totalStations-4;
   if(remaining<4) return null;
-  const bottomStations=Math.ceil(remaining/2);
-  const topStations=remaining-bottomStations;
-  if(bottomStations<2 || topStations<2) return null;
+  const farLaneStations=Math.ceil(remaining/2);
+  const nearLaneStations=remaining-farLaneStations;
+  if(farLaneStations<2 || nearLaneStations<2) return null;
 
   const pts=[];
-  // Start + bottom-lane stations, ending at the lower far corner.
-  for(let i=0;i<=bottomStations;i++){
-    pts.push({x:left+span*i/bottomStations,y:bottom});
+  for(let i=0;i<=farLaneStations;i++){
+    pts.push({x:near+span*i/farLaneStations,y:high});
   }
 
-  // Sparse center corridor: far turn -> straight equipment bay -> near turn.
-  pts.push({x:right,y:mid});
-  const minJumpX=left+20.25; // keeps 18-ft forward + buffer clear of near turn
-  const maxJumpX=right-7.25; // keeps 6-ft back + buffer clear of far turn
-  if(minJumpX>maxJumpX) return null;
-  const preferred=left+span*(0.48+Math.random()*0.24);
-  const jumpX=Math.max(minJumpX,Math.min(maxJumpX,preferred));
-  pts.push({x:jumpX,y:mid});
-  pts.push({x:left,y:mid});
-  pts.push({x:left,y:top});
+  // Sparse equipment corridor: far turn -> equipment bay -> near turn.
+  pts.push({x:far,y:mid});
+  const minEquipment=near+20.25;
+  const maxEquipment=far-7.25;
+  if(minEquipment>maxEquipment) return null;
+  const preferred=near+span*(0.48+Math.random()*0.24);
+  const equipmentX=Math.max(minEquipment,Math.min(maxEquipment,preferred));
+  pts.push({x:equipmentX,y:mid});
+  pts.push({x:near,y:mid});
+  pts.push({x:near,y:low});
 
-  // Remaining top-lane stations, then Finish at the far upper corner.
-  for(let i=1;i<=topStations;i++){
-    pts.push({x:left+span*i/(topStations+1),y:top});
+  for(let i=1;i<=nearLaneStations;i++){
+    pts.push({x:near+span*i/(nearLaneStations+1),y:low});
   }
-  pts.push({x:right,y:top});
+  pts.push({x:far,y:low});
 
   let out=pts;
-  // Mirror rather than reverse so the asymmetric equipment bay keeps the
-  // required forward/back clearance in either travel direction.
-  if(Math.random()<0.5) out=out.map(p=>({x:long-p.x,y:p.y}));
-  if(Math.random()<0.5) out=out.map(p=>({x:p.x,y:short-p.y}));
-  if(transpose) out=out.map(p=>({x:p.y,y:p.x}));
-  out.routeFamily='compact-corridor';
+  if(Math.random()<0.5) out=out.map(p=>({x:run-p.x,y:p.y}));
+  if(Math.random()<0.5) out=out.map(p=>({x:p.x,y:cross-p.y}));
+  if(!runAlongX) out=out.map(p=>({x:p.y,y:p.x}));
+  out.routeFamily=axis==='short'?'compact-corridor-short':'compact-corridor';
+  return out;
+}
+
+// Asymmetric compact route used when a central venue obstacle would consume the
+// usual center equipment corridor. The required obstacle bay is pushed toward
+// one side of the ring while ordinary stations use lanes on the opposite side.
+// This is a generation/layout heuristic, not an organization rule.
+export function makeEdgeEquipmentRoute({ count, width, height, side = 'low', axis = 'long' }) {
+  const totalStations=Math.max(1,Number(count)||1);
+  if(totalStations<9) return null;
+
+  const runAlongX=axis==='short' ? width<=height : width>=height;
+  const run=runAlongX?width:height;
+  const cross=runAlongX?height:width;
+  if(run<34 || cross<32) return null;
+
+  const near=1,far=run-1;
+  const equipmentCross=side==='high' ? cross-8 : 8;
+  const dir=side==='high' ? -1 : 1;
+  const regularNear=equipmentCross + dir*11;
+  const regularFar=side==='high' ? 5 : cross-5;
+  if(Math.abs(regularNear-regularFar)<8) return null;
+
+  // Two ordinary lanes keep the number of repeated 90-degree turn exercises
+  // within the Novice sign pool while still leaving an isolated equipment lane.
+  const corridorStations=3;
+  const ordinary=totalStations-corridorStations;
+  if(ordinary<6) return null;
+  const firstCount=Math.ceil(ordinary/2);
+  const secondCount=ordinary-firstCount;
+  if(secondCount<2) return null;
+
+  const local=[];
+  // Start near the first lane, travel to the far end, cross once, and return.
+  local.push({x:near,y:regularFar});
+  for(let j=1;j<=firstCount;j++){
+    local.push({x:near+(far-near)*(j/firstCount),y:regularFar});
+  }
+
+  // The entry point on lane two is itself a station; distribute the remaining
+  // second-lane stations back toward the near end.
+  local.push({x:far,y:regularNear});
+  for(let j=1;j<secondCount;j++){
+    local.push({x:far+(near-far)*(j/(secondCount-1)),y:regularNear});
+  }
+
+  // Turn into the sparse equipment lane, perform the equipment exercise on a
+  // long straight, then reach a station beyond the working envelope.
+  local.push({x:near,y:equipmentCross});
+  const equipmentU=near+9;
+  const afterU=far;
+  if(equipmentU+19>=afterU) return null;
+  local.push({x:equipmentU,y:equipmentCross});
+  local.push({x:afterU,y:equipmentCross});
+
+  // Finish leaves the final station laterally, outside the equipment envelope.
+  const finishCross=equipmentCross+dir*8;
+  local.push({x:far,y:finishCross});
+
+  if(local.length!==totalStations+2) return null;
+  let out=local;
+  if(!runAlongX) out=out.map(p=>({x:p.y,y:p.x}));
+  out.routeFamily=`edge-equipment-${axis}-${side}`;
   return out;
 }

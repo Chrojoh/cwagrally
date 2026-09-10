@@ -12,6 +12,7 @@ import { validateCourse } from './src/core/validator.js';
 import { upgradeCourse } from './src/core/upgrade.js';
 import { officialStationCount, ringRuleIssues } from './src/core/pack.js';
 import { maxUsesFor } from './src/core/rules.js';
+import { requiredTurnAt } from './src/core/geometry.js';
 
 const out=document.getElementById('out');
 const lines=[];
@@ -138,6 +139,52 @@ test('CARO compact legal ring shapes generate reliably',()=>{
       if(!legal(c,p)) throw Error(`${levelId}: ${ring.width}x${ring.height} compact CARO course invalid`);
     }
   }
+});
+
+test('Venue detour waypoints do not manufacture rally-sign turns',()=>{
+  const nodes=[
+    {kind:'start',x:2,y:10},
+    {kind:'station',x:12,y:10},
+    {kind:'waypoint',x:16,y:14,venueDetour:true},
+    {kind:'station',x:24,y:10},
+    {kind:'finish',x:34,y:10}
+  ];
+  const turn=requiredTurnAt(nodes,1);
+  if(Math.abs(turn)>0.01) throw Error(`detour changed station turn requirement to ${turn.toFixed(1)}°`);
+});
+
+test('CARO compact Advanced can route around a central pillar',()=>{
+  const p=rulePacks['caro:2025.12'];
+  const zone={id:'pillar',label:'Pillar',x:23,y:13,width:4,height:4};
+  const c=generateCourse({
+    pack:p,levelId:'A',ring:{width:50,height:30,minSpacing:4.5},
+    includeSequences:false,routeStyle:'classic',noGoZones:[zone]
+  });
+  if(!legal(c,p)) throw Error('50x30 Advanced course with central pillar is invalid');
+  if(routeNoGoConflicts(c.nodes,c.noGoZones,.5).length) throw Error('Advanced route crosses pillar');
+});
+
+test('CARO compact progression keeps a future equipment bay with a no-go zone',()=>{
+  const p=rulePacks['caro:2025.12'];
+  const zone={id:'pillar',label:'Pillar',x:23,y:13,width:4,height:4};
+  let c=generateCourse({
+    pack:p,levelId:'N',ring:{width:50,height:30,minSpacing:4.5},
+    includeSequences:false,routeStyle:'classic',noGoZones:[zone]
+  });
+  for(const target of ['I','A','X']){
+    c=upgradeCourse(c,p,target).course;
+    if(!legal(c,p)) throw Error(`invalid CARO ${target} venue-aware upgrade`);
+  }
+});
+
+test('CARO near-square compact ring can place equipment to one side of a central obstacle',()=>{
+  const p=rulePacks['caro:2025.12'];
+  const zone={id:'pillar',label:'Pillar',x:18,y:16,width:4,height:4};
+  const c=generateCourse({
+    pack:p,levelId:'A',ring:{width:40,height:37.5,minSpacing:4.5},
+    includeSequences:false,routeStyle:'classic',noGoZones:[zone]
+  });
+  if(!legal(c,p)) throw Error('40x37.5 Advanced course with central pillar is invalid');
 });
 
 test('Venue router adds non-counted waypoints around an obstacle',()=>{

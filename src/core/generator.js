@@ -1,10 +1,10 @@
 import { makeCourse, makeId } from './model.js';
-import { equipmentPlacementConflicts, makeCompactCorridorRoute, makeVariedRoute, recalcHeadings, requiredTurnAt, signFitsTurn } from './geometry.js';
+import { equipmentPlacementConflicts, makeCompactCorridorRoute, makeEdgeEquipmentRoute, makeVariedRoute, recalcHeadings, requiredTurnAt, signFitsTurn } from './geometry.js';
 import { joinedRuleFor, maxUsesFor, refreshJoinedFlags } from './rules.js';
 import { isCourseValid } from './validator.js';
 import { evaluateCourseQuality } from './quality.js';
 import { ringRuleIssues, ringRuleText, stationNodeRange } from './pack.js';
-import { equipmentNoGoConflicts, rerouteAroundNoGoZones, routeNoGoConflicts } from './venue.js';
+import { equipmentNoGoConflicts, relocateGeneratedAnchors, rerouteAroundNoGoZones, routeNoGoConflicts } from './venue.js';
 
 function shuffled(arr) {
   const a = [...arr];
@@ -527,11 +527,13 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
   // A legal course is not automatically a well-designed course, so generation
   // now aims for an overall judge-quality score of at least 80/100.
   const QUALITY_TARGET = 80;
-  const maxAttempts = ['angled-x','angled-flow'].includes(effectiveRouteStyle)
-    ? 90
-    : Object.keys(pack.progressionReserve || {}).length
-      ? 140
-      : 100;
+  const maxAttempts = noGoZones.length
+    ? 320
+    : ['angled-x','angled-flow'].includes(effectiveRouteStyle)
+      ? 90
+      : Object.keys(pack.progressionReserve || {}).length
+        ? 140
+        : 100;
   let bestLegalCourse = null;
   let bestQuality = -1;
 
@@ -546,8 +548,18 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
       const compactCaro = pack.id === 'caro' &&
         (routeStyle === 'mixed' || routeStyle === 'classic') &&
         (Math.min(ring.width,ring.height) <= 38 || ring.width*ring.height <= 1700 || noGoZones.length > 0);
-      if (compactCaro && Math.random() < 0.62) {
-        points = makeCompactCorridorRoute({ count, width:ring.width, height:ring.height });
+      if (compactCaro && noGoZones.length && Math.max(ring.width,ring.height)>=34 && Math.min(ring.width,ring.height)>=32 && Math.random()<0.42) {
+        const edgeShortPossible=Math.min(ring.width,ring.height)>=34;
+        points = makeEdgeEquipmentRoute({
+          count, width:ring.width, height:ring.height,
+          axis:edgeShortPossible && Math.random()<0.5?'short':'long',
+          side:Math.random()<0.5?'low':'high'
+        });
+      }
+      if (!points && compactCaro && Math.random() < (noGoZones.length ? 0.84 : 0.62)) {
+        const shortAxisPossible=Math.min(ring.width,ring.height)>=26;
+        const axis=noGoZones.length && shortAxisPossible && Math.random()<0.70 ? 'short' : 'long';
+        points = makeCompactCorridorRoute({ count, width:ring.width, height:ring.height, axis });
       }
       if (!points) {
         points = makeVariedRoute({
@@ -568,7 +580,9 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
       routeRole:i===0?'start':i===points.length-1?'finish':'station'
     }));
     anchored.routeFamily=rawFamily;
-    const routed=rerouteAroundNoGoZones(anchored,noGoZones,ring,{buffer:0.5,margin:1.5});
+    const adjusted=relocateGeneratedAnchors(anchored,noGoZones,ring,{buffer:0.5,margin:1.5,minGap:4.5});
+    if(!adjusted) continue;
+    const routed=rerouteAroundNoGoZones(adjusted,noGoZones,ring,{buffer:0.5,margin:1.5});
     if(!routed) continue;
 
     const nodes = routed.map(p => {
@@ -588,7 +602,7 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
     // level progression does not later fail simply because the route consumed all
     // usable jump/tunnel space. This is progression planning, not a legality rule.
     const reserveOk=progressionReserveFits(pack, levelId, nodes, ring, noGoZones);
-    if (!reserveOk && !noGoZones.length) continue;
+    if (!reserveOk) continue;
 
     const assignments = assignSigns({ pack, levelId, nodes, ring, includeSequences, noGoZones });
     if (!assignments) continue;

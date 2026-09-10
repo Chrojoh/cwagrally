@@ -79,7 +79,7 @@ function insertIntoLargestGap(course, pack = null, reserveLevelId = null) {
       // keep those reservations intact while adding the required station count.
       // This is critical for CKC Excellent→Master: the extra Master station must
       // not consume one of the two existing nonconsecutive jump bays.
-      if (pack && reserveLevelId && !progressionReserveFits(pack, reserveLevelId, trialNodes, course.ring)) continue;
+      if (pack && reserveLevelId && !progressionReserveFits(pack, reserveLevelId, trialNodes, course.ring, course.noGoZones || [])) continue;
 
       course.nodes.splice(gap.i + 1, 0, node);
       recalcHeadings(course.nodes);
@@ -381,7 +381,7 @@ export function upgradeCourse(current, pack, targetLevelId) {
         // Do not spend a future mandatory-equipment bay merely to save a sign
         // swap at the current level. This keeps series progression practical.
         const reserveOk=progressionReserveFits(pack,targetLevelId,solved.nodes,solved.ring,solved.noGoZones||[]);
-        if(!reserveOk && !(solved.noGoZones||[]).length) continue;
+        if(!reserveOk) continue;
 
         const validation = validateCourse(solved, pack);
         if (validation.some(r => !r.ok && r.severity === 'error')) continue;
