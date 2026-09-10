@@ -1684,6 +1684,8 @@ const levels = {
     },
     "leash": "On leash",
     "routeStyles": [
+      "mixed",
+      "angled-flow",
       "classic"
     ],
     "allowedSigns": [
@@ -1807,6 +1809,8 @@ const levels = {
     },
     "leash": "On leash",
     "routeStyles": [
+      "mixed",
+      "angled-flow",
       "classic"
     ],
     "allowedSigns": [
@@ -1984,6 +1988,8 @@ const levels = {
     },
     "leash": "Off leash",
     "routeStyles": [
+      "mixed",
+      "angled-flow",
       "classic"
     ],
     "allowedSigns": [
@@ -2171,6 +2177,8 @@ const levels = {
     },
     "leash": "Off leash",
     "routeStyles": [
+      "mixed",
+      "angled-flow",
       "classic"
     ],
     "nonConsecutiveSets": [
@@ -2417,6 +2425,8 @@ const levels = {
     },
     "leash": "Off leash",
     "routeStyles": [
+      "mixed",
+      "angled-flow",
       "classic"
     ],
     "nonConsecutiveSets": [
@@ -2741,46 +2751,59 @@ function makeAuxiliary(course) {
     return d;
   };
 
-  // Prefer continuing naturally through Finish. If the Finish is close to a
-  // boundary, progressively turn the post-Finish stay/retrieval lane until it
-  // fits safely inside the ring and remains away from the numbered course.
-  const angles=[0,45,-45,90,-90,135,-135,180];
+  // Prefer continuing naturally through Finish, but search enough headings
+  // and nearby Stay offsets to work with genuinely varied course geometry.
+  // The rule requires the Stay exercise immediately after Finish; it does not
+  // require the post-Finish lane to continue at one of only eight 45° headings.
+  const preferredAngles=[0,45,-45,90,-90,135,-135,180];
+  const fineAngles=[];
+  for(let a=-180;a<=180;a+=15) if(!preferredAngles.includes(a)) fineAngles.push(a);
+  const angles=[...preferredAngles,...fineAngles];
+  const stayOffsets=[5,4,6,7,8,9,3.5];
   const candidates=[];
 
-  for(const angle of angles){
-    const dir=rotate(incoming,angle);
-    const stay={x:finish.x+dir.x*stayOffset,y:finish.y+dir.y*stayOffset};
-    const leash={x:stay.x+dir.x*leashDistance,y:stay.y+dir.y*leashDistance};
-    if(!inRing(stay)||!inRing(leash)) continue;
-
-    const stayClear=pathClearance(stay);
-    const corridorClear=corridorClearance(stay,leash);
-    if(stayClear<2||corridorClear<1.5) continue;
-
-    const boundary=Math.min(
-      stay.x,stay.y,course.ring.width-stay.x,course.ring.height-stay.y,
-      leash.x,leash.y,course.ring.width-leash.x,course.ring.height-leash.y
-    );
-
-    // Lower turn from the Finish direction is strongly preferred, then
-    // maximize clearance from the numbered route and ring boundary.
-    const score=Math.abs(angle)*4 - stayClear*3 - corridorClear*2 - boundary;
-    candidates.push({stay,leash,dir,angle,score,stayClear,corridorClear});
-  }
-
-  // Extremely unusual hand-edited geometry can leave no clear 15-ft lane.
-  // Keep the exercise near Finish and choose the least-conflicting direction
-  // rather than dropping it randomly elsewhere in the ring.
-  if(!candidates.length){
+  for(const offset of stayOffsets){
     for(const angle of angles){
       const dir=rotate(incoming,angle);
-      const stay={x:finish.x+dir.x*stayOffset,y:finish.y+dir.y*stayOffset};
+      const stay={x:finish.x+dir.x*offset,y:finish.y+dir.y*offset};
       const leash={x:stay.x+dir.x*leashDistance,y:stay.y+dir.y*leashDistance};
       if(!inRing(stay)||!inRing(leash)) continue;
-      candidates.push({
-        stay,leash,dir,angle,
-        score:Math.abs(angle)*4-pathClearance(stay)*2-corridorClearance(stay,leash)
-      });
+
+      const stayClear=pathClearance(stay);
+      const corridorClear=corridorClearance(stay,leash);
+      if(stayClear<2||corridorClear<1.5) continue;
+
+      const boundary=Math.min(
+        stay.x,stay.y,course.ring.width-stay.x,course.ring.height-stay.y,
+        leash.x,leash.y,course.ring.width-leash.x,course.ring.height-leash.y
+      );
+
+      // Continuing the Finish direction remains the first choice. Smaller
+      // departure angles and a Stay around 5 ft beyond Finish are preferred,
+      // then clearance from the numbered route and boundary breaks ties.
+      const anglePenalty=Math.abs(angle)*3.2;
+      const offsetPenalty=Math.abs(offset-stayOffset)*5;
+      const score=anglePenalty+offsetPenalty-stayClear*4-corridorClear*2-boundary;
+      candidates.push({stay,leash,dir,angle,offset,score,stayClear,corridorClear});
+    }
+  }
+
+  // A legal generated course should normally find a clear candidate above.
+  // For unusual hand-edited layouts, still return the least-conflicting lane
+  // so the validator can identify the precise setup issue rather than dropping
+  // the mandatory exercise entirely.
+  if(!candidates.length){
+    for(const offset of stayOffsets){
+      for(const angle of angles){
+        const dir=rotate(incoming,angle);
+        const stay={x:finish.x+dir.x*offset,y:finish.y+dir.y*offset};
+        const leash={x:stay.x+dir.x*leashDistance,y:stay.y+dir.y*leashDistance};
+        if(!inRing(stay)||!inRing(leash)) continue;
+        candidates.push({
+          stay,leash,dir,angle,offset,
+          score:Math.abs(angle)*3.2+Math.abs(offset-stayOffset)*5-pathClearance(stay)*2-corridorClearance(stay,leash)
+        });
+      }
     }
   }
 
@@ -2890,7 +2913,7 @@ const ckc2025 = {
     // remaining stations are converted to Master-level exercises.
     X:[{id:'master-jump-bays',min:2,signIds:['103','216','217','312','324','325','334'],buffer:1,minStationSeparation:2,anchorCurrentSignIds:['103','216','217'],requireAnchorCount:2}]
   },
-  routeStyles:['classic'],
+  routeStyles:['mixed','angled-flow','classic'],
   signs,
   levels,
   sequenceNext:{},

@@ -621,14 +621,82 @@ export function makeVariedRoute({ count, width, height, margin = 5, style = 'mix
     return null;
   }
 
+  function buildCompactAngledFlow() {
+    // Compact CKC-friendly flow for 40×50 / 50×40 rings. This is not a row
+    // ladder: it makes an outside sweep, folds into a separate interior hook,
+    // and leaves on a diagonal. The two balanced 26-ft outer runs deliberately
+    // create future jump bays so Novice/Intermediate layouts can progress to
+    // Advanced/Excellent without rebuilding the ring.
+    const shortSide=Math.min(width,height);
+    const longSide=Math.max(width,height);
+    if(shortSide < 40 || longSide < 50) return null;
+
+    const m=7;
+    const xL=m, xR=shortSide-m;
+    const yT=m, yB=longSide-m;
+    const xInnerL=xL+5;
+    const xInnerR=xR-6;
+    const yInner=yT+Math.max(11,Math.min(15,(yB-yT)*0.28));
+    const yLow=yB-5;
+    const yPreDiag=yLow-8;
+    const diag=8;
+    const finish={x:xInnerL+diag,y:yPreDiag-diag};
+
+    if(xInnerR-xL < 20 || yLow-yInner < 16) return null;
+
+    let controls=[
+      {x:xL,y:yB},          // Start
+      {x:xR,y:yB},          // balanced future jump bay #1
+      {x:xR,y:yT},
+      {x:xL,y:yT},          // balanced future jump bay #2
+      {x:xL,y:yInner},
+      {x:xInnerR,y:yInner},
+      {x:xInnerR,y:yLow},
+      {x:xInnerL,y:yLow},
+      {x:xInnerL,y:yPreDiag},
+      finish                 // diagonal leg to Finish
+    ];
+
+    if(width>height) controls=controls.map(p=>({x:p.y,y:p.x}));
+    if(Math.random()<0.5) controls=controls.map(p=>({x:width-p.x,y:p.y}));
+    if(Math.random()<0.5) controls=controls.map(p=>({x:p.x,y:height-p.y}));
+    if(Math.random()<0.35) controls.reverse();
+
+    // Keep exactly one station centered on each of the two long outside runs.
+    // Their 13-ft gaps on a 40×50 ring clear the CKC jump working envelope.
+    const options={
+      minIntervals:{0:2,2:2},
+      maxIntervals:{0:2,2:2},
+      balancedSegments:new Set([0,2])
+    };
+
+    for(let attempt=0;attempt<80;attempt++){
+      const points=distributePolylinePoints(controls,options);
+      if(!points) continue;
+      if(!routeHasClearStationAnchors(points,5.5)) continue;
+      let crossed=false;
+      for(let i=0;i<points.length-1 && !crossed;i++){
+        for(let j=i+2;j<points.length-1;j++){
+          if(segmentsCross(points[i],points[i+1],points[j],points[j+1])){
+            crossed=true;break;
+          }
+        }
+      }
+      if(!crossed) return points;
+    }
+    return null;
+  }
+
   function buildAngledFlow() {
     // Broad, non-crossing angled route intended to feel like a judge-designed
     // course rather than a ladder. It uses a long perimeter sweep plus a large
     // diagonal through the ring, then finishes on an open outside lane.
     //
     // The number of actual direction changes is deliberately modest so the
-    // route remains compatible with sign-use limits for 45°/135° exercises.
-    if (usableW < 50 || usableH < 40) return null;
+    // route remains compatible with sign-use limits for angled exercises.
+    // CKC commonly uses a 40×50 working ring, which is smaller than this broad
+    // template. Use the compact flowing family on those practical ring sizes.
+    if (usableW < 50 || usableH < 40) return buildCompactAngledFlow();
 
     const left = margin;
     const right = width - margin;
@@ -682,7 +750,7 @@ export function makeVariedRoute({ count, width, height, margin = 5, style = 'mix
       }
       if (!crossed) return points;
     }
-    return null;
+    return buildCompactAngledFlow();
   }
 
   function buildAngledX() {

@@ -310,3 +310,17 @@ unnumbered hollow route-bend marker.
 
 The browser self-test also checks every mapped C-WAGS sign artwork URL plus START/FINISH for a
 successful image load, and verifies that no C-WAGS sign definition contains an undefined ID/name.
+
+
+## CKC route variety
+
+CKC is no longer artificially restricted to **Classic variable**. Novice, Intermediate, Advanced,
+Excellent, and Master now offer:
+
+- **Mixed** — alternates between Classic variable and Angled Flow and is the default.
+- **Angled Flow** — a non-crossing flowing/diagonal family. A compact variant is used on CKC's
+  practical 40×50 / 50×40 ring sizes.
+- **Classic variable** — the existing row/column variable layout remains available.
+
+The experimental X-crossover route remains disabled for CKC by default. This is a design choice,
+not a CKC rule.

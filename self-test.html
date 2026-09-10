@@ -253,6 +253,17 @@ test('All C-WAGS sign definitions have real IDs and names',()=>{
   if(bad.length) throw Error(`bad C-WAGS sign definitions: ${bad.map(([id])=>id).join(', ')}`);
 });
 
+
+test('CKC exposes Mixed, Angled Flow, and Classic route styles at every level',()=>{
+  const p=rulePacks['ckc:2025'];
+  for(const level of Object.values(p.levels)){
+    const styles=level.routeStyles||[];
+    for(const required of ['mixed','angled-flow','classic']){
+      if(!styles.includes(required)) throw Error(`${level.id} missing ${required}`);
+    }
+  }
+});
+
 test('CKC full progression preserves two nonconsecutive jump bays',()=>{
   const p=rulePacks['ckc:2025'];
   let c=generate(p,'N');
