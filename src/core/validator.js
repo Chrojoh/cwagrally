@@ -1,6 +1,7 @@
-import { distance, requiredTurnAt, signFitsTurn } from './geometry.js';
+import { distance, equipmentFootprintFor, pointInEquipmentFootprint, requiredTurnAt, segmentsCross, signFitsTurn } from './geometry.js';
 import { joinedRuleFor, maxUsesFor, quotaCount, signById, transitionRuleFor } from './rules.js';
 import { officialStationCount, ringRuleIssues, ringRuleText, stationCountLabel } from './pack.js';
+import { rectCorners, routeNoGoConflicts } from './venue.js';
 
 function result(code, ok, message, severity = 'error', details = null) {
   return { code, ok, message, severity, details };
@@ -32,6 +33,61 @@ export function validateCourse(course, pack) {
     'error',
     ringIssues
   ));
+
+
+  const noGoZones=course.noGoZones || [];
+  if(noGoZones.length){
+    const conflicts=routeNoGoConflicts(course.nodes,noGoZones,0.5);
+
+    // Equipment working envelopes must also stay clear of venue obstacles.
+    course.nodes.forEach((node,nodeIndex)=>{
+      if(node.kind!=='station') return;
+      const sign=pack.signs[node.signId];
+      const fp=equipmentFootprintFor(sign,course.nodes,nodeIndex);
+      if(!fp) return;
+      for(const zone of noGoZones){
+        const zc=rectCorners(zone,0.5);
+        let overlap=fp.corners.some(c=>zc.length && c.x>=zc[0].x && c.x<=zc[1].x && c.y>=zc[0].y && c.y<=zc[2].y);
+        if(!overlap) overlap=zc.some(c=>pointInEquipmentFootprint(c,fp,0.5));
+        if(!overlap){
+          for(let a=0;a<4 && !overlap;a++){
+            for(let b=0;b<4;b++){
+              if(segmentsCross(fp.corners[a],fp.corners[(a+1)%4],zc[b],zc[(b+1)%4])){
+                overlap=true;break;
+              }
+            }
+          }
+        }
+        if(overlap){
+          conflicts.push({
+            type:'equipment-in-no-go',
+            zoneId:zone.id,
+            zoneLabel:zone.label||'No-go zone',
+            nodeIndex,
+            stationId:node.stationId,
+            signId:node.signId
+          });
+        }
+      }
+    });
+
+    const dedup=[];
+    const seen=new Set();
+    for(const c of conflicts){
+      const k=`${c.type}:${c.zoneId||c.zoneLabel}:${c.nodeIndex??c.segmentStartIndex??''}:${c.stationId||''}`;
+      if(seen.has(k)) continue;
+      seen.add(k);dedup.push(c);
+    }
+    results.push(result(
+      'venue-no-go',
+      dedup.length===0,
+      dedup.length
+        ? `${dedup.length} route/station/equipment conflict(s) with venue no-go zones`
+        : `${noGoZones.length} venue no-go zone(s) are clear`,
+      'error',
+      dedup
+    ));
+  }
 
   const allowed = new Set(level.allowedSigns);
   const bad = stations.filter(s => !allowed.has(s.signId));

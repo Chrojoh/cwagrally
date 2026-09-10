@@ -7,6 +7,7 @@
 <script type="module">
 import { rulePacks, organizations } from './src/orgs/registry.js';
 import { generateCourse } from './src/core/generator.js';
+import { routeNoGoConflicts } from './src/core/venue.js';
 import { validateCourse } from './src/core/validator.js';
 import { upgradeCourse } from './src/core/upgrade.js';
 import { officialStationCount, ringRuleIssues } from './src/core/pack.js';
@@ -121,6 +122,32 @@ test('CKC Master Stand Stay follows Finish with a 15 ft leash lane',()=>{
   const leashGap=Math.hypot(aux.leashX-aux.x,aux.leashY-aux.y);
   if(!aux.afterFinish||finishGap<3||finishGap>10) throw Error(`Stand Stay is not in the post-Finish flow (${finishGap.toFixed(1)} ft)`);
   if(leashGap<14.95) throw Error(`leash lane only ${leashGap.toFixed(1)} ft`);
+});
+
+
+test('Venue no-go zones are preserved and generated routes avoid them',()=>{
+  const p=rulePacks['caro:2025.12'];
+  const zone={id:'test-zone',label:'Pillar area',x:21,y:16,width:5,height:5};
+  const c=generateCourse({
+    pack:p,levelId:'N',
+    ring:{...p.levels.N.defaultRing,minSpacing:4.5},
+    includeSequences:false,routeStyle:'mixed',
+    noGoZones:[zone]
+  });
+  if((c.noGoZones||[]).length!==1) throw Error('venue zone not persisted');
+  if(routeNoGoConflicts(c.nodes,c.noGoZones,.5).length) throw Error('generated route intersects no-go zone');
+  if(!legal(c,p)) throw Error('venue-aware CARO course is invalid');
+});
+
+test('Level-change report includes station ordinals for physical setup',()=>{
+  const p=rulePacks['ckc:2025'];
+  const c=generate(p,'N');
+  const out=upgradeCourse(c,p,'I');
+  const actionable=out.report.changes.filter(x=>x.type!=='kept');
+  for(const x of actionable){
+    if(x.type==='removed' && !Number.isFinite(x.beforeOrdinal)) throw Error('removed station lacks old ordinal');
+    if(x.type!=='removed' && !Number.isFinite(x.afterOrdinal)) throw Error(`${x.type} station lacks new ordinal`);
+  }
 });
 
 test('CKC full progression preserves two nonconsecutive jump bays',()=>{

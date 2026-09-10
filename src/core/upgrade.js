@@ -258,25 +258,41 @@ function assignmentAttempt(course, pack, targetLevelId) {
 }
 
 function diffCourses(before, after) {
-  const b = new Map(before.nodes.filter(n => n.kind === 'station').map(n => [n.stationId, n]));
-  const a = new Map(after.nodes.filter(n => n.kind === 'station').map(n => [n.stationId, n]));
+  const beforeStations=before.nodes.filter(n=>n.kind==='station');
+  const afterStations=after.nodes.filter(n=>n.kind==='station');
+  const b = new Map(beforeStations.map((n,i) => [n.stationId, {node:n,ordinal:i+1}]));
+  const a = new Map(afterStations.map((n,i) => [n.stationId, {node:n,ordinal:i+1}]));
   const changes = [];
 
-  for (const [id, oldNode] of b) {
-    const newNode = a.get(id);
-    if (!newNode) {
-      changes.push({ type: 'removed', stationId: id, from: oldNode.signId });
+  for (const [id, oldEntry] of b) {
+    const nextEntry = a.get(id);
+    const oldNode=oldEntry.node;
+    if (!nextEntry) {
+      changes.push({ type: 'removed', stationId: id, from: oldNode.signId, beforeOrdinal:oldEntry.ordinal });
       continue;
     }
+    const newNode=nextEntry.node;
     const moved = distance(oldNode, newNode) > 0.1;
     const swapped = oldNode.signId !== newNode.signId;
-    if (moved) changes.push({ type: 'moved', stationId: id, feet: distance(oldNode, newNode) });
-    if (swapped) changes.push({ type: 'swapped', stationId: id, from: oldNode.signId, to: newNode.signId });
-    if (!moved && !swapped) changes.push({ type: 'kept', stationId: id, signId: newNode.signId });
+    if (moved) changes.push({
+      type:'moved', stationId:id, feet:distance(oldNode,newNode),
+      beforeOrdinal:oldEntry.ordinal, afterOrdinal:nextEntry.ordinal,
+      from:oldNode.signId, to:newNode.signId
+    });
+    if (swapped) changes.push({
+      type:'swapped', stationId:id, from:oldNode.signId, to:newNode.signId,
+      beforeOrdinal:oldEntry.ordinal, afterOrdinal:nextEntry.ordinal
+    });
+    if (!moved && !swapped) changes.push({
+      type:'kept', stationId:id, signId:newNode.signId,
+      beforeOrdinal:oldEntry.ordinal, afterOrdinal:nextEntry.ordinal
+    });
   }
 
-  for (const [id, newNode] of a) {
-    if (!b.has(id)) changes.push({ type: 'added', stationId: id, to: newNode.signId });
+  for (const [id, newEntry] of a) {
+    if (!b.has(id)) changes.push({
+      type:'added', stationId:id, to:newEntry.node.signId, afterOrdinal:newEntry.ordinal
+    });
   }
 
   const counts = { kept: 0, swapped: 0, added: 0, removed: 0, moved: 0 };

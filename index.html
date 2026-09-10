@@ -63,6 +63,32 @@
         </label>
       </section>
 
+      <section class="panel venue-panel">
+        <h2>Venue / obstacles</h2>
+        <div class="muted venue-help">Draw areas the course must avoid: pillars, tables, doors, judge areas, fixed equipment, or unusable flooring.</div>
+        <div class="actions wrap">
+          <button id="drawNoGoBtn" type="button">Draw no-go zone</button>
+          <button id="clearNoGoBtn" type="button">Clear zones</button>
+        </div>
+        <div id="noGoList" class="no-go-list"></div>
+
+        <div class="venue-template">
+          <label>Venue template name
+            <input id="venueName" type="text" placeholder="e.g. Spruce Grove Ring 1">
+          </label>
+          <div class="actions wrap">
+            <button id="saveVenueBtn" type="button">Save venue</button>
+          </div>
+          <label>Saved venues
+            <select id="venueSelect"></select>
+          </label>
+          <div class="actions wrap">
+            <button id="loadVenueBtn" type="button">Load venue</button>
+            <button id="deleteVenueBtn" type="button">Delete venue</button>
+          </div>
+        </div>
+      </section>
+
 
       <section class="panel edit-panel">
         <h2>Edit course</h2>
@@ -122,7 +148,11 @@
           <strong id="courseTitle">Course</strong>
           <span id="courseMeta"></span>
         </div>
-        <div class="muted">Drag stations to reshape the route. Red outlines mark stations that need attention.</div>
+        <div class="canvas-tools">
+          <button id="setupModeBtn" type="button">Physical setup mode</button>
+          <button id="setupPdfBtn" type="button">Export setup PDF</button>
+          <span id="canvasHelp" class="muted">Drag stations to reshape the route. Red outlines mark stations that need attention.</span>
+        </div>
       </div>
 
       <div class="canvas-shell">

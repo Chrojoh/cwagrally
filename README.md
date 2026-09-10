@@ -241,3 +241,23 @@ shape. The UI now makes this explicit. 50 x 40 ft remains the program's default/
 automatic-layout size, but judges may enter other dimensions that satisfy the CARO minimum.
 The setup panel shows live square footage and rule compliance, and legal custom dimensions are
 preserved when switching between levels in the same organization.
+
+
+## Trial workflow tools
+
+### Changes from previous level
+After advancing a course, the station list and Last Level Change panel now use judge-facing physical
+instructions: KEEP, CHANGE, MOVE, ADD and REMOVE. Change instructions include the current station
+number, sign numbers and movement distance, while retained stations can be expanded separately.
+
+### Venue templates and no-go zones
+Use **Draw no-go zone** and drag a rectangle directly on the course map. The rectangle is stored in
+the course JSON and treated as a physical constraint: generated route geometry, station anchors and
+equipment working envelopes must stay clear. Named venue templates are saved locally in the browser
+and include ring dimensions plus all no-go zones.
+
+### Physical setup mode
+The center toolbar includes **Physical setup mode**, which adds distance labels to every route leg.
+The right station list continues to show distance from the prior station plus x/y coordinates.
+**Export setup PDF** creates a setup-oriented course PDF with the same distance overlay and station
+setup measurements.

@@ -5,7 +5,7 @@ import { validateCourse } from './core/validator.js';
 import { evaluateCourseQuality } from './core/quality.js';
 import { candidateSignsForNode, refreshJoinedFlags } from './core/rules.js';
 import { downloadJson, readCourseFile } from './core/storage.js';
-import { exportCoursePdf } from './core/pdf.js';
+import { exportCoursePdf, exportCourseSetupPdf } from './core/pdf.js';
 import { recalcHeadings } from './core/geometry.js';
 import { makeId, touchCourse } from './core/model.js';
 import { drawCourse, drawCourseToContext, loadSignImage, getImageCache, canvasPointToRing, findNodeAt } from './ui/canvas.js';
@@ -35,9 +35,162 @@ function resizeCourseCanvas() {
 
 let pack=null, course=null, lastReport=null, dragIndex=-1, dragBefore=null;
 let selectedStationId=null;
+let setupMode=false;
+let drawingNoGo=false;
+let noGoStart=null;
+let noGoPreview=null;
+let noGoBefore=null;
+let venueZones=[];
 const undoStack=[];
 const redoStack=[];
 const HISTORY_LIMIT=50;
+
+const VENUE_STORAGE_KEY='rally-course-designer-venue-templates-v1';
+
+function cloneZones(zones=[]) {
+  return zones.map(z=>({...z}));
+}
+
+function currentChangeState(stationId) {
+  if(!lastReport) return null;
+  const c=lastReport.changes.filter(x=>x.stationId===stationId);
+  if(c.some(x=>x.type==='added')) return 'ADD';
+  const moved=c.some(x=>x.type==='moved');
+  const swapped=c.some(x=>x.type==='swapped');
+  if(swapped) return moved?'CHANGE+MOVE':'CHANGE';
+  if(moved) return 'MOVE';
+  if(c.some(x=>x.type==='kept')) return 'KEEP';
+  return null;
+}
+
+function changeStatusMap() {
+  const m=new Map();
+  if(!lastReport) return m;
+  for(const n of course?.nodes||[]){
+    if(n.kind!=='station') continue;
+    const state=currentChangeState(n.stationId);
+    if(state) m.set(n.stationId,state);
+  }
+  return m;
+}
+
+function loadVenueTemplates() {
+  try{
+    const raw=localStorage.getItem(VENUE_STORAGE_KEY);
+    const parsed=raw?JSON.parse(raw):[];
+    return Array.isArray(parsed)?parsed:[];
+  }catch{return [];}
+}
+
+function saveVenueTemplates(items) {
+  localStorage.setItem(VENUE_STORAGE_KEY,JSON.stringify(items));
+}
+
+function renderVenueTemplates() {
+  const select=$('venueSelect');
+  if(!select) return;
+  const items=loadVenueTemplates();
+  select.innerHTML='';
+  const blank=document.createElement('option');
+  blank.value='';blank.textContent=items.length?'Choose a saved venue…':'No saved venues yet';
+  select.appendChild(blank);
+  items.sort((a,b)=>a.name.localeCompare(b.name)).forEach(v=>{
+    const op=document.createElement('option');
+    op.value=v.id;op.textContent=`${v.name} — ${v.width}×${v.height} ft · ${(v.noGoZones||[]).length} zone${(v.noGoZones||[]).length===1?'':'s'}`;
+    select.appendChild(op);
+  });
+}
+
+function syncVenueZonesFromCourse() {
+  venueZones=cloneZones(course?.noGoZones||[]);
+}
+
+function renderNoGoList() {
+  const list=$('noGoList');
+  if(!list) return;
+  const zones=course?.noGoZones||venueZones;
+  list.innerHTML='';
+  if(!zones.length){
+    list.innerHTML='<div class="muted">No venue obstacles drawn.</div>';
+    return;
+  }
+  zones.forEach((z,i)=>{
+    const row=document.createElement('div');
+    row.className='no-go-row';
+    const text=document.createElement('span');
+    text.textContent=`${z.label||`No-go ${i+1}`} · ${z.width.toFixed(1)}×${z.height.toFixed(1)} ft @ (${z.x.toFixed(1)}, ${z.y.toFixed(1)})`;
+    const del=document.createElement('button');
+    del.type='button';del.textContent='×';del.title='Remove this no-go zone';
+    del.onclick=()=>{
+      if(course){
+        const before=snapshotCourse();
+        course.noGoZones=course.noGoZones.filter(x=>x.id!==z.id);
+        syncVenueZonesFromCourse();
+        commitEdit(before);render();
+      }else{
+        venueZones=venueZones.filter(x=>x.id!==z.id);renderNoGoList();
+      }
+    };
+    row.append(text,del);list.appendChild(row);
+  });
+}
+
+function setNoGoDrawing(on) {
+  drawingNoGo=!!on;
+  noGoStart=null;noGoPreview=null;noGoBefore=null;
+  const btn=$('drawNoGoBtn');
+  if(btn){
+    btn.classList.toggle('active',drawingNoGo);
+    btn.textContent=drawingNoGo?'Drawing… drag on map':'Draw no-go zone';
+  }
+  canvas.classList.toggle('draw-no-go',drawingNoGo);
+  if(course) drawCourse(canvas,course,pack,{
+    highlightStationIds:new Set(),
+    selectedStationId,
+    setupMode,
+    changeStatusByStationId:changeStatusMap()
+  });
+}
+
+function saveCurrentVenueTemplate() {
+  const name=($('venueName')?.value||'').trim();
+  if(!name){alert('Enter a venue template name first.');return;}
+  const width=Number(ringW.value),height=Number(ringH.value);
+  const zones=cloneZones(course?.noGoZones||venueZones);
+  const items=loadVenueTemplates();
+  const existing=items.find(v=>v.name.toLowerCase()===name.toLowerCase());
+  const item={
+    id:existing?.id||makeId('venue'),
+    name,width,height,
+    noGoZones:zones,
+    modifiedAt:new Date().toISOString()
+  };
+  const next=items.filter(v=>v.id!==item.id);next.push(item);
+  saveVenueTemplates(next);
+  renderVenueTemplates();
+  $('venueSelect').value=item.id;
+}
+
+function loadSelectedVenueTemplate() {
+  const id=$('venueSelect')?.value;
+  if(!id) return;
+  const v=loadVenueTemplates().find(x=>x.id===id);
+  if(!v) return;
+  ringW.value=v.width;ringH.value=v.height;
+  venueZones=cloneZones(v.noGoZones||[]);
+  $('venueName').value=v.name;
+  updateRingGuidance();
+  doGenerate();
+}
+
+function deleteSelectedVenueTemplate() {
+  const id=$('venueSelect')?.value;
+  if(!id) return;
+  const items=loadVenueTemplates().filter(v=>v.id!==id);
+  saveVenueTemplates(items);
+  renderVenueTemplates();
+}
+
 
 function initOrganizations() {
   orgEl.innerHTML='';
@@ -329,7 +482,13 @@ function render(loadImages=true) {
   const results=validateCourse(course,pack);
   const quality=evaluateCourseQuality(course,pack);
   const problemIds=allProblemStationIds(results);
-  drawCourse(canvas,course,pack,{highlightStationIds:problemIds,selectedStationId});
+  drawCourse(canvas,course,pack,{
+    highlightStationIds:problemIds,
+    selectedStationId,
+    setupMode,
+    previewNoGoZone:noGoPreview,
+    changeStatusByStationId:changeStatusMap()
+  });
   $('courseTitle').textContent=`${pack.levels[course.levelId].name} Course`;
   const ringArea=course.ring.width*course.ring.height;
   $('courseMeta').textContent=`${officialStationCount(course,pack.levels[course.levelId])} official stations · ${course.ring.width}×${course.ring.height} ft (${ringArea.toLocaleString(undefined,{maximumFractionDigits:1})} sq ft)`;
@@ -339,7 +498,19 @@ function render(loadImages=true) {
   renderSummary();
   renderReport();
   renderPalette(course.levelId);
+  renderNoGoList();
+  renderVenueTemplates();
   updateEditButtons();
+
+  const setupBtn=$('setupModeBtn');
+  if(setupBtn){
+    setupBtn.classList.toggle('active',setupMode);
+    setupBtn.textContent=setupMode?'Exit setup mode':'Physical setup mode';
+  }
+  const help=$('canvasHelp');
+  if(help) help.textContent=setupMode
+    ? 'Setup mode: path distances are shown directly on the ring. Coordinates and distances are also listed at right.'
+    : 'Drag stations to reshape the route. Red outlines mark stations that need attention.';
 }
 
 function renderSummary() {
@@ -548,6 +719,16 @@ function renderStations(problemIds=new Set()) {
     coords.textContent=`x ${Number(node.x).toFixed(1)} ft · y ${Number(node.y).toFixed(1)} ft`;
     coords.title=`Internal station ID: ${node.stationId}`;
     detail.appendChild(coords);
+
+    const changeState=currentChangeState(node.stationId);
+    if(changeState){
+      const badge=document.createElement('span');
+      badge.className=`station-change-badge ${changeState.toLowerCase().replace('+','-')}`;
+      badge.textContent=changeState;
+      detail.appendChild(badge);
+      row.classList.add(`change-${changeState.toLowerCase().replace('+','-')}`);
+    }
+
     const num=document.createElement('div');num.className='station-num';num.textContent=ord;
     const del=document.createElement('button');del.className='station-delete';del.type='button';del.title=`Remove station ${ord}`;del.textContent='×';
     del.onclick=e=>{e.stopPropagation();removeStationById(node.stationId);};
@@ -594,28 +775,49 @@ function renderReport() {
   if(!lastReport){el.className='muted';el.textContent='No level change yet.';return;}
   el.className='';
   const c=lastReport.counts;
-  const interesting=lastReport.changes.filter(x=>x.type!=='kept');
+
+  // Group the low-level diff events by stable station so a station that both
+  // changes sign and moves is one understandable setup instruction.
+  const grouped=new Map();
+  for(const x of lastReport.changes){
+    const g=grouped.get(x.stationId)||{stationId:x.stationId,events:[]};
+    g.events.push(x);grouped.set(x.stationId,g);
+  }
+  const rows=[...grouped.values()].map(g=>{
+    const e=g.events;
+    const added=e.find(x=>x.type==='added');
+    const removed=e.find(x=>x.type==='removed');
+    const swapped=e.find(x=>x.type==='swapped');
+    const moved=e.find(x=>x.type==='moved');
+    const kept=e.find(x=>x.type==='kept');
+    const ord=added?.afterOrdinal ?? swapped?.afterOrdinal ?? moved?.afterOrdinal ?? kept?.afterOrdinal ?? removed?.beforeOrdinal ?? '?';
+    if(added) return {rank:3,state:'ADD',text:`#${ord} ADD sign ${added.to}`};
+    if(removed) return {rank:4,state:'REMOVE',text:`Old #${ord} REMOVE sign ${removed.from}`};
+    if(swapped && moved) return {rank:1,state:'CHANGE+MOVE',text:`#${ord} CHANGE ${swapped.from} → ${swapped.to} · MOVE ${moved.feet.toFixed(1)} ft`};
+    if(swapped) return {rank:1,state:'CHANGE',text:`#${ord} CHANGE ${swapped.from} → ${swapped.to}`};
+    if(moved) return {rank:2,state:'MOVE',text:`#${ord} MOVE ${moved.feet.toFixed(1)} ft · keep sign ${moved.to||moved.from}`};
+    return {rank:5,state:'KEEP',text:`#${ord} KEEP sign ${kept?.signId||''}`};
+  }).sort((a,b)=>a.rank-b.rank || a.text.localeCompare(b.text,undefined,{numeric:true}));
+
+  const physical=rows.filter(r=>r.state!=='KEEP');
   const strategyNote = lastReport.addedForFlow
-    ? `<div class="val ok" style="margin-bottom:8px">✓ Optimizer chose: add ${lastReport.counts.added} station${lastReport.counts.added === 1 ? '' : 's'} in the existing flow to keep more of the original course unchanged</div>`
+    ? `<div class="val ok" style="margin-bottom:8px">✓ Added ${lastReport.counts.added} station${lastReport.counts.added===1?'':'s'} in-flow to preserve more of the existing physical setup.</div>`
     : '';
+
   el.innerHTML=`${strategyNote}
     <div class="change-grid">
-      <div class="change-stat"><b>${c.kept}</b><span>kept</span></div>
-      <div class="change-stat"><b>${c.swapped}</b><span>sign swaps</span></div>
-      <div class="change-stat"><b>${c.added}</b><span>added</span></div>
-      <div class="change-stat"><b>${c.moved}</b><span>moved</span></div>
-      <div class="change-stat"><b>${c.removed}</b><span>removed</span></div>
-      <div class="change-stat"><b>${lastReport.physicalSetupChanges}</b><span>setup changes</span></div>
+      <div class="change-stat"><b>${c.kept}</b><span>KEEP</span></div>
+      <div class="change-stat"><b>${c.swapped}</b><span>CHANGE SIGN</span></div>
+      <div class="change-stat"><b>${c.added}</b><span>ADD</span></div>
+      <div class="change-stat"><b>${c.moved}</b><span>MOVE</span></div>
+      <div class="change-stat"><b>${c.removed}</b><span>REMOVE</span></div>
+      <div class="change-stat"><b>${lastReport.physicalSetupChanges}</b><span>SETUP ACTIONS</span></div>
     </div>
-    <div class="change-list">${interesting.map(x=>{
-      if(x.type==='swapped')return `<div>Swap ${x.from} → ${x.to}</div>`;
-      if(x.type==='added')return `<div>Add ${x.to}</div>`;
-      if(x.type==='removed')return `<div>Remove ${x.from}</div>`;
-      if(x.type==='moved')return `<div>Move station ${x.feet.toFixed(1)} ft</div>`;
-      return '';
-    }).join('')||'<div>No physical setup changes.</div>'}</div>`;
+    <div class="change-list">${physical.map(r=>`<div><b class="change-${r.state.toLowerCase().replace('+','-')}">${r.state}</b> ${r.text.replace(r.state,'').trim()}</div>`).join('')||'<div>Everything stays in place. No physical setup changes.</div>'}</div>
+    <details class="kept-details"><summary>Show ${rows.filter(r=>r.state==='KEEP').length} retained station(s)</summary>
+      <div class="change-list">${rows.filter(r=>r.state==='KEEP').map(r=>`<div>${r.text}</div>`).join('')}</div>
+    </details>`;
 }
-
 function pointToSegmentDistance(p,a,b) {
   const dx=b.x-a.x,dy=b.y-a.y;
   const len2=dx*dx+dy*dy;
@@ -668,7 +870,15 @@ function insertAfterSelected() {
 
 function doGenerate() {
   try{
-    course=generateCourse({pack,levelId:levelEl.value,ring:ringSettings(),includeSequences:$('includeSequences').checked,routeStyle:routeStyleEl?.value||'mixed'});
+    course=generateCourse({
+      pack,
+      levelId:levelEl.value,
+      ring:ringSettings(),
+      includeSequences:$('includeSequences').checked,
+      routeStyle:routeStyleEl?.value||'mixed',
+      noGoZones:cloneZones(venueZones)
+    });
+    syncVenueZonesFromCourse();
     lastReport=null;resetHistory();render();
   }catch(e){alert(e.message);}
 }
@@ -686,6 +896,7 @@ function doUpgrade() {
   try{
     const out=upgradeCourse(course,pack,target);
     course=out.course;lastReport=out.report;
+    syncVenueZonesFromCourse();
     levelEl.value=target;
     ringW.value=course.ring.width;ringH.value=course.ring.height;
     resetHistory();
@@ -703,6 +914,28 @@ $('undoBtn').onclick=doUndo;
 $('redoBtn').onclick=doRedo;
 $('insertStationBtn').onclick=insertAfterSelected;
 $('deleteStationBtn').onclick=()=>selectedStationId&&removeStationById(selectedStationId);
+$('setupModeBtn').onclick=()=>{setupMode=!setupMode;render(false);};
+$('setupPdfBtn').onclick=async()=>{
+  if(!course)return;
+  try{
+    ensureImages();
+    await exportCourseSetupPdf({course,pack,drawCourseToContext,imageCache:getImageCache()});
+  }catch(e){alert(e.message);}
+};
+$('drawNoGoBtn').onclick=()=>setNoGoDrawing(!drawingNoGo);
+$('clearNoGoBtn').onclick=()=>{
+  if(course){
+    const before=snapshotCourse();
+    course.noGoZones=[];
+    syncVenueZonesFromCourse();
+    commitEdit(before);render();
+  }else{
+    venueZones=[];renderNoGoList();
+  }
+};
+$('saveVenueBtn').onclick=saveCurrentVenueTemplate;
+$('loadVenueBtn').onclick=loadSelectedVenueTemplate;
+$('deleteVenueBtn').onclick=deleteSelectedVenueTemplate;
 $('signFilter').addEventListener('input',()=>renderPalette(course?.levelId || levelEl.value));
 $('saveBtn').onclick=()=>course&&downloadJson(course);
 $('loadInput').onchange=async e=>{
@@ -713,6 +946,8 @@ $('loadInput').onchange=async e=>{
     orgEl.value=id;setPack(id,{keepCourse:true});pack=getPack(id);course=loaded;levelEl.value=course.levelId;
     ringW.value=course.ring.width;ringH.value=course.ring.height;
     course.ring.minSpacing=4.5;
+    course.noGoZones=cloneZones(course.noGoZones||[]);
+    syncVenueZonesFromCourse();
     lastReport=null;resetHistory();render();
   }catch(err){alert(err.message);}
   e.target.value='';
@@ -731,6 +966,7 @@ canvas.addEventListener('dragover',e=>{ e.preventDefault();e.dataTransfer.dropEf
 canvas.addEventListener('dragleave',()=>canvas.classList.remove('sign-drop-active'));
 canvas.addEventListener('drop',e=>{
   e.preventDefault();canvas.classList.remove('sign-drop-active');
+  if(drawingNoGo) return;
   const signId=e.dataTransfer.getData('application/x-rally-sign')||e.dataTransfer.getData('text/plain');
   if(!signId || !pack.signs[signId]) return;
   const hit=findNodeAt(canvas,course,e.clientX,e.clientY);
@@ -744,6 +980,15 @@ canvas.addEventListener('drop',e=>{
 
 // Existing station physical drag editing.
 canvas.addEventListener('pointerdown',e=>{
+  if(!course) return;
+  if(drawingNoGo){
+    noGoStart=canvasPointToRing(canvas,course,e.clientX,e.clientY);
+    noGoBefore=snapshotCourse();
+    noGoPreview={x:noGoStart.x,y:noGoStart.y,width:0,height:0,label:'New no-go zone'};
+    canvas.setPointerCapture(e.pointerId);
+    return;
+  }
+
   const i=findNodeAt(canvas,course,e.clientX,e.clientY);
   if(i>=0&&course.nodes[i].kind==='station'){
     dragIndex=i;
@@ -751,17 +996,52 @@ canvas.addEventListener('pointerdown',e=>{
     selectedStationId=course.nodes[i].stationId;
     updateEditButtons();
     canvas.setPointerCapture(e.pointerId);
-    drawCourse(canvas,course,pack,{selectedStationId});
+    drawCourse(canvas,course,pack,{selectedStationId,setupMode,changeStatusByStationId:changeStatusMap()});
   }
 });
 canvas.addEventListener('pointermove',e=>{
+  if(drawingNoGo && noGoStart){
+    const p=canvasPointToRing(canvas,course,e.clientX,e.clientY);
+    noGoPreview={
+      x:Math.min(noGoStart.x,p.x),
+      y:Math.min(noGoStart.y,p.y),
+      width:Math.abs(p.x-noGoStart.x),
+      height:Math.abs(p.y-noGoStart.y),
+      label:'New no-go zone'
+    };
+    drawCourse(canvas,course,pack,{
+      selectedStationId,setupMode,
+      previewNoGoZone:noGoPreview,
+      changeStatusByStationId:changeStatusMap()
+    });
+    return;
+  }
+
   if(dragIndex<0)return;
   const p=canvasPointToRing(canvas,course,e.clientX,e.clientY);
   course.nodes[dragIndex].x=p.x;course.nodes[dragIndex].y=p.y;
   recalcHeadings(course.nodes);
-  drawCourse(canvas,course,pack,{selectedStationId});
+  drawCourse(canvas,course,pack,{selectedStationId,setupMode,changeStatusByStationId:changeStatusMap()});
 });
 canvas.addEventListener('pointerup',e=>{
+  if(drawingNoGo && noGoStart){
+    if(noGoPreview && noGoPreview.width>=1 && noGoPreview.height>=1){
+      const n=(course.noGoZones||[]).length+1;
+      course.noGoZones=course.noGoZones||[];
+      course.noGoZones.push({
+        ...noGoPreview,
+        id:makeId('zone'),
+        label:`No-go ${n}`
+      });
+      syncVenueZonesFromCourse();
+      commitEdit(noGoBefore);
+    }
+    noGoStart=null;noGoPreview=null;noGoBefore=null;
+    setNoGoDrawing(false);
+    render();
+    return;
+  }
+
   if(dragIndex<0)return;
   dragIndex=-1;
   commitEdit(dragBefore);
@@ -769,6 +1049,11 @@ canvas.addEventListener('pointerup',e=>{
   render();
 });
 canvas.addEventListener('pointercancel',()=>{
+  if(drawingNoGo && noGoStart){
+    if(noGoBefore) course=noGoBefore;
+    noGoStart=null;noGoPreview=null;noGoBefore=null;
+    setNoGoDrawing(false);render();return;
+  }
   if(dragIndex<0)return;
   dragIndex=-1;
   dragBefore=null;
@@ -807,5 +1092,7 @@ window.addEventListener('resize',()=>{
   });
 });
 
+renderVenueTemplates();
+renderNoGoList();
 initOrganizations();
 doGenerate();

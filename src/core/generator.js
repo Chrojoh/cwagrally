@@ -4,6 +4,7 @@ import { joinedRuleFor, maxUsesFor, refreshJoinedFlags } from './rules.js';
 import { isCourseValid } from './validator.js';
 import { evaluateCourseQuality } from './quality.js';
 import { ringRuleIssues, ringRuleText, stationNodeRange } from './pack.js';
+import { routeNoGoConflicts } from './venue.js';
 
 function shuffled(arr) {
   const a = [...arr];
@@ -484,7 +485,7 @@ export function assignSignsToNodes({ pack, levelId, nodes, ring, includeSequence
   return assignSigns({ pack, levelId, nodes, ring, includeSequences, preferredByStationId, forceSequence });
 }
 
-export function generateCourse({ pack, levelId, ring, includeSequences = false, routeStyle = 'mixed' }) {
+export function generateCourse({ pack, levelId, ring, includeSequences = false, routeStyle = 'mixed', noGoZones = [] }) {
   const level = pack.levels[levelId];
   if (!level) throw new Error(`Unknown level ${levelId}`);
   if (level.generationEnabled === false) {
@@ -538,6 +539,11 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
     });
     recalcHeadings(nodes);
 
+    // Venue constraints are physical ring constraints, not organization rules.
+    // Reject route geometry that enters a saved/drawn no-go area before spending
+    // time assigning signs or reserving future equipment bays.
+    if (routeNoGoConflicts(nodes, noGoZones, 0.5).length) continue;
+
     // Some organizations introduce mandatory obstacles at the next level.
     // Lower-level generation can reserve future equipment bays so minimum-change
     // level progression does not later fail simply because the route consumed all
@@ -549,7 +555,7 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
     assignments.forEach((id, idx) => nodes[idx].signId = id);
     applyJoinedDisplayLayout(nodes, pack);
 
-    const course = makeCourse({ pack, levelId, ring, nodes });
+    const course = makeCourse({ pack, levelId, ring, nodes, noGoZones });
     if (typeof pack.makeAuxiliary === 'function') course.auxiliary = pack.makeAuxiliary(course, pack) || [];
     course.routeFamily = points.routeFamily || routeStyle;
     refreshJoinedFlags(course, pack);
@@ -568,5 +574,5 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
   // judge can see the score/warnings and edit it rather than getting no course.
   if (bestLegalCourse) return bestLegalCourse;
 
-  throw new Error('Could not generate a fully valid course with this ring and rule combination. Try different ring dimensions or disable sequence exercises.');
+  throw new Error('Could not generate a fully valid course with this ring, rule combination, and venue constraints. Try different ring dimensions, reduce/adjust no-go zones, or disable sequence exercises.');
 }

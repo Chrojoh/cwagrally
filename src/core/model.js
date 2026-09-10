@@ -5,7 +5,7 @@ export function makeId(prefix = 'id') {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`;
 }
 
-export function makeCourse({ pack, levelId, ring, nodes, auxiliary = [], parentCourseId = null, name = null }) {
+export function makeCourse({ pack, levelId, ring, nodes, auxiliary = [], noGoZones = [], parentCourseId = null, name = null }) {
   return {
     schemaVersion: SCHEMA_VERSION,
     courseId: makeId('course'),
@@ -19,7 +19,8 @@ export function makeCourse({ pack, levelId, ring, nodes, auxiliary = [], parentC
     modifiedAt: new Date().toISOString(),
     ring: { ...ring },
     nodes,
-    auxiliary: [...auxiliary]
+    auxiliary: [...auxiliary],
+    noGoZones: (noGoZones || []).map(z => ({ ...z }))
   };
 }
 

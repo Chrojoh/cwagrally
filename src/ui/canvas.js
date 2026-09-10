@@ -230,6 +230,27 @@ export function drawCourseToContext(ctx, course, pack, box, imageCache = cache, 
   ctx.font = `${opts.print ? '20' : '9'}px Arial`;
   ctx.fillText('Grid: 5 ft · Major lines/labels: 10 ft', ox, oy + ring.height * scale + (opts.print ? 38 : 18));
 
+  // Venue no-go zones (pillars, tables, doors, judge areas, etc.).
+  const venueZones=[...(course.noGoZones||[])];
+  if(opts.previewNoGoZone) venueZones.push({...opts.previewNoGoZone,preview:true});
+  for(const zone of venueZones){
+    const zx=ox+zone.x*scale,zy=oy+zone.y*scale;
+    const zw=zone.width*scale,zh=zone.height*scale;
+    ctx.save();
+    ctx.fillStyle=zone.preview?'rgba(186,55,55,.12)':'rgba(186,55,55,.16)';
+    ctx.strokeStyle='#b53a3a';
+    ctx.lineWidth=opts.print?4:2;
+    ctx.setLineDash(opts.print?[14,9]:[6,4]);
+    ctx.fillRect(zx,zy,zw,zh);
+    ctx.strokeRect(zx,zy,zw,zh);
+    ctx.setLineDash([]);
+    ctx.fillStyle='#8d2929';
+    ctx.font=`bold ${opts.print?20:9}px Arial`;
+    ctx.textAlign='left';ctx.textBaseline='bottom';
+    ctx.fillText(zone.label||'NO-GO',zx+(opts.print?8:4),zy-(opts.print?7:3));
+    ctx.restore();
+  }
+
   // Equipment working-footprint overlay.
   // This is drawn before the path so the route remains readable. The same
   // overlay appears in the exported PDF, making setup space visible to judges.
@@ -279,6 +300,21 @@ export function drawCourseToContext(ctx, course, pack, box, imageCache = cache, 
     ctx.lineTo(mx-ux*s*.55-uy*s*.55,my-uy*s*.55+ux*s*.55);
     ctx.lineTo(mx-ux*s*.55+uy*s*.55,my-uy*s*.55-ux*s*.55);
     ctx.closePath(); ctx.fill();
+
+    if(opts.setupMode){
+      const feet=Math.hypot(course.nodes[i+1].x-course.nodes[i].x,course.nodes[i+1].y-course.nodes[i].y);
+      const label=`${feet.toFixed(1)} ft`;
+      const lx=mx-uy*(opts.print?26:11),ly=my+ux*(opts.print?26:11);
+      ctx.save();
+      ctx.font=`bold ${opts.print?22:10}px Arial`;
+      const tw=ctx.measureText(label).width;
+      ctx.fillStyle='rgba(255,255,255,.92)';
+      ctx.fillRect(lx-tw/2-(opts.print?8:4),ly-(opts.print?20:10),tw+(opts.print?16:8),opts.print?32:16);
+      ctx.fillStyle='#174b82';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(label,lx,ly-(opts.print?4:2));
+      ctx.restore();
+    }
   }
 
 
@@ -360,6 +396,15 @@ export function drawCourseToContext(ctx, course, pack, box, imageCache = cache, 
     }
     if (selected) {
       ctx.strokeStyle='#d99a16';ctx.lineWidth=4;ctx.beginPath();ctx.arc(center.x,center.y,r+9,0,Math.PI*2);ctx.stroke();
+    }
+
+    const changeState=!opts.print ? opts.changeStatusByStationId?.get?.(node.stationId) : null;
+    if(changeState && changeState!=='KEEP'){
+      const color=changeState==='ADD'?'#2d7a45':changeState==='MOVE'?'#8d55a7':'#b26a16';
+      ctx.save();
+      ctx.strokeStyle=color;ctx.lineWidth=3;
+      ctx.beginPath();ctx.arc(center.x,center.y,r+6,0,Math.PI*2);ctx.stroke();
+      ctx.restore();
     }
 
     ctx.fillStyle = '#27344c';

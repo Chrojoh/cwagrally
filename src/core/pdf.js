@@ -63,7 +63,7 @@ function drawWrapped(ctx, text, x, y, maxWidth, lineHeight, maxLines = 2) {
   lines.slice(0, maxLines).forEach((l, i) => ctx.fillText(l, x, y + i * lineHeight));
 }
 
-export async function exportCoursePdf({ course, pack, drawCourseToContext, imageCache }) {
+export async function exportCoursePdf({ course, pack, drawCourseToContext, imageCache, setupMode = false }) {
   const W = 3300, H = 2550; // Letter landscape at 300 dpi
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
@@ -72,7 +72,7 @@ export async function exportCoursePdf({ course, pack, drawCourseToContext, image
 
   ctx.fillStyle = '#172033';
   ctx.font = 'bold 64px Arial';
-  ctx.fillText(`${pack.name} — ${pack.levels[course.levelId].name}`, 120, 105);
+  ctx.fillText(`${pack.name} — ${pack.levels[course.levelId].name}${setupMode?' — PHYSICAL SETUP':''}`, 120, 105);
   ctx.font = '32px Arial';
   ctx.fillStyle = '#596579';
   const level=pack.levels[course.levelId];
@@ -80,7 +80,7 @@ export async function exportCoursePdf({ course, pack, drawCourseToContext, image
 
   // Course map, left 72% of page.
   const mapBox = { x: 90, y: 210, w: 2240, h: 2200 };
-  drawCourseToContext(ctx, course, pack, mapBox, imageCache, { print: true });
+  drawCourseToContext(ctx, course, pack, mapBox, imageCache, { print: true, setupMode });
 
   // Station list, right side.
   const sx = 2400, sw = 790;
@@ -90,7 +90,7 @@ export async function exportCoursePdf({ course, pack, drawCourseToContext, image
   ctx.fillText('STATION LIST', sx + 35, 275);
 
   const stations = course.nodes.filter(n => n.kind === 'station');
-  const rowH = Math.min(88, 1970 / Math.max(1, stations.length));
+  const rowH = Math.min(setupMode?94:88, 1970 / Math.max(1, stations.length));
   ctx.font = '26px Arial';
   stations.forEach((node, i) => {
     const y = 325 + i * rowH;
@@ -100,8 +100,23 @@ export async function exportCoursePdf({ course, pack, drawCourseToContext, image
     ctx.fillText(String(i + 1), sx + 35, y + 35);
     ctx.fillStyle = '#5e6a7e'; ctx.font = '23px Arial';
     ctx.fillText(node.signId, sx + 90, y + 35);
-    ctx.fillStyle = '#172033'; ctx.font = '25px Arial';
-    drawWrapped(ctx, pack.signs[node.signId]?.name || node.signId, sx + 190, y + 35, 560, 28, 2);
+    ctx.fillStyle = '#172033'; ctx.font = setupMode?'22px Arial':'25px Arial';
+    drawWrapped(ctx, pack.signs[node.signId]?.name || node.signId, sx + 190, y + 32, 560, 25, setupMode?1:2);
+
+    if(setupMode){
+      let nodeIndex=course.nodes.indexOf(node),prevIndex=nodeIndex-1;
+      while(prevIndex>=0 && !['start','station'].includes(course.nodes[prevIndex]?.kind)) prevIndex--;
+      let feet=0;
+      if(prevIndex>=0){
+        for(let k=prevIndex+1;k<=nodeIndex;k++){
+          const a=course.nodes[k-1],b=course.nodes[k];
+          feet+=Math.hypot(b.x-a.x,b.y-a.y);
+        }
+      }
+      const from=i===0?'Start':`#${i}`;
+      ctx.fillStyle='#5e6a7e';ctx.font='18px Arial';
+      ctx.fillText(`${feet.toFixed(1)} ft from ${from} · x ${node.x.toFixed(1)} · y ${node.y.toFixed(1)}`,sx+190,y+58);
+    }
   });
 
   const aux = course.auxiliary || [];
@@ -126,7 +141,11 @@ export async function exportCoursePdf({ course, pack, drawCourseToContext, image
   const blob = new Blob([pdf], { type: 'application/pdf' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `${course.organizationId}-${course.levelId}-course.pdf`;
+  a.download = `${course.organizationId}-${course.levelId}-${setupMode?'setup':'course'}.pdf`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+}
+
+export async function exportCourseSetupPdf(args) {
+  return exportCoursePdf({ ...args, setupMode:true });
 }
