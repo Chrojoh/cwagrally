@@ -36,6 +36,7 @@ function resizeCourseCanvas() {
 let pack=null, course=null, lastReport=null, dragIndex=-1, dragBefore=null;
 let selectedStationId=null;
 let setupMode=false;
+let showLevelChanges=false;
 let drawingNoGo=false;
 let noGoStart=null;
 let noGoPreview=null;
@@ -52,7 +53,7 @@ function cloneZones(zones=[]) {
 }
 
 function currentChangeState(stationId) {
-  if(!lastReport) return null;
+  if(!lastReport || !showLevelChanges) return null;
   const c=lastReport.changes.filter(x=>x.stationId===stationId);
   if(c.some(x=>x.type==='added')) return 'ADD';
   const moved=c.some(x=>x.type==='moved');
@@ -507,6 +508,17 @@ function render(loadImages=true) {
     setupBtn.classList.toggle('active',setupMode);
     setupBtn.textContent=setupMode?'Exit setup mode':'Physical setup mode';
   }
+
+  const changesBtn=$('levelChangesBtn');
+  if(changesBtn){
+    changesBtn.disabled=!lastReport;
+    changesBtn.classList.toggle('active',!!lastReport && showLevelChanges);
+    changesBtn.textContent=lastReport && showLevelChanges ? 'Hide level changes' : 'Show level changes';
+    changesBtn.title=lastReport
+      ? 'Toggle KEEP / CHANGE / MOVE / ADD markers from the previous level'
+      : 'Advance this course to another level to create a comparison';
+  }
+
   const help=$('canvasHelp');
   if(help) help.textContent=setupMode
     ? 'Setup mode: path distances are shown directly on the ring. Coordinates and distances are also listed at right.'
@@ -879,7 +891,9 @@ function doGenerate() {
       noGoZones:cloneZones(venueZones)
     });
     syncVenueZonesFromCourse();
-    lastReport=null;resetHistory();render();
+    lastReport=null;
+    showLevelChanges=false;
+    resetHistory();render();
   }catch(e){alert(e.message);}
 }
 
@@ -896,6 +910,7 @@ function doUpgrade() {
   try{
     const out=upgradeCourse(course,pack,target);
     course=out.course;lastReport=out.report;
+    showLevelChanges=true;
     syncVenueZonesFromCourse();
     levelEl.value=target;
     ringW.value=course.ring.width;ringH.value=course.ring.height;
@@ -915,6 +930,11 @@ $('redoBtn').onclick=doRedo;
 $('insertStationBtn').onclick=insertAfterSelected;
 $('deleteStationBtn').onclick=()=>selectedStationId&&removeStationById(selectedStationId);
 $('setupModeBtn').onclick=()=>{setupMode=!setupMode;render(false);};
+$('levelChangesBtn').onclick=()=>{
+  if(!lastReport) return;
+  showLevelChanges=!showLevelChanges;
+  render(false);
+};
 $('setupPdfBtn').onclick=async()=>{
   if(!course)return;
   try{
@@ -948,7 +968,9 @@ $('loadInput').onchange=async e=>{
     course.ring.minSpacing=4.5;
     course.noGoZones=cloneZones(course.noGoZones||[]);
     syncVenueZonesFromCourse();
-    lastReport=null;resetHistory();render();
+    lastReport=null;
+    showLevelChanges=false;
+    resetHistory();render();
   }catch(err){alert(err.message);}
   e.target.value='';
 };

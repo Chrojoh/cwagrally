@@ -291,3 +291,11 @@ of that rectangle before the route is solved. Existing user-edited stations are 
 by this helper; it only acts on fresh generator candidate geometry. CARO Novice/Intermediate
 progression with venue zones now enforces the future Advanced jump-bay reservation instead of
 skipping that reservation whenever a no-go zone exists.
+
+
+### Level-change display toggle
+Level-change markers are now a temporary comparison overlay rather than permanent course-map
+decoration. After **Advance current course**, the overlay turns on automatically so the judge can
+see KEEP / CHANGE / MOVE / ADD information. Use **Hide level changes** to return to a clean course
+map and station list. The Last Level Change summary remains available even when the visual overlay
+is hidden. New generation and JSON loading clear the comparison overlay.
