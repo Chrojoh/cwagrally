@@ -299,3 +299,14 @@ decoration. After **Advance current course**, the overlay turns on automatically
 see KEEP / CHANGE / MOVE / ADD information. Use **Hide level changes** to return to a clean course
 map and station list. The Last Level Change summary remains available even when the visual overlay
 is hidden. New generation and JSON loading clear the comparison overlay.
+
+
+## Venue waypoint rendering regression
+
+No-go-zone rerouting may insert non-counted `waypoint` nodes into the walking path. These nodes are
+route geometry only. They are now explicitly excluded from station numbering, sign artwork,
+station labels, and station hit-testing. In Physical Setup Mode they may appear only as a small
+unnumbered hollow route-bend marker.
+
+The browser self-test also checks every mapped C-WAGS sign artwork URL plus START/FINISH for a
+successful image load, and verifies that no C-WAGS sign definition contains an undefined ID/name.

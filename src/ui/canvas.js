@@ -5,6 +5,10 @@ const cache = new Map();
 
 let lastScreenStationLayout = new Map();
 
+export function isNumberedStationNode(node) {
+  return node?.kind === 'station';
+}
+
 function rectsOverlap(a, b, pad = 0) {
   return !(
     a.right + pad <= b.left ||
@@ -73,7 +77,7 @@ function buildStationDisplayLayout(course, pt, box, opts = {}) {
 
   for (let i = 0; i < course.nodes.length; i++) {
     const node = course.nodes[i];
-    if (node.kind !== 'station') continue;
+    if (!isNumberedStationNode(node)) continue;
 
     const anchorPoint = pt(node);
     const joined = !!node.joinedToPrevious;
@@ -255,7 +259,7 @@ export function drawCourseToContext(ctx, course, pack, box, imageCache = cache, 
   // This is drawn before the path so the route remains readable. The same
   // overlay appears in the exported PDF, making setup space visible to judges.
   course.nodes.forEach((node, nodeIndex) => {
-    if (node.kind !== 'station') return;
+    if (!isNumberedStationNode(node)) return;
     const sign = pack.signs[node.signId];
     const fp = equipmentFootprintFor(sign, course.nodes, nodeIndex);
     if (!fp) return;
@@ -322,9 +326,9 @@ export function drawCourseToContext(ctx, course, pack, box, imageCache = cache, 
   // judge to indicate joined exercises on the course map.
   for (let i = 1; i < course.nodes.length; i++) {
     const node = course.nodes[i];
-    if (node.kind !== 'station' || !node.joinedToPrevious) continue;
+    if (!isNumberedStationNode(node) || !node.joinedToPrevious) continue;
     const prev = course.nodes[i - 1];
-    if (prev?.kind !== 'station') continue;
+    if (!isNumberedStationNode(prev)) continue;
 
     const a = pt(prev), b = pt(node);
     const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
@@ -381,6 +385,24 @@ export function drawCourseToContext(ctx, course, pack, box, imageCache = cache, 
       ctx.fillStyle = '#d99a16'; ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2); ctx.fill();
       ctx.fillStyle = '#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.font = `bold ${opts.print?28:12}px Arial`; ctx.fillText(node.kind==='start'?'S':'F',p.x,p.y);
+      return;
+    }
+
+    // Venue detours and future route-control nodes shape the walking line only.
+    // They are not rally exercises, must never receive a station number/sign,
+    // and must not shift the numbering of the real stations.
+    if (!isNumberedStationNode(node)) {
+      if (opts.setupMode && node.kind === 'waypoint') {
+        ctx.save();
+        ctx.fillStyle='#fff';
+        ctx.strokeStyle='#245b9b';
+        ctx.lineWidth=opts.print?4:1.5;
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,opts.print?9:4,0,Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
       return;
     }
 
@@ -571,6 +593,7 @@ export function findNodeAt(canvas, course, clientX, clientY) {
   const ringPt = canvasPointToRing(canvas,course,clientX,clientY);
   let best=-1,bestD=Infinity;
   course.nodes.forEach((n,i)=>{
+    if(!isNumberedStationNode(n)) return;
     const d=Math.hypot(n.x-ringPt.x,n.y-ringPt.y);
     if(d<bestD){bestD=d;best=i;}
   });

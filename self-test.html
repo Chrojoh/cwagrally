@@ -10,14 +10,18 @@ import { generateCourse } from './src/core/generator.js';
 import { rerouteAroundNoGoZones, routeNoGoConflicts } from './src/core/venue.js';
 import { validateCourse } from './src/core/validator.js';
 import { upgradeCourse } from './src/core/upgrade.js';
-import { officialStationCount, ringRuleIssues } from './src/core/pack.js';
+import { officialStationCount, ringRuleIssues, signImageUrl } from './src/core/pack.js';
 import { maxUsesFor } from './src/core/rules.js';
 import { requiredTurnAt } from './src/core/geometry.js';
+import { isNumberedStationNode } from './src/ui/canvas.js';
 
 const out=document.getElementById('out');
 const lines=[];
 function test(name,fn){
   try{fn();lines.push('PASS  '+name)}catch(e){lines.push('FAIL  '+name+' — '+e.message)}
+}
+async function testAsync(name,fn){
+  try{await fn();lines.push('PASS  '+name)}catch(e){lines.push('FAIL  '+name+' — '+e.message)}
 }
 function legal(c,p){return !validateCourse(c,p).some(r=>!r.ok&&r.severity==='error')}
 function generate(pack,levelId){
@@ -225,6 +229,30 @@ test('Level-change report includes station ordinals for physical setup',()=>{
   }
 });
 
+
+test('Venue waypoints are never numbered as rally stations',()=>{
+  const nodes=[
+    {kind:'start',x:0,y:0},
+    {kind:'station',stationId:'s1',signId:'S1',x:10,y:0},
+    {kind:'waypoint',stationId:'wp1',x:15,y:5,venueDetour:true},
+    {kind:'station',stationId:'s2',signId:'S32',x:20,y:10},
+    {kind:'finish',x:30,y:10}
+  ];
+  const numbered=nodes.filter(isNumberedStationNode);
+  if(numbered.length!==2) throw Error(`renderer would number ${numbered.length} nodes instead of 2`);
+  if(numbered.some(n=>!n.signId)) throw Error('a non-sign route node entered the numbered station set');
+});
+
+test('All C-WAGS sign definitions have real IDs and names',()=>{
+  const p=rulePacks['cwags:2021'];
+  const bad=Object.entries(p.signs).filter(([id,sign])=>
+    !id || !sign?.id || !sign?.name ||
+    String(sign.id).toLowerCase()==='undefined' ||
+    String(sign.name).toLowerCase().includes('undefined')
+  );
+  if(bad.length) throw Error(`bad C-WAGS sign definitions: ${bad.map(([id])=>id).join(', ')}`);
+});
+
 test('CKC full progression preserves two nonconsecutive jump bays',()=>{
   const p=rulePacks['ckc:2025'];
   let c=generate(p,'N');
@@ -239,6 +267,23 @@ test('CKC full progression preserves two nonconsecutive jump bays',()=>{
   if(Math.abs(jumps[0]-jumps[1])<2) throw Error('Master jumps are consecutive');
   const stay=(c.auxiliary||[]).find(a=>a.signId==='398');
   if(!stay||stay.counted!==false) throw Error('Stand Stay auxiliary missing/not non-counted');
+});
+
+
+await testAsync('Every C-WAGS mapped sign artwork loads',async()=>{
+  const p=rulePacks['cwags:2021'];
+  const ids=[...Object.keys(p.signs),'START','FINISH'];
+  const failed=[];
+  await Promise.all(ids.map(id=>new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      if(!img.naturalWidth || !img.naturalHeight) failed.push(id);
+      resolve();
+    };
+    img.onerror=()=>{failed.push(id);resolve();};
+    img.src=signImageUrl(p,id);
+  })));
+  if(failed.length) throw Error(`missing/broken artwork: ${failed.join(', ')}`);
 });
 
 out.textContent=lines.join('\n');
