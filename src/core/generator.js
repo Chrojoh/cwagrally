@@ -1,4 +1,5 @@
 import { COURSE_SHAPES, makeProceduralRoute, generationHistory, rememberCourse, pickShape, routeSignature, silhouetteDistance } from './procedural.js';
+import { planFinishArea, connectFinishArea, plannedStay, finishAreaClear } from './ckc-finish.js';
 import { makeCourse, makeId } from './model.js';
 import { equipmentPlacementConflicts, makeCompactCorridorRoute, makeEdgeEquipmentRoute, makeVariedRoute, segmentsCross, recalcHeadings, requiredTurnAt, signFitsTurn } from './geometry.js';
 import { joinedRuleFor, maxUsesFor, refreshJoinedFlags, transitionRuleFor } from './rules.js';
@@ -595,9 +596,12 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const count = pack.id === 'caro' && (Math.min(ring.width,ring.height)<=38 || noGoZones.length) ? stationNodeRange(level).min + attempt % 3 : procedural && pack.id === 'cwags' ? chooseCount(pack,levelId) : procedural && pack.id === 'ckc' ? chooseCountForRoute(pack,levelId,'mixed') : procedural ? stationNodeRange(level).min + Math.floor(Math.random()*Math.min(3,stationNodeRange(level).max-stationNodeRange(level).min+1)) : chooseCountForRoute(pack, levelId, effectiveRouteStyle);
     diagnostics.attempts=attempt+1;
+    const finishPlan=pack.id==='ckc' ? planFinishArea(ring,attempt) : null;
+    const routeRing=finishPlan || ring;
+    let finishArea=null;
     let points;
     try {
-      if (procedural) points = makeProceduralRoute({count, width:ring.width, height:ring.height, shape:pickShape(routeStyle,history,attempt), pack, levelId, includeSequences});
+      if (procedural) points = makeProceduralRoute({count, width:routeRing.width, height:routeRing.height, shape:pickShape(routeStyle,history,attempt), pack, levelId, includeSequences});
       // CARO permits compact legal ring shapes that can be difficult for a
       // generic multi-lane route once a jump/equipment footprint is considered.
       // Mix in a dedicated sparse-center corridor on those rings. Normal 50×40
@@ -620,7 +624,7 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
       }
       if (!points) {
         points = makeVariedRoute({
-          count, width: ring.width, height: ring.height, style: effectiveRouteStyle,
+          count, width: routeRing.width, height: routeRing.height, style: effectiveRouteStyle,
           drawingFloor: level.layout?.preferredGap ?? pack.layout?.preferredGap ?? 8
         });
       }
@@ -631,7 +635,7 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
       if (!procedural) continue;
       try {
         points = makeVariedRoute({
-          count, width: ring.width, height: ring.height,
+          count, width: routeRing.width, height: routeRing.height,
           style: 'classic',
           drawingFloor: level.layout?.preferredGap ?? pack.layout?.preferredGap ?? 8
         });
@@ -639,6 +643,12 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
       } catch {
         continue;
       }
+    }
+
+    if(finishPlan) {
+      const connected=connectFinishArea(points,finishPlan,ring,noGoZones);
+      if(!connected) continue;
+      points=connected.points;finishArea=connected.area;
     }
 
     // Reserve the approach before Start and run-out beyond Finish by sliding
@@ -734,6 +744,10 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
 
     if (procedural && nodes.some((a,i)=>i<nodes.length-1 && nodes.some((b,j)=>j>i+1 && j<nodes.length-1 && segmentsCross(a,nodes[i+1],b,nodes[j+1])))) continue;
     const course = makeCourse({ pack, levelId, ring, nodes, noGoZones });
+    if(finishArea) {
+      course.finishArea=finishArea;
+      if(!finishAreaClear(course,pack,plannedStay(course,'298')?.[0])) continue;
+    }
     if (typeof pack.makeAuxiliary === 'function') course.auxiliary = pack.makeAuxiliary(course, pack) || [];
     course.routeFamily = routed.routeFamily || rawFamily || routeStyle;
     course.venueDetourCount = routed.venueDetourCount || 0;

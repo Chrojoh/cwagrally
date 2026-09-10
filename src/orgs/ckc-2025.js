@@ -1,3 +1,5 @@
+import { plannedStay, finishAreaClear } from '../core/ckc-finish.js';
+
 const signs = {
   "3": {
     "id": "3",
@@ -2718,9 +2720,11 @@ function pointToSegmentDistance(p, a, b) {
   return Math.hypot(p.x-(a.x+t*vx),p.y-(a.y+t*vy));
 }
 
-function makeAuxiliary(course) {
+function makeAuxiliary(course, pack=ckc2025) {
   const sid = course.levelId === 'X' ? '298' : course.levelId === 'M' ? '398' : null;
   if (!sid) return [];
+  const reserved=plannedStay(course,sid);
+  if(reserved) return reserved;
 
   const finishIndex=course.nodes.findIndex(n=>n.kind==='finish');
   const finish=finishIndex>=0?course.nodes[finishIndex]:course.nodes[course.nodes.length-1];
@@ -2781,6 +2785,7 @@ function makeAuxiliary(course) {
       const stayClear=pathClearance(stay);
       const corridorClear=corridorClearance(stay,leash);
       if(stayClear<2||corridorClear<1.5) continue;
+      if(!finishAreaClear(course,pack,{x:stay.x,y:stay.y,leashX:leash.x,leashY:leash.y})) continue;
 
       const boundary=Math.min(
         stay.x,stay.y,course.ring.width-stay.x,course.ring.height-stay.y,
@@ -2856,6 +2861,8 @@ function ckcCourseValidator(course, pack) {
 
   if(['X','M'].includes(course.levelId)) {
     const aux=(course.auxiliary||[])[0];
+    out.push(makeResult('ckc:stay-lane-clear',finishAreaClear(course,pack,aux),
+      'The walk from Finish and leash-retrieval lane must avoid the course, venue obstacles, and equipment'));
     let minPath=Infinity;
     if(aux) for(let i=0;i<course.nodes.length-1;i++) minPath=Math.min(minPath,pointToSegmentDistance(aux,course.nodes[i],course.nodes[i+1]));
     out.push(makeResult(

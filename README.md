@@ -1,5 +1,14 @@
 # Rally Course Designer V3 — procedural routes
 
+CKC generation reserves an edge strip for Finish, Stay, and the 15-foot
+leash-retrieval walk before constructing the route. Lower levels keep this
+space for progression to Excellent/Master. The edge location, eight-foot strip,
+and five-foot Finish-to-Stay gap are layout choices, not additional CKC rules.
+The actual venue exit is still chosen by the judge; no Start/Finish proximity
+rule is imposed. The full post-Finish walk is checked against course segments,
+venue obstacles, and equipment. Manual changes to Finish refresh the Stay area.
+Run `node tests/ckc-finish.mjs` for the dedicated placement and obstruction checks.
+
 This release replaces the default template selector with **Course Shape**:
 **Surprise me · Flowing · Geometric · Spiral · Diagonal · Classic**.
 

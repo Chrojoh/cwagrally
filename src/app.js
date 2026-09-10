@@ -475,6 +475,7 @@ function render(loadImages=true) {
   updateAdvanceTargets();
   updateRingGuidance();
   refreshJoinedFlags(course,pack);
+  if(pack.id==='ckc') course.auxiliary=pack.makeAuxiliary(course,pack);
   if(loadImages) ensureImages();
   const results=validateCourse(course,pack);
   const quality=evaluateCourseQuality(course,pack);
