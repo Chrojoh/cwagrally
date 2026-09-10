@@ -1,0 +1,224 @@
+{
+  "schemaVersion": 3,
+  "courseId": "course-b896c3a5-6dd0-4f5e-870f-e75691cafa88",
+  "parentCourseId": "course-9d404fea-5c77-49a1-83ef-d2848ac77b23",
+  "organizationId": "ckc",
+  "rulePackVersion": "2025",
+  "discipline": "rally",
+  "levelId": "X",
+  "name": "CKC Rally Excellent",
+  "createdAt": "2026-09-10T16:41:12.455Z",
+  "modifiedAt": "2026-09-10T16:41:17.942Z",
+  "ring": {
+    "minSpacing": 4.5,
+    "width": 40,
+    "height": 50
+  },
+  "nodes": [
+    {
+      "kind": "start",
+      "stationId": "start-dcd14e54-f854-4010-b86c-2af8d44d47f1",
+      "x": 23.454373679302787,
+      "y": 3.620042660199523,
+      "heading": 270
+    },
+    {
+      "kind": "station",
+      "stationId": "st-9d3eebbc-dc7d-4515-ba3c-afe786948cbb",
+      "signId": "119",
+      "x": 16.85170259741723,
+      "y": 3.620042660199523,
+      "heading": 270,
+      "locked": false
+    },
+    {
+      "kind": "station",
+      "stationId": "st-f47eb08c-033f-49eb-b8a9-599c44be529a",
+      "signId": "32",
+      "x": 16.85170259741723,
+      "y": 10.22271374208508,
+      "heading": 180,
+      "locked": false
+    },
+    {
+      "kind": "station",
+      "stationId": "st-2213970f-3110-4288-aaad-72a98b74c7e0",
+      "signId": "205",
+      "x": 16.85170259741723,
+      "y": 30.03072698774175,
+      "heading": 180,
+      "locked": false
+    },
+    {
+      "kind": "station",
+      "stationId": "st-0f06de22-4674-4658-8d7f-7c0fe9442f69",
+      "signId": "124",
+      "x": 16.85170259741723,
+      "y": 36.63339806962731,
+      "heading": 180,
+      "locked": false
+    },
+    {
+      "kind": "station",
+      "stationId": "st-7d892209-df2d-4a8f-98b0-eca3f632ecaa",
+      "signId": "203",
+      "x": 23.454373679302787,
+      "y": 36.63339806962731,
+      "heading": 90,
+      "locked": false
+    },
+    {
+      "kind": "station",
+      "stationId": "st-2ed02beb-cad9-4a64-bd0d-9aeedf422313",
+      "signId": "117",
+      "x": 30.057044761188344,
+      "y": 36.63339806962731,
+      "heading": 90,
+      "locked": false
+    },
+    {
+      "kind": "station",
+      "stationId": "st-3510fef0-7bec-48ef-9696-1a6bae1657fe",
+      "signId": "201",
+      "x": 30.057044761188344,
+      "y": 30.03072698774175,
+      "heading": 0,
+      "locked": false
+    },
+    {
+      "kind": "station",
+      "stationId": "st-c9ec125a-9d19-442a-8973-9311e0daeebf",
+      "signId": "103",
+      "x": 30.057044761188344,
+      "y": 23.428055905856194,
+      "heading": 0,
+      "locked": false
+    },
+    {
+      "kind": "station",
+      "stationId": "st-c6cd0e21-fa38-4c82-857e-b37091c366d1",
+      "signId": "34",
+      "x": 30.057044761188344,
+      "y": 3.620042660199523,
+      "heading": 0,
+      "locked": false
+    },
+    {
+      "kind": "station",
+      "stationId": "st-7b1f573f-f8ec-412c-b0d3-c7bd6ba3a1ac",
+      "signId": "104",
+      "x": 36.659715843073904,
+      "y": 3.620042660199523,
+      "heading": 90,
+      "locked": false
+    },
+    {
+      "kind": "station",
+      "stationId": "st-b2c4034b-6a30-4da3-97ae-bb08d41f37c4",
+      "signId": "114",
+      "x": 36.659715843073904,
+      "y": 16.825384823970637,
+      "heading": 180,
+      "locked": false
+    },
+    {
+      "kind": "station",
+      "stationId": "st-700eacbc-4d1c-46f6-bc18-5430de9734be",
+      "signId": "3",
+      "x": 36.659715843073904,
+      "y": 23.428055905856194,
+      "heading": 180,
+      "locked": false
+    },
+    {
+      "kind": "station",
+      "stationId": "st-b1314842-8dcc-4863-b9f2-bd7d258a1eb0",
+      "signId": "35",
+      "x": 36.659715843073904,
+      "y": 30.03072698774175,
+      "heading": 180,
+      "locked": false
+    },
+    {
+      "kind": "station",
+      "stationId": "st-445bec61-b872-462b-ac5e-15ecc7424f96",
+      "signId": "120",
+      "x": 36.659715843073904,
+      "y": 43.236069151512865,
+      "heading": 180,
+      "locked": false
+    },
+    {
+      "kind": "station",
+      "stationId": "st-311c7d2f-8d45-445f-940f-2d5f17b255fa",
+      "signId": "115",
+      "x": 30.057044761188344,
+      "y": 43.236069151512865,
+      "heading": 270,
+      "locked": false
+    },
+    {
+      "kind": "station",
+      "stationId": "st-649019d4-aa20-4cda-bf4e-19ff4e11b085",
+      "signId": "103",
+      "x": 19.72881293485487,
+      "y": 43.236069151512865,
+      "heading": 270,
+      "locked": false
+    },
+    {
+      "kind": "finish",
+      "stationId": "finish-172ad3b6-16c0-49b0-bb2a-34c8128faac8",
+      "x": 9.400581108521394,
+      "y": 43.236069151512865,
+      "heading": 270
+    }
+  ],
+  "auxiliary": [
+    {
+      "kind": "auxiliary",
+      "id": "sit-stay",
+      "signId": "298",
+      "label": "Sit Stay after Finish",
+      "x": 7.071209702598707,
+      "y": 34.54273671491125,
+      "leashX": 3.1889240260608958,
+      "leashY": 20.053849320575225,
+      "distanceFt": 15,
+      "counted": false,
+      "afterFinish": true,
+      "finishX": 9.400581108521394,
+      "finishY": 43.236069151512865,
+      "note": "Mandatory after Finish; non-counted. Handler proceeds to the Stay sign, then walks forward at least 15 ft to retrieve the leash."
+    }
+  ],
+  "noGoZones": [],
+  "finishArea": {
+    "side": 1,
+    "finish": {
+      "x": 3,
+      "y": 43.236069151512865
+    },
+    "stay": {
+      "x": 3,
+      "y": 38.236069151512865
+    },
+    "leash": {
+      "x": 3,
+      "y": 23.236069151512865
+    }
+  },
+  "routeFamily": "procedural-geometric",
+  "venueDetourCount": 0,
+  "courseShape": "surprise",
+  "planner": "exercise-skeleton",
+  "generationDiagnostics": {
+    "attempts": 90,
+    "proposals": 33,
+    "novel": 4,
+    "reserve": 1,
+    "assigned": 1,
+    "valid": 1,
+    "postRouteSignSearches": 0
+  }
+}

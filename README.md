@@ -428,3 +428,8 @@ Excellent, and Master now offer:
 
 The experimental X-crossover route remains disabled for CKC by default. This is a design choice,
 not a CKC rule.
+# Level-change working space
+
+Level changes now rank working-space deficits before small sign-swap savings. When working space scores below 80, the solver tries moving aligned rows and columns while retaining signs and route order. It accepts only improvements that pass the implemented rule, equipment, venue, and future-equipment checks; locked stations remain fixed. This is a quality preference, not a new organization spacing rule. Some constrained layouts can still retain warnings.
+
+CKC end additions preserve the reserved Finish area. The saved-course regression in `tests/upgrade-spacing.mjs` checks the reported crowded Excellent course, reservation restoration, sign retention, and locked positions.

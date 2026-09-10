@@ -5,6 +5,48 @@ import { isCourseValid, validateCourse } from './validator.js';
 import { assignSignsToNodes, progressionReserveFits } from './generator.js';
 import { stationNodeRange } from './pack.js';
 import { routeNoGoConflicts } from './venue.js';
+import { evaluateCourseQuality } from './quality.js';
+
+// Move whole aligned rows/columns so straight legs and turn directions survive.
+// Only validated improvements are accepted; locked signs and reserved Finish stay put.
+export function improveWorkingSpace(source, pack) {
+  let best = cloneCourse(source);
+  const quality = c => evaluateCourseQuality(c, pack);
+  const acceptable = c => {
+    recalcHeadings(c.nodes);
+    if (pack.makeAuxiliary) c.auxiliary = pack.makeAuxiliary(c, pack) || [];
+    return isCourseValid(c, pack) && progressionReserveFits(pack, c.levelId, c.nodes, c.ring, c.noGoZones || []);
+  };
+  if (pack.id === 'ckc' && best.finishArea && !best.nodes.find(n => n.kind === 'finish')?.locked) {
+    const restored = cloneCourse(best);
+    Object.assign(restored.nodes.find(n => n.kind === 'finish'), restored.finishArea.finish);
+    if (acceptable(restored)) best = restored;
+  }
+  for (const step of [3, 1.5, 0.5]) {
+    for (let pass = 0; pass < 4; pass++) {
+      let improved = false;
+      for (const axis of ['x', 'y']) {
+        const values = [...new Set(best.nodes.filter(n => n.kind !== 'finish').map(n => n[axis]))];
+        for (const value of values) {
+          const indices = best.nodes.map((n, i) => Math.abs(n[axis] - value) < 0.01 ? i : -1).filter(i => i >= 0);
+          if (indices.some(i => best.nodes[i].locked || best.nodes[i].kind === 'finish')) continue;
+          for (const delta of [-step, step]) {
+            const trial = cloneCourse(best);
+            indices.forEach(i => { trial.nodes[i][axis] += delta; });
+            const limit = axis === 'x' ? trial.ring.width : trial.ring.height;
+            if (indices.some(i => trial.nodes[i][axis] < 3 || trial.nodes[i][axis] > limit - 3)) continue;
+            const q = quality(trial), old = quality(best);
+            if (q.categories.working.score <= old.categories.working.score || q.overall < old.overall) continue;
+            if (!acceptable(trial)) continue;
+            best = trial; improved = true;
+          }
+        }
+      }
+      if (!improved) break;
+    }
+  }
+  return best;
+}
 
 function insertIntoLargestGap(course, pack = null, reserveLevelId = null) {
   const minSpacing = Math.max(course.ring.minSpacing || 0, pack?.levels?.[reserveLevelId]?.ordinarySpacing?.min || pack?.ordinarySpacing?.min || 0);
@@ -113,6 +155,7 @@ function newSegmentCrossesExisting(course, a, b, ignoreTailSegments = 1) {
 // cheap real-world setup change. The old Finish may move a little so that the
 // judge only has to place one extra sign rather than rework several stations.
 function tryAddStationAtEnd(course) {
+  if (course.finishArea) return null;
   const finishIndex = course.nodes.findIndex(n => n.kind === 'finish');
   if (finishIndex < 2) return null;
 
@@ -478,7 +521,15 @@ export function upgradeCourse(current, pack, targetLevelId) {
     a.solver.structuralCost - b.solver.structuralCost
   );
 
+  // Working-space deficits take precedence over saving an ordinary sign swap.
+  solutions.sort((a, b) => {
+    const penalty = s => Math.max(0, 80 - evaluateCourseQuality(s.course, pack).categories.working.score);
+    return penalty(a) - penalty(b) || a.solver.total - b.solver.total;
+  });
   const chosen = solutions[0];
+  if (evaluateCourseQuality(chosen.course, pack).categories.working.score < 80) {
+    chosen.course = improveWorkingSpace(chosen.course, pack);
+  }
   const report = diffCourses(before, chosen.course);
   report.strategy = chosen.solver.label;
   report.optimizationCost = chosen.solver.total;
@@ -488,4 +539,3 @@ export function upgradeCourse(current, pack, targetLevelId) {
 
   return { course: chosen.course, report };
 }
-

@@ -588,7 +588,7 @@ function renderQuality(quality,legalResults) {
       <div class="quality-number">${quality.overall}</div>
       <div>
         <b>/100 · ${quality.grade}</b>
-        <div class="quality-target">${targetMet?'✓ Meets':'⚠ Below'} generator target of ${quality.threshold}</div>
+        <div class="quality-target">${targetMet?'✓ Meets':'⚠ Below'} course quality target of ${quality.threshold}</div>
       </div>
     </div>
     <div class="quality-legal ${legal?'pass':'fail'}">
