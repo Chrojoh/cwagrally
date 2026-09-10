@@ -3262,7 +3262,23 @@ const caro2025 = {
   name: 'Canadian Association of Rally Obedience',
   sourceLabel: '2025 Rally Handbook + amendments effective Dec. 14, 2025 + 2026 Trial Officials Guide',
   assetBase: './assets/caro-2025/',
-  layout: { preferredGap: 8 },
+  layout: { preferredGap: 10 },
+  // Checklist V12-2026 08 says generally 10 or 15 ft, without assigning
+  // distances to sign families. These explicit estimates remain advisory.
+  spacingGuidance: {
+    default: 10, extended: 15,
+    extendedAfter: ['119','200','428','503','105','414','215','518','305','529','315','316','537','538','318','319','541','542'],
+    extendedBefore: ['215','518','305','529','318','319','541','542'],
+    companions: [
+      {from:['201','303','304','317'],to:['223']},
+      {from:['500','501','502','504','527','528','540'],to:['539','223']},
+      {from:['212'],to:['213']}, {from:['515'],to:['516']},
+      {from:['214','215'],to:['216','217','218','219']},
+      {from:['517','518'],to:['519','520','521','522']},
+      {from:['306'],to:['307','308','309','310']},
+      {from:['530'],to:['531','532','533','534']}
+    ]
+  },
   ringGuidance: '50 × 40 ft is the program default for automatic course layout, not a required CARO ring shape. Any dimensions that meet the 1,500 sq ft minimum are rule-valid.',
   // Reserve one future jump bay in Novice/Intermediate so the required #220
   // Jump can be added at Advanced without rebuilding the physical course.

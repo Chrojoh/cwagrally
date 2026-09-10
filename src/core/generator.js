@@ -625,7 +625,8 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
       if (!points) {
         points = makeVariedRoute({
           count, width: routeRing.width, height: routeRing.height, style: effectiveRouteStyle,
-          drawingFloor: level.layout?.preferredGap ?? pack.layout?.preferredGap ?? 8
+          drawingFloor: pack.spacingGuidance && attempt % 2 === 1 ? 8
+            : (level.layout?.preferredGap ?? pack.layout?.preferredGap ?? 8)
         });
       }
     } catch {

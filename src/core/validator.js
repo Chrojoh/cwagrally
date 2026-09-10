@@ -3,6 +3,8 @@ import { joinedRuleFor, maxUsesFor, quotaCount, signById, transitionRuleFor } fr
 import { officialStationCount, ringRuleIssues, ringRuleText, stationCountLabel } from './pack.js';
 import { rectCorners, routeNoGoConflicts } from './venue.js';
 
+import { spacingGuidanceIssues } from './spacing.js';
+
 function result(code, ok, message, severity = 'error', details = null) {
   return { code, ok, message, severity, details };
 }
@@ -15,6 +17,14 @@ export function validateCourse(course, pack) {
   const stations = course.nodes.filter(n => n.kind === 'station');
   const signIds = stations.map(s => s.signId);
   const results = [];
+  if (pack.spacingGuidance) {
+    const gaps = spacingGuidanceIssues(course, pack);
+    results.push(result('spacing-guidance', !gaps.length,
+      gaps.length ? `${gaps.length} gap(s) below provisional CARO 10/15-ft design targets; review setup (not a confirmed rule violation)`
+        : 'Meets provisional CARO 10/15-ft spacing targets; exercise clearances still apply',
+      'warning', gaps));
+  }
+
 
   const officialCount = officialStationCount(course, level);
   results.push(result(

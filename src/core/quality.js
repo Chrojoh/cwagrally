@@ -1,4 +1,5 @@
 import { distance, requiredTurnAt, segmentsCross } from './geometry.js';
+import { spacingGuidanceIssues } from './spacing.js';
 
 function clamp(n, lo = 0, hi = 100) {
   return Math.max(lo, Math.min(hi, n));
@@ -225,6 +226,8 @@ export function evaluateCourseQuality(course, pack = null) {
   const clear = unrelatedClearanceStats(nodes);
 
   let workScore = 100;
+  const spacingIssues = spacingGuidanceIssues(course, pack);
+  workScore -= spacingIssues.reduce((sum, gap) => sum + Math.min(6, (gap.target - gap.distance) * 0.8), 0);
   workScore -= clear.veryCloseStationPairs * 6;
   workScore -= Math.max(0, clear.closeStationPairs - clear.veryCloseStationPairs) * 1.5;
   workScore -= clear.veryTightPinches * 5;
@@ -232,6 +235,7 @@ export function evaluateCourseQuality(course, pack = null) {
   workScore = clamp(workScore);
 
   const workingFindings = [];
+  if (spacingIssues.length) workingFindings.push(`${spacingIssues.length} gap(s) below provisional CARO 10/15-ft design targets; allow room for the complete exercise. These are estimates, not confirmed rule violations.`);
   if (clear.veryCloseStationPairs) {
     workingFindings.push(`${clear.veryCloseStationPairs} unrelated station pair${clear.veryCloseStationPairs === 1 ? '' : 's'} are under 6 ft apart.`);
   }
