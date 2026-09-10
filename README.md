@@ -8,6 +8,14 @@ window running. The complete folder can also be deployed to GitHub Pages as a
 static site; include `src/core/generation-worker.js`, `src/core/procedural.js`, and `src/core/skeleton.js`.
 Opening `index.html` directly with a file URL does not support module workers.
 
+## C-WAGS spacing correction
+
+Ordinary C-WAGS stations must be at least 10 feet apart, including stations on
+nonconsecutive sections of the route. Only consecutive joined exercises or pairs
+with an explicit distance rule are exempt. Generation, manual-edit validation,
+and level-up assignment enforce this constraint. Existing saved courses are
+checked again when loaded; Generate creates a course under the corrected checks.
+
 ## Current rule and planner update
 
 Procedural search now selects exercise blocks before placing the route, accounting
@@ -57,6 +65,7 @@ node tests/legacy.mjs
 node tests/progression.mjs
 node tests/worker.mjs
 node tests/rule-enforcement.mjs
+node tests/cwags-spacing.mjs
 ```
 
 Generation prints batch progress; a full run takes several minutes. Legacy tests

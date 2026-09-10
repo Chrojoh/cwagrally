@@ -214,6 +214,19 @@ function assignSigns({ pack, levelId, nodes, ring, includeSequences, preferredBy
     if(sign.requiredPrevious && (ord===0 || (before && !sign.requiredPrevious.includes(before)))) return false;
     if(after && pack.signs[after]?.requiredPrevious && !pack.signs[after].requiredPrevious.includes(sign.id)) return false;
 
+    const spacing=level.ordinarySpacing || pack.ordinarySpacing;
+    if(spacing && spacing.severity!=='warning') {
+      for(const [otherIndex,otherId] of assignments) {
+        if(otherIndex===nodeIndex) continue;
+        const otherOrd=stationOrdinal.get(otherIndex);
+        const adjacent=Math.abs(otherOrd-ord)===1;
+        if(!spacing.allPairs && !adjacent) continue;
+        if(Math.hypot(nodes[nodeIndex].x-nodes[otherIndex].x,nodes[nodeIndex].y-nodes[otherIndex].y)+1e-6>=spacing.min) continue;
+        const from=otherOrd<ord?otherId:sign.id,to=otherOrd<ord?sign.id:otherId;
+        const exception=adjacent && (joinedRuleFor(pack,from,to) || (pack.adjacentDistanceRules||[]).some(r=>r.from.includes(from)&&r.to.includes(to)));
+        if(!exception) return false;
+      }
+    }
     // Organization/level packs can mark a family of exercises as nonconsecutive.
     // This is intentionally generic: CKC uses it for the two Excellent/Master
     // jump exercises, while other organizations can use the same mechanism.
@@ -267,7 +280,7 @@ function assignSigns({ pack, levelId, nodes, ring, includeSequences, preferredBy
     if (!includeSequences) return [];
     if (!forceSequence && Math.random() > 0.72) return [];
 
-    const templates = (pack.chainTemplates?.[levelId] || [])
+    const templates = Object.values(pack.chainTemplates || {}).flat()
       .filter(chain => chain.every(id => level.allowedSigns.includes(id)));
     const placements = [];
 
@@ -314,6 +327,23 @@ function assignSigns({ pack, levelId, nodes, ring, includeSequences, preferredBy
     const assignments = new Map();
     let failed = false;
 
+    // Retain legal close pairs during level changes; they cannot be filled
+    // with independent ordinary exercises without moving the physical signs.
+    if(preferredByStationId && pack.ordinarySpacing?.allPairs) {
+      for(let j=1;j<stationIndices.length;j++) {
+        const a=stationIndices[j-1],b=stationIndices[j];
+        if(Math.hypot(nodes[a].x-nodes[b].x,nodes[a].y-nodes[b].y)>=pack.ordinarySpacing.min-1e-6) continue;
+        const from=preferredForIndex(a),to=preferredForIndex(b);
+        if(!from || !to || !level.allowedSigns.includes(from) || !level.allowedSigns.includes(to)) continue;
+        if(!joinedRuleFor(pack,from,to) && !(pack.adjacentDistanceRules||[]).some(r=>r.from.includes(from)&&r.to.includes(to))) continue;
+        for(const [idx,id] of [[a,from],[b,to]]) {
+          if(assignments.has(idx)) continue;
+          if(!available(pack.signs[id],uses)) {failed=true;break;}
+          assignments.set(idx,id);uses[id]=(uses[id]||0)+1;
+        }
+      }
+      if(failed) continue;
+    }
     const placements = chainPlacements();
     if (forceSequence && includeSequences && !placements.length) continue;
 
@@ -329,10 +359,12 @@ function assignSigns({ pack, levelId, nodes, ring, includeSequences, preferredBy
       if (placement.slots.some(idx => assignments.has(idx))) continue;
 
       const localUses = { ...uses };
+      const localAssignments = new Map(assignments);
       let ok = true;
       for (let k = 0; k < placement.chain.length; k++) {
         const sign = pack.signs[placement.chain[k]];
-        if (!available(sign, localUses)) { ok = false; break; }
+        if (!available(sign, localUses) || !assignmentCompatible(sign, placement.slots[k], localAssignments)) { ok = false; break; }
+        localAssignments.set(placement.slots[k], sign.id);
         localUses[sign.id] = (localUses[sign.id] || 0) + 1;
       }
       if (!ok) continue;

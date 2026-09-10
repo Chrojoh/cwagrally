@@ -2055,7 +2055,7 @@ export const cwags2021 = {
   version: '2021',
   sourceNote: 'Normalized from the user-provided C-WAGS 2021 Rally rule set. Treat this as a versioned historical rules pack until a newer rulebook is supplied.',
   // Course Guidelines, PDF p.12: 'should', with joined/stated-distance exceptions.
-  ordinarySpacing: { min:10, severity:'warning', source:'Rally-Rules-and-Guidelines-2021.pdf, p.12' },
+  ordinarySpacing: { min:10, severity:'error', allPairs:true, source:'Rally-Rules-and-Guidelines-2021.pdf, p.12' },
   layout: { preferredGap:10 },
   assetBase: 'https://raw.githubusercontent.com/Chrojoh/cwagrally/main/Signs/',
   signs,

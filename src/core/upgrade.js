@@ -7,7 +7,7 @@ import { stationNodeRange } from './pack.js';
 import { routeNoGoConflicts } from './venue.js';
 
 function insertIntoLargestGap(course, pack = null, reserveLevelId = null) {
-  const minSpacing = course.ring.minSpacing;
+  const minSpacing = Math.max(course.ring.minSpacing || 0, pack?.levels?.[reserveLevelId]?.ordinarySpacing?.min || pack?.ordinarySpacing?.min || 0);
   const margin = 2;
   const gaps = [];
   for (let i = 0; i < course.nodes.length - 1; i++) {
@@ -361,7 +361,7 @@ export function upgradeCourse(current, pack, targetLevelId) {
           ring: candidate.ring,
           includeSequences: forceSequence,
           forceSequence,
-          preferredByStationId,
+          preferredByStationId: pack.ordinarySpacing?.allPairs && attempt % 8 === 7 ? null : preferredByStationId,
           noGoZones: candidate.noGoZones || []
         });
         if (!assignment) continue;

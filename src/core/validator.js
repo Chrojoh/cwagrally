@@ -152,24 +152,26 @@ export function validateCourse(course, pack) {
   if (spacingRule?.min != null) {
     const spacingBad = [];
     for (let i = 0; i < stations.length - 1; i++) {
-      const a = stations[i], b = stations[i + 1];
-      const d = distance(a, b);
-      const joined = joinedRuleFor(pack, a.signId, b.signId);
-      const stated = (pack.adjacentDistanceRules || []).find(rule =>
-        rule.from.includes(a.signId) && rule.to.includes(b.signId)
-      );
-      if (joined || stated) continue;
-      if (d + 1e-6 < spacingRule.min) {
-        spacingBad.push({
-          station: i + 1,
-          nextStation: i + 2,
-          stationId: a.stationId,
-          nextStationId: b.stationId,
-          from: a.signId,
-          to: b.signId,
-          distance: d,
-          minimum: spacingRule.min
-        });
+      for (let j = i + 1; j < (spacingRule.allPairs ? stations.length : i + 2); j++) {
+        const a = stations[i], b = stations[j];
+        const d = distance(a, b);
+        const joined = joinedRuleFor(pack, a.signId, b.signId);
+        const stated = (pack.adjacentDistanceRules || []).find(rule =>
+          rule.from.includes(a.signId) && rule.to.includes(b.signId)
+        );
+        if (j === i + 1 && (joined || stated)) continue;
+        if (d + 1e-6 < spacingRule.min) {
+          spacingBad.push({
+            station: i + 1,
+            nextStation: j + 1,
+            stationId: a.stationId,
+            nextStationId: b.stationId,
+            from: a.signId,
+            to: b.signId,
+            distance: d,
+            minimum: spacingRule.min
+          });
+        }
       }
     }
     results.push(result(
