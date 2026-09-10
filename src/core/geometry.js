@@ -851,3 +851,66 @@ export function adjacentSpacingViolations(nodes, minSpacing) {
   }
   return out;
 }
+
+// Compact three-lane fallback for legal but narrow rings. The center corridor
+// deliberately contains one long, straight equipment bay while the outer lanes
+// carry most of the stations. This is a layout heuristic, not an organization
+// rule, and is currently used only as a CARO fallback for compact legal rings.
+export function makeCompactCorridorRoute({ count, width, height }) {
+  const totalStations=Math.max(1,Number(count)||1);
+  const transpose=height>width;
+  const long=transpose?height:width;
+  const short=transpose?width:height;
+
+  // The largest current CARO footprint needs about 8 ft of lateral clearance
+  // including design buffer. Keep the outer lanes just outside that envelope.
+  const sideMargin=Math.max(1.25,Math.min(5,short/2-8.5));
+  const longMargin=Math.max(3,Math.min(5,(long-28)/2));
+  const left=longMargin,right=long-longMargin;
+  const top=sideMargin,bottom=short-sideMargin;
+  const corridorMin=top+8.25,corridorMax=bottom-8.25;
+  if(corridorMin>corridorMax) return null;
+  const mid=corridorMin + Math.random()*(corridorMax-corridorMin);
+  const span=right-left;
+  if(span<27) return null;
+
+  // Four structural station locations are reserved for the two lane changes
+  // and the center equipment corridor; the rest are split over the outer lanes.
+  const remaining=totalStations-4;
+  if(remaining<4) return null;
+  const bottomStations=Math.ceil(remaining/2);
+  const topStations=remaining-bottomStations;
+  if(bottomStations<2 || topStations<2) return null;
+
+  const pts=[];
+  // Start + bottom-lane stations, ending at the lower far corner.
+  for(let i=0;i<=bottomStations;i++){
+    pts.push({x:left+span*i/bottomStations,y:bottom});
+  }
+
+  // Sparse center corridor: far turn -> straight equipment bay -> near turn.
+  pts.push({x:right,y:mid});
+  const minJumpX=left+20.25; // keeps 18-ft forward + buffer clear of near turn
+  const maxJumpX=right-7.25; // keeps 6-ft back + buffer clear of far turn
+  if(minJumpX>maxJumpX) return null;
+  const preferred=left+span*(0.48+Math.random()*0.24);
+  const jumpX=Math.max(minJumpX,Math.min(maxJumpX,preferred));
+  pts.push({x:jumpX,y:mid});
+  pts.push({x:left,y:mid});
+  pts.push({x:left,y:top});
+
+  // Remaining top-lane stations, then Finish at the far upper corner.
+  for(let i=1;i<=topStations;i++){
+    pts.push({x:left+span*i/(topStations+1),y:top});
+  }
+  pts.push({x:right,y:top});
+
+  let out=pts;
+  // Mirror rather than reverse so the asymmetric equipment bay keeps the
+  // required forward/back clearance in either travel direction.
+  if(Math.random()<0.5) out=out.map(p=>({x:long-p.x,y:p.y}));
+  if(Math.random()<0.5) out=out.map(p=>({x:p.x,y:short-p.y}));
+  if(transpose) out=out.map(p=>({x:p.y,y:p.x}));
+  out.routeFamily='compact-corridor';
+  return out;
+}

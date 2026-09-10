@@ -7,7 +7,7 @@
 <script type="module">
 import { rulePacks, organizations } from './src/orgs/registry.js';
 import { generateCourse } from './src/core/generator.js';
-import { routeNoGoConflicts } from './src/core/venue.js';
+import { rerouteAroundNoGoZones, routeNoGoConflicts } from './src/core/venue.js';
 import { validateCourse } from './src/core/validator.js';
 import { upgradeCourse } from './src/core/upgrade.js';
 import { officialStationCount, ringRuleIssues } from './src/core/pack.js';
@@ -124,6 +124,34 @@ test('CKC Master Stand Stay follows Finish with a 15 ft leash lane',()=>{
   if(leashGap<14.95) throw Error(`leash lane only ${leashGap.toFixed(1)} ft`);
 });
 
+
+
+test('CARO compact legal ring shapes generate reliably',()=>{
+  const p=rulePacks['caro:2025.12'];
+  for(const ring of [{width:50,height:30},{width:40,height:37.5},{width:60,height:25}]){
+    for(const levelId of ['N','I','A','X']){
+      const c=generateCourse({
+        pack:p,levelId,
+        ring:{...ring,minSpacing:4.5},
+        includeSequences:true,routeStyle:'mixed',noGoZones:[]
+      });
+      if(!legal(c,p)) throw Error(`${levelId}: ${ring.width}x${ring.height} compact CARO course invalid`);
+    }
+  }
+});
+
+test('Venue router adds non-counted waypoints around an obstacle',()=>{
+  const points=[
+    {x:5,y:20,routeRole:'start'},
+    {x:45,y:20,routeRole:'finish'}
+  ];
+  const zones=[{id:'box',label:'Pillar',x:23,y:18,width:4,height:4}];
+  const routed=rerouteAroundNoGoZones(points,zones,{width:50,height:40},{buffer:.5,margin:1.5});
+  if(!routed) throw Error('router returned no path');
+  if(!routed.some(p=>p.routeRole==='waypoint')) throw Error('router did not add a detour waypoint');
+  const nodes=routed.map((p,i)=>({kind:p.routeRole||'waypoint',stationId:`r${i}`,x:p.x,y:p.y}));
+  if(routeNoGoConflicts(nodes,zones,.5).length) throw Error('detoured route still crosses obstacle');
+});
 
 test('Venue no-go zones are preserved and generated routes avoid them',()=>{
   const p=rulePacks['caro:2025.12'];

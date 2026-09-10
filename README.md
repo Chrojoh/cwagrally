@@ -261,3 +261,18 @@ The center toolbar includes **Physical setup mode**, which adds distance labels 
 The right station list continues to show distance from the prior station plus x/y coordinates.
 **Export setup PDF** creates a setup-oriented course PDF with the same distance overlay and station
 setup measurements.
+
+
+## Compact-ring and venue-generation reliability
+
+Legal CARO rings are no longer expected to behave like a 50 x 40 rectangle. On compact legal
+shapes such as 50 x 30, 40 x 37.5, and 60 x 25 ft, automatic generation can use a sparse-center
+corridor route that reserves practical working room for the CARO jump while keeping most stations
+on outer lanes. This is a generator fallback, not a CARO rule.
+
+Venue no-go areas now participate in route construction rather than only rejecting a finished
+candidate. Travel legs can receive non-counted detour waypoints around obstacles; station count is
+unchanged and setup distances follow the detoured travel line. Required equipment footprints are
+also screened against no-go zones during sign assignment. If a mandatory equipment footprint truly
+cannot fit, the generation error identifies required equipment as a likely constraint instead of
+suggesting venue obstacles when none exist.

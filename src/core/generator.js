@@ -1,10 +1,10 @@
 import { makeCourse, makeId } from './model.js';
-import { equipmentPlacementConflicts, makeVariedRoute, recalcHeadings, requiredTurnAt, signFitsTurn } from './geometry.js';
+import { equipmentPlacementConflicts, makeCompactCorridorRoute, makeVariedRoute, recalcHeadings, requiredTurnAt, signFitsTurn } from './geometry.js';
 import { joinedRuleFor, maxUsesFor, refreshJoinedFlags } from './rules.js';
 import { isCourseValid } from './validator.js';
 import { evaluateCourseQuality } from './quality.js';
 import { ringRuleIssues, ringRuleText, stationNodeRange } from './pack.js';
-import { routeNoGoConflicts } from './venue.js';
+import { equipmentNoGoConflicts, rerouteAroundNoGoZones, routeNoGoConflicts } from './venue.js';
 
 function shuffled(arr) {
   const a = [...arr];
@@ -46,7 +46,7 @@ function chooseCountForRoute(pack, levelId, routeStyle) {
 }
 
 
-export function progressionReserveFits(pack, levelId, nodes, ring) {
+export function progressionReserveFits(pack, levelId, nodes, ring, noGoZones = []) {
   const requirements = pack.progressionReserve?.[levelId] || [];
   if (!requirements.length) return true;
 
@@ -96,7 +96,9 @@ export function progressionReserveFits(pack, levelId, nodes, ring) {
           nodes, nodeIndex, sign, ring, otherPlacements:picks,
           buffer:req.buffer ?? 1
         });
-        if (conflicts.length) return false;
+        if (conflicts.length || equipmentNoGoConflicts({
+          nodes, nodeIndex, sign, zones:noGoZones, buffer:req.buffer ?? 1
+        }).length) return false;
         picks.push({ nodeIndex, sign });
       }
       if ((req.requireAnchorCount || 0) > picks.length) return false;
@@ -127,7 +129,10 @@ export function progressionReserveFits(pack, levelId, nodes, ring) {
             otherPlacements: picks,
             buffer: req.buffer ?? 1
           });
-          if (conflicts.length) continue;
+          if (conflicts.length || equipmentNoGoConflicts({
+            nodes, nodeIndex:slot.nodeIndex, sign, zones:noGoZones,
+            buffer:req.buffer ?? 1
+          }).length) continue;
           picks.push({ nodeIndex: slot.nodeIndex, sign });
           if (search(i + 1, need - 1)) return true;
           picks.pop();
@@ -143,7 +148,7 @@ export function progressionReserveFits(pack, levelId, nodes, ring) {
 }
 
 
-function assignSigns({ pack, levelId, nodes, ring, includeSequences, preferredByStationId = null, forceSequence = false }) {
+function assignSigns({ pack, levelId, nodes, ring, includeSequences, preferredByStationId = null, forceSequence = false, noGoZones = [] }) {
   const level = pack.levels[levelId];
   const stationIndices = nodes.map((n, i) => n.kind === 'station' ? i : -1).filter(i => i >= 0);
   const dependent = pack.dependentSigns || new Set();
@@ -160,9 +165,14 @@ function assignSigns({ pack, levelId, nodes, ring, includeSequences, preferredBy
       // Eliminate equipment choices that cannot physically fit this slot before
       // the quota allocator sees them. This prevents optional Table/Tunnel/Jump
       // exercises from crowding out perfectly valid non-equipment ARF choices.
-      .filter(s => !s.space?.footprint || equipmentPlacementConflicts({
-        nodes, nodeIndex, sign:s, ring, otherPlacements:[], buffer:1
-      }).length === 0)
+      .filter(s => !s.space?.footprint || (
+        equipmentPlacementConflicts({
+          nodes, nodeIndex, sign:s, ring, otherPlacements:[], buffer:1
+        }).length === 0 &&
+        equipmentNoGoConflicts({
+          nodes, nodeIndex, sign:s, zones:noGoZones, buffer:1
+        }).length === 0
+      ))
       // Sequence/state-dependent exercises are inserted only as complete chains.
       .filter(s => !dependent.has(s.id));
     if (!candidates.length) return null;
@@ -210,6 +220,8 @@ function assignSigns({ pack, levelId, nodes, ring, includeSequences, preferredBy
       }
       if (equipmentPlacementConflicts({
         nodes, nodeIndex, sign, ring, otherPlacements, buffer:1
+      }).length || equipmentNoGoConflicts({
+        nodes, nodeIndex, sign, zones:noGoZones, buffer:1
       }).length) return false;
     }
     return true;
@@ -248,6 +260,7 @@ function assignSigns({ pack, levelId, nodes, ring, includeSequences, preferredBy
           const sign = pack.signs[chain[k]];
           const req = requiredTurnAt(nodes, slots[k]);
           if (!sign || !signFitsTurn(sign, req)) { ok = false; break; }
+          if (k > 0 && joinedRuleFor(pack, chain[k - 1], chain[k]) && slots[k] !== slots[k - 1] + 1) { ok = false; break; }
           if (k > 0 && !distanceRuleFits(chain[k - 1], chain[k], slots[k - 1], slots[k])) { ok = false; break; }
         }
         if (!ok) continue;
@@ -435,7 +448,9 @@ function assignSigns({ pack, levelId, nodes, ring, includeSequences, preferredBy
       const conflicts = equipmentPlacementConflicts({
         nodes, nodeIndex, sign, ring, otherPlacements: equipmentPlacements, buffer: 1
       });
-      if (conflicts.length) {
+      if (conflicts.length || equipmentNoGoConflicts({
+        nodes, nodeIndex, sign, zones:noGoZones, buffer:1
+      }).length) {
         footprintOk = false;
         break;
       }
@@ -481,8 +496,8 @@ function applyJoinedDisplayLayout(nodes, pack) {
   refreshJoinedFlags(pseudoCourse, pack);
 }
 
-export function assignSignsToNodes({ pack, levelId, nodes, ring, includeSequences = false, preferredByStationId = null, forceSequence = false }) {
-  return assignSigns({ pack, levelId, nodes, ring, includeSequences, preferredByStationId, forceSequence });
+export function assignSignsToNodes({ pack, levelId, nodes, ring, includeSequences = false, preferredByStationId = null, forceSequence = false, noGoZones = [] }) {
+  return assignSigns({ pack, levelId, nodes, ring, includeSequences, preferredByStationId, forceSequence, noGoZones });
 }
 
 export function generateCourse({ pack, levelId, ring, includeSequences = false, routeStyle = 'mixed', noGoZones = [] }) {
@@ -524,40 +539,66 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
     const count = chooseCountForRoute(pack, levelId, effectiveRouteStyle);
     let points;
     try {
-      points = makeVariedRoute({
-        count, width: ring.width, height: ring.height, style: effectiveRouteStyle,
-        drawingFloor: level.layout?.preferredGap ?? pack.layout?.preferredGap ?? 8
-      });
+      // CARO permits compact legal ring shapes that can be difficult for a
+      // generic multi-lane route once a jump/equipment footprint is considered.
+      // Mix in a dedicated sparse-center corridor on those rings. Normal 50×40
+      // layouts keep the broader route families and are unaffected.
+      const compactCaro = pack.id === 'caro' &&
+        (routeStyle === 'mixed' || routeStyle === 'classic') &&
+        (Math.min(ring.width,ring.height) <= 38 || ring.width*ring.height <= 1700 || noGoZones.length > 0);
+      if (compactCaro && Math.random() < 0.62) {
+        points = makeCompactCorridorRoute({ count, width:ring.width, height:ring.height });
+      }
+      if (!points) {
+        points = makeVariedRoute({
+          count, width: ring.width, height: ring.height, style: effectiveRouteStyle,
+          drawingFloor: level.layout?.preferredGap ?? pack.layout?.preferredGap ?? 8
+        });
+      }
     } catch {
       continue;
     }
 
-    const nodes = points.map((p, i) => {
-      if (i === 0) return { kind: 'start', stationId: makeId('start'), ...p, heading: 0 };
-      if (i === points.length - 1) return { kind: 'finish', stationId: makeId('finish'), ...p, heading: 0 };
-      return { kind: 'station', stationId: makeId('st'), signId: null, ...p, heading: 0, locked: false };
+    // Preserve which generated points are real course anchors, then route the
+    // travel legs around venue obstacles. Detour points are waypoints only: they
+    // do not add exercises or alter the official station count.
+    const rawFamily=points.routeFamily;
+    const anchored=points.map((p,i)=>({
+      ...p,
+      routeRole:i===0?'start':i===points.length-1?'finish':'station'
+    }));
+    anchored.routeFamily=rawFamily;
+    const routed=rerouteAroundNoGoZones(anchored,noGoZones,ring,{buffer:0.5,margin:1.5});
+    if(!routed) continue;
+
+    const nodes = routed.map(p => {
+      if (p.routeRole === 'start') return { kind:'start', stationId:makeId('start'), x:p.x, y:p.y, heading:0 };
+      if (p.routeRole === 'finish') return { kind:'finish', stationId:makeId('finish'), x:p.x, y:p.y, heading:0 };
+      if (p.routeRole === 'waypoint') return { kind:'waypoint', stationId:makeId('wp'), x:p.x, y:p.y, heading:0, venueDetour:true };
+      return { kind:'station', stationId:makeId('st'), signId:null, x:p.x, y:p.y, heading:0, locked:false };
     });
     recalcHeadings(nodes);
 
-    // Venue constraints are physical ring constraints, not organization rules.
-    // Reject route geometry that enters a saved/drawn no-go area before spending
-    // time assigning signs or reserving future equipment bays.
+    // This should now be clear because the route was actively detoured. Keep the
+    // check as a guard against pathological overlapping/marginal venue geometry.
     if (routeNoGoConflicts(nodes, noGoZones, 0.5).length) continue;
 
     // Some organizations introduce mandatory obstacles at the next level.
     // Lower-level generation can reserve future equipment bays so minimum-change
     // level progression does not later fail simply because the route consumed all
     // usable jump/tunnel space. This is progression planning, not a legality rule.
-    if (!progressionReserveFits(pack, levelId, nodes, ring)) continue;
+    const reserveOk=progressionReserveFits(pack, levelId, nodes, ring, noGoZones);
+    if (!reserveOk && !noGoZones.length) continue;
 
-    const assignments = assignSigns({ pack, levelId, nodes, ring, includeSequences });
+    const assignments = assignSigns({ pack, levelId, nodes, ring, includeSequences, noGoZones });
     if (!assignments) continue;
     assignments.forEach((id, idx) => nodes[idx].signId = id);
     applyJoinedDisplayLayout(nodes, pack);
 
     const course = makeCourse({ pack, levelId, ring, nodes, noGoZones });
     if (typeof pack.makeAuxiliary === 'function') course.auxiliary = pack.makeAuxiliary(course, pack) || [];
-    course.routeFamily = points.routeFamily || routeStyle;
+    course.routeFamily = routed.routeFamily || rawFamily || routeStyle;
+    course.venueDetourCount = routed.venueDetourCount || 0;
     refreshJoinedFlags(course, pack);
     if (!isCourseValid(course, pack)) continue;
 
@@ -574,5 +615,15 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
   // judge can see the score/warnings and edit it rather than getting no course.
   if (bestLegalCourse) return bestLegalCourse;
 
-  throw new Error('Could not generate a fully valid course with this ring, rule combination, and venue constraints. Try different ring dimensions, reduce/adjust no-go zones, or disable sequence exercises.');
+  if(noGoZones?.length){
+    const equipmentQuotas=(level.quotas||[])
+      .filter(q=>(q.min||0)>0 && (q.signIds||[]).length)
+      .filter(q=>q.signIds.every(id=>pack.signs[id]?.equipment))
+      .map(q=>q.label||q.id);
+    const equipmentHint=equipmentQuotas.length
+      ? ` Required equipment (${equipmentQuotas.join(', ')}) may be blocked by a no-go zone or its working clearance.`
+      : '';
+    throw new Error(`Could not generate a fully valid course around the current venue obstacles.${equipmentHint} Try moving/resizing a no-go zone, using a larger ring, or choosing another route style.`);
+  }
+  throw new Error('Could not generate a fully valid course with this legal ring shape using the selected route style. Try another route style or slightly larger dimensions.');
 }

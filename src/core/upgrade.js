@@ -4,6 +4,7 @@ import { maxUsesFor } from './rules.js';
 import { isCourseValid, validateCourse } from './validator.js';
 import { assignSignsToNodes, progressionReserveFits } from './generator.js';
 import { stationNodeRange } from './pack.js';
+import { routeNoGoConflicts } from './venue.js';
 
 function insertIntoLargestGap(course, pack = null, reserveLevelId = null) {
   const minSpacing = course.ring.minSpacing;
@@ -66,6 +67,8 @@ function insertIntoLargestGap(course, pack = null, reserveLevelId = null) {
       const trialNodes = course.nodes.map(n => ({ ...n }));
       trialNodes.splice(gap.i + 1, 0, node);
       recalcHeadings(trialNodes);
+
+      if ((course.noGoZones||[]).length && routeNoGoConflicts(trialNodes,course.noGoZones,0.5).length) continue;
 
       // Adding a station is supposed to be a cheap physical change. Never put
       // that new sign inside the working envelope of an existing obstacle just
@@ -358,7 +361,8 @@ export function upgradeCourse(current, pack, targetLevelId) {
           ring: candidate.ring,
           includeSequences: forceSequence,
           forceSequence,
-          preferredByStationId
+          preferredByStationId,
+          noGoZones: candidate.noGoZones || []
         });
         if (!assignment) continue;
 
@@ -376,7 +380,8 @@ export function upgradeCourse(current, pack, targetLevelId) {
 
         // Do not spend a future mandatory-equipment bay merely to save a sign
         // swap at the current level. This keeps series progression practical.
-        if (!progressionReserveFits(pack, targetLevelId, solved.nodes, solved.ring)) continue;
+        const reserveOk=progressionReserveFits(pack,targetLevelId,solved.nodes,solved.ring,solved.noGoZones||[]);
+        if(!reserveOk && !(solved.noGoZones||[]).length) continue;
 
         const validation = validateCourse(solved, pack);
         if (validation.some(r => !r.ok && r.severity === 'error')) continue;
