@@ -1,5 +1,6 @@
+import { COURSE_SHAPES, makeProceduralRoute, generationHistory, rememberCourse, pickShape, routeSignature, silhouetteDistance } from './procedural.js';
 import { makeCourse, makeId } from './model.js';
-import { equipmentPlacementConflicts, makeCompactCorridorRoute, makeEdgeEquipmentRoute, makeVariedRoute, recalcHeadings, requiredTurnAt, signFitsTurn } from './geometry.js';
+import { equipmentPlacementConflicts, makeCompactCorridorRoute, makeEdgeEquipmentRoute, makeVariedRoute, segmentsCross, recalcHeadings, requiredTurnAt, signFitsTurn } from './geometry.js';
 import { joinedRuleFor, maxUsesFor, refreshJoinedFlags } from './rules.js';
 import { isCourseValid } from './validator.js';
 import { evaluateCourseQuality } from './quality.js';
@@ -34,6 +35,13 @@ function chooseCount(pack, levelId) {
 }
 
 function chooseCountForRoute(pack, levelId, routeStyle) {
+  // CKC compact flowing routes deliberately use a stable legal station count
+  // that fits the 40×50 Novice/Intermediate working ring while preserving two
+  // future jump bays. Master adds the one exercise needed for its 16 minimum.
+  if (pack.id === 'ckc' && (routeStyle === 'angled-flow' || routeStyle === 'mixed')) {
+    return levelId === 'M' ? 16 : 15;
+  }
+
   // Zoom Angled Flow deliberately keeps the lower Zoom levels at 16 stations
   // and Zoom 2 at 17. This leaves enough long working gaps for the equipment
   // and special sign pools while still requiring only one added station when
@@ -500,7 +508,8 @@ export function assignSignsToNodes({ pack, levelId, nodes, ring, includeSequence
   return assignSigns({ pack, levelId, nodes, ring, includeSequences, preferredByStationId, forceSequence, noGoZones });
 }
 
-export function generateCourse({ pack, levelId, ring, includeSequences = false, routeStyle = 'mixed', noGoZones = [] }) {
+export function generateCourse({ pack, levelId, ring, includeSequences = false, routeStyle = 'surprise', noGoZones = [], diagnostics = {} }) {
+  ring = { minSpacing:4.5, ...ring };
   const level = pack.levels[levelId];
   if (!level) throw new Error(`Unknown level ${levelId}`);
   if (level.generationEnabled === false) {
@@ -510,7 +519,9 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
   // Zoom uses its own angled geometry because its sign pools and quota
   // structure need more straight working bays than the regular Angled Flow.
   const zoomTrack = level.routeProfile === 'cwags-zoom' || level.progressionTrack?.[0] === 'Z1';
-  const effectiveRouteStyle = zoomTrack
+  const procedural = COURSE_SHAPES.includes(routeStyle) && routeStyle !== 'classic';
+  const history = generationHistory(`${pack.id}:${levelId}:${ring.width}:${ring.height}:${routeStyle}`);
+  const effectiveRouteStyle = !procedural && zoomTrack
     ? (routeStyle === 'classic'
         ? 'classic'
         : routeStyle === 'mixed'
@@ -527,7 +538,7 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
   // A legal course is not automatically a well-designed course, so generation
   // now aims for an overall judge-quality score of at least 80/100.
   const QUALITY_TARGET = 80;
-  const maxAttempts = noGoZones.length
+  const maxAttempts = procedural ? 1200 : noGoZones.length
     ? 320
     : ['angled-x','angled-flow'].includes(effectiveRouteStyle)
       ? 90
@@ -538,9 +549,11 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
   let bestQuality = -1;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const count = chooseCountForRoute(pack, levelId, effectiveRouteStyle);
+    const count = procedural && pack.id === 'cwags' ? chooseCount(pack,levelId) : procedural && pack.id === 'ckc' ? chooseCountForRoute(pack,levelId,'mixed') : procedural ? stationNodeRange(level).min + Math.floor(Math.random()*Math.min(3,stationNodeRange(level).max-stationNodeRange(level).min+1)) : chooseCountForRoute(pack, levelId, effectiveRouteStyle);
+    diagnostics.attempts=attempt+1;
     let points;
     try {
+      if (procedural) points = makeProceduralRoute({count, width:ring.width, height:ring.height, shape:pickShape(routeStyle,history,attempt), pack, levelId});
       // CARO permits compact legal ring shapes that can be difficult for a
       // generic multi-lane route once a jump/equipment footprint is considered.
       // Mix in a dedicated sparse-center corridor on those rings. Normal 50×40
@@ -571,10 +584,13 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
       continue;
     }
 
+    diagnostics.proposals=(diagnostics.proposals||0)+1;
     // Preserve which generated points are real course anchors, then route the
     // travel legs around venue obstacles. Detour points are waypoints only: they
     // do not add exercises or alter the official station count.
     const rawFamily=points.routeFamily;
+    if (procedural && history.some(h=>silhouetteDistance(routeSignature(points),h.signature)<0.042)) continue;
+    diagnostics.novel=(diagnostics.novel||0)+1;
     const anchored=points.map((p,i)=>({
       ...p,
       routeRole:i===0?'start':i===points.length-1?'finish':'station'
@@ -603,31 +619,37 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
     // usable jump/tunnel space. This is progression planning, not a legality rule.
     const reserveOk=progressionReserveFits(pack, levelId, nodes, ring, noGoZones);
     if (!reserveOk) continue;
+    diagnostics.reserve=(diagnostics.reserve||0)+1;
 
     const assignments = assignSigns({ pack, levelId, nodes, ring, includeSequences, noGoZones });
     if (!assignments) continue;
+    diagnostics.assigned=(diagnostics.assigned||0)+1;
     assignments.forEach((id, idx) => nodes[idx].signId = id);
     applyJoinedDisplayLayout(nodes, pack);
 
+    if (procedural && nodes.some((a,i)=>i<nodes.length-1 && nodes.some((b,j)=>j>i+1 && j<nodes.length-1 && segmentsCross(a,nodes[i+1],b,nodes[j+1])))) continue;
     const course = makeCourse({ pack, levelId, ring, nodes, noGoZones });
     if (typeof pack.makeAuxiliary === 'function') course.auxiliary = pack.makeAuxiliary(course, pack) || [];
     course.routeFamily = routed.routeFamily || rawFamily || routeStyle;
     course.venueDetourCount = routed.venueDetourCount || 0;
     refreshJoinedFlags(course, pack);
     if (!isCourseValid(course, pack)) continue;
+    diagnostics.valid=(diagnostics.valid||0)+1;
 
+    if (procedural && history.some(h=>silhouetteDistance(routeSignature(course.nodes),h.signature)<0.042)) continue;
+    course.courseShape = routeStyle;
     const quality = evaluateCourseQuality(course, pack);
     if (quality.overall > bestQuality) {
       bestQuality = quality.overall;
       bestLegalCourse = course;
     }
-    if (quality.overall >= QUALITY_TARGET) return course;
+    if (quality.overall >= QUALITY_TARGET) return rememberCourse(history, course);
   }
 
   // Explicit route families can be intentionally demanding. If no candidate
   // reaches the quality target, return the best fully legal course so the
   // judge can see the score/warnings and edit it rather than getting no course.
-  if (bestLegalCourse) return bestLegalCourse;
+  if (bestLegalCourse) return rememberCourse(history, bestLegalCourse);
 
   if(noGoZones?.length){
     const equipmentQuotas=(level.quotas||[])

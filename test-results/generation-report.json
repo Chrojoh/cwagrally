@@ -1,0 +1,44 @@
+[
+  {
+    "organization": "cwags",
+    "generations": 50,
+    "failures": 0,
+    "distinct": 46,
+    "families": {
+      "procedural-flowing": 14,
+      "procedural-spiral": 12,
+      "procedural-diagonal": 6,
+      "procedural-geometric": 14,
+      "procedural-freeform": 4
+    },
+    "maxMs": 53
+  },
+  {
+    "organization": "caro",
+    "generations": 50,
+    "failures": 0,
+    "distinct": 24,
+    "families": {
+      "procedural-flowing": 10,
+      "procedural-spiral": 8,
+      "procedural-freeform": 13,
+      "procedural-geometric": 16,
+      "procedural-diagonal": 3
+    },
+    "maxMs": 1027
+  },
+  {
+    "organization": "ckc",
+    "generations": 50,
+    "failures": 0,
+    "distinct": 40,
+    "families": {
+      "procedural-spiral": 12,
+      "procedural-diagonal": 7,
+      "procedural-geometric": 21,
+      "procedural-flowing": 6,
+      "procedural-freeform": 4
+    },
+    "maxMs": 213
+  }
+]

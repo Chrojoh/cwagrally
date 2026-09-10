@@ -68,6 +68,7 @@ export function nextLevelsFor(level) {
 }
 
 export function routeStylesFor(pack, level) {
-  const styles = level?.routeStyles || pack?.routeStyles || ['mixed','classic','angled-flow','angled-x'];
+  // Legacy routeStyles were implementation limits, not organization rules.
+  const styles = level?.courseShapes || pack?.courseShapes || ['surprise','flowing','geometric','spiral','diagonal','classic'];
   return new Set(styles);
 }

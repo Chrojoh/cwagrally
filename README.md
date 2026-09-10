@@ -1,3 +1,62 @@
+# Rally Course Designer V3 — procedural routes
+
+This release replaces the default template selector with **Course Shape**:
+**Surprise me · Flowing · Geometric · Spiral · Diagonal · Classic**.
+
+Run `start.cmd` on Windows, then use the local address it opens. Keep the server
+window running. The complete folder can also be deployed to GitHub Pages as a
+static site; include `src/core/generation-worker.js` and `src/core/procedural.js`.
+Opening `index.html` directly with a file URL does not support module workers.
+
+## What changed
+
+- The five procedural search profiles grow self-avoiding paths from random
+  control points, with variable grid pitch, run lengths, starting positions,
+  headings and turn preferences. They are search preferences, not five fixed
+  course templates. Classic retains the previous route builders.
+- Surprise me favors profiles that have appeared less often. All three
+  organizations expose the new selector. Legacy `routeStyles` fields remain for
+  compatibility; only explicit `courseShapes` settings restrict the new selector.
+- Candidate routes must still pass the existing sign, equipment, station-count,
+  ring, venue and progression-reserve checks. Procedural routes reject crossings
+  and retain exact 45-degree heading increments. Bow-ties and figure-eights with
+  actual path crossings are therefore not offered as legal default layouts.
+- A normalized, arc-length-sampled silhouette comparison rejects routes too
+  similar to the last 24 accepted courses for that organization, level, ring and
+  shape selection. Reflections, reversal, translation and uniform scaling alone
+  do not count as novelty. History lasts for the current app session.
+- Generation runs in a background module worker so searches do not freeze the
+  designer. Searches are bounded; very constrained rings or obstacles can still
+  exhaust the legal candidate pool and report an error.
+- C-WAGS and CKC retain progression-friendly station counts. Equipment working
+  space can seed a long run; subsequent control points are generated procedurally.
+
+## Verification
+
+Run `npm test` with Node.js. No dependency installation or build is required.
+The deterministic generation suite creates **50 consecutive courses per
+organization** at its entry level and default ring, validates all 150, checks
+crossings and exact headings, and tests every enabled level plus every selector
+option at entry levels. It also writes `test-results/generation-report.json` and
+`test-results/route-gallery.html` for review.
+
+The recorded run produced **46 C-WAGS, 24 CARO and 40 CKC silhouette clusters**
+using a stricter comparison threshold than the recent-course rejection filter.
+All 150 generated successfully; no profile exceeded 42% of its organization's
+batch. These are automated similarity clusters, not a claim that visual judgment
+is objective. CARO's reserved future jump space still favors long corridors in a
+50×40 ring. Open the gallery to judge the variety yourself.
+
+Additional checks cover the 26 existing non-browser regressions, procedural level
+progression through C-WAGS Pro / CARO Excellent / CKC Master, and worker response,
+error recovery and retained novelty history. Browser artwork decoding and manual
+UI interaction are not covered by the Node tests.
+
+The original build notes below document the retained foundation; the selector
+and generation behavior described above supersede their older route descriptions.
+
+---
+
 # Rally Course Designer V3 — foundation
 
 This is the modular replacement foundation for the earlier single-file `Chrojoh/cwagrally` prototype.

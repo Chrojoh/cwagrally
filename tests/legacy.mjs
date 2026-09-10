@@ -1,0 +1,8 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+const html=readFileSync(new URL('../self-test.html',import.meta.url),'utf8');
+let script=html.match(/<script type="module">([\s\S]*?)<\/script>/)[1];
+script=script.slice(0,script.indexOf("await testAsync('Every C-WAGS mapped sign artwork loads'"));
+script=script.replace("const out=document.getElementById('out');",'');
+script=script.replaceAll("from './src/",`from '${new URL('../src/',import.meta.url).href}`);
+script+=`\nconsole.log(lines.join('\\n'));if(lines.some(x=>x.startsWith('FAIL')))process.exitCode=1;`;
+await import(`data:text/javascript;base64,${Buffer.from(script).toString('base64')}`);

@@ -1,5 +1,4 @@
 import { organizations, getPack } from './orgs/registry.js';
-import { generateCourse } from './core/generator.js';
 import { upgradeCourse } from './core/upgrade.js';
 import { validateCourse } from './core/validator.js';
 import { evaluateCourseQuality } from './core/quality.js';
@@ -303,12 +302,9 @@ function updateRouteStyleAvailability() {
   if(!pack || !routeStyleEl) return;
   const level=pack.levels[levelEl.value];
   const allowed=routeStylesFor(pack,level);
-  const zoom=level?.routeProfile==='cwags-zoom'||level?.progressionTrack?.[0]==='Z1';
   for(const option of routeStyleEl.options) option.disabled=!allowed.has(option.value);
-  const mixed=[...routeStyleEl.options].find(o=>o.value==='mixed');
-  if(mixed) mixed.textContent=zoom ? 'Mixed — classic + Zoom angled flow' : 'Mixed — classic + angled flow';
   if(!allowed.has(routeStyleEl.value)) {
-    const preferred=['mixed','classic','angled-flow','angled-x'].find(v=>allowed.has(v));
+    const preferred=['surprise','flowing','geometric','spiral','diagonal','classic'].find(v=>allowed.has(v));
     if(preferred) routeStyleEl.value=preferred;
   }
 }
@@ -880,21 +876,57 @@ function insertAfterSelected() {
   render();
 }
 
-function doGenerate() {
+let generationWorker;
+let generationRequest=0;
+const pendingGenerations=new Map();
+function generateInBackground(options) {
+  if(!generationWorker) {
+    generationWorker=new Worker(new URL('./core/generation-worker.js',import.meta.url),{type:'module'});
+    generationWorker.onmessage=({data})=>{
+      const pending=pendingGenerations.get(data.id);
+      if(!pending) return;
+      pendingGenerations.delete(data.id);
+      data.error ? pending.reject(new Error(data.error)) : pending.resolve(data.course);
+    };
+    generationWorker.onerror=()=>{
+      for(const pending of pendingGenerations.values()) pending.reject(new Error('Course generation could not start. Serve this folder over HTTP and try again.'));
+      pendingGenerations.clear();
+      generationWorker.terminate();generationWorker=null;
+    };
+  }
+  const id=++generationRequest;
+  return new Promise((resolve,reject)=>{
+    pendingGenerations.set(id,{resolve,reject});
+    generationWorker.postMessage({id,packId:pack.id,options});
+  });
+}
+async function doGenerate() {
+  const button=$('generateBtn');
+  const requestedPack=pack, requestedLevel=levelEl.value;
+  button.disabled=true;button.textContent='Generating…';
+  const options={
+    levelId:requestedLevel,
+    ring:ringSettings(),
+    includeSequences:$('includeSequences').checked,
+    routeStyle:routeStyleEl?.value||'surprise',
+    noGoZones:cloneZones(venueZones)
+  };
+  const request=generationRequest+1;
   try{
-    course=generateCourse({
-      pack,
-      levelId:levelEl.value,
-      ring:ringSettings(),
-      includeSequences:$('includeSequences').checked,
-      routeStyle:routeStyleEl?.value||'mixed',
-      noGoZones:cloneZones(venueZones)
-    });
+    const generated=await generateInBackground(options);
+    // A result for an older organization or level must not replace the current view.
+    if(request!==generationRequest || pack!==requestedPack || levelEl.value!==requestedLevel ||
+      JSON.stringify(ringSettings())!==JSON.stringify(options.ring) ||
+      (routeStyleEl?.value||'surprise')!==options.routeStyle ||
+      $('includeSequences').checked!==options.includeSequences ||
+      JSON.stringify(cloneZones(venueZones))!==JSON.stringify(options.noGoZones)) return;
+    course=generated;
     syncVenueZonesFromCourse();
     lastReport=null;
     showLevelChanges=false;
     resetHistory();render();
-  }catch(e){alert(e.message);}
+  }catch(e){if(request>=generationRequest) alert(e.message);}
+  finally{if(request>=generationRequest){button.disabled=false;button.textContent='Generate course';}}
 }
 
 function nextLevelId() {
