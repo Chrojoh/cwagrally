@@ -1,5 +1,11 @@
 # Rally Course Designer V3 — procedural routes
 
+C-WAGS compact rings (up to 2,100 square feet) use the current level's minimum
+exercise count instead of reserving a higher count for future levels. Drawing
+margins can shrink to 2.5 feet while the ordinary 10-foot spacing validation
+remains unchanged. The compact-ring regression covers Starter at 40×45 and
+45×40 feet across all six Course Shape choices.
+
 CKC generation reserves an edge strip for Finish, Stay, and the 15-foot
 leash-retrieval walk before constructing the route. Lower levels keep this
 space for progression to Excellent/Master. The edge location, eight-foot strip,

@@ -594,7 +594,8 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
   let bestQuality = -1;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const count = pack.id === 'caro' && (Math.min(ring.width,ring.height)<=38 || noGoZones.length) ? stationNodeRange(level).min + attempt % 3 : procedural && pack.id === 'cwags' ? chooseCount(pack,levelId) : procedural && pack.id === 'ckc' ? chooseCountForRoute(pack,levelId,'mixed') : procedural ? stationNodeRange(level).min + Math.floor(Math.random()*Math.min(3,stationNodeRange(level).max-stationNodeRange(level).min+1)) : chooseCountForRoute(pack, levelId, effectiveRouteStyle);
+    const compactCwags = pack.id === 'cwags' && ring.width * ring.height <= 2100;
+    const count = compactCwags ? stationNodeRange(level).min : pack.id === 'caro' && (Math.min(ring.width,ring.height)<=38 || noGoZones.length) ? stationNodeRange(level).min + attempt % 3 : procedural && pack.id === 'cwags' ? chooseCount(pack,levelId) : procedural && pack.id === 'ckc' ? chooseCountForRoute(pack,levelId,'mixed') : procedural ? stationNodeRange(level).min + Math.floor(Math.random()*Math.min(3,stationNodeRange(level).max-stationNodeRange(level).min+1)) : chooseCountForRoute(pack, levelId, effectiveRouteStyle);
     diagnostics.attempts=attempt+1;
     const finishPlan=pack.id==='ckc' ? planFinishArea(ring,attempt) : null;
     const routeRing=finishPlan || ring;
@@ -625,6 +626,7 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
       if (!points) {
         points = makeVariedRoute({
           count, width: routeRing.width, height: routeRing.height, style: effectiveRouteStyle,
+          margin: compactCwags ? 2.5 : 5,
           drawingFloor: pack.spacingGuidance && attempt % 2 === 1 ? 8
             : (level.layout?.preferredGap ?? pack.layout?.preferredGap ?? 8)
         });
@@ -638,6 +640,7 @@ export function generateCourse({ pack, levelId, ring, includeSequences = false, 
         points = makeVariedRoute({
           count, width: routeRing.width, height: routeRing.height,
           style: 'classic',
+          margin: compactCwags ? 2.5 : 5,
           drawingFloor: level.layout?.preferredGap ?? pack.layout?.preferredGap ?? 8
         });
         points.routeFamily = 'classic-fallback';

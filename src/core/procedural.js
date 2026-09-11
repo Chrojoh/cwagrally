@@ -85,9 +85,12 @@ export function makeProceduralRoute({count,width,height,shape,pack,levelId,inclu
   let initialPending=[];
   const ordinary=level.ordinarySpacing?.min ?? pack.ordinarySpacing?.min ?? 0;
   const pitch=ordinary || rand(6.5,10.4);
-  const cols=Math.floor((width-8)/pitch), rows=Math.floor((height-8)/pitch);
+  const compactOrdinary=ordinary && (Math.floor((width-8)/pitch)+1)*(Math.floor((height-8)/pitch)+1)<count+2;
+  const margin=compactOrdinary?2.5:3;
+  const inset=compactOrdinary?5:8;
+  const cols=Math.floor((width-inset)/pitch), rows=Math.floor((height-inset)/pitch);
   if((cols+1)*(rows+1)<count+2) throw Error('Insufficient procedural grid capacity');
-  const ox=rand(3,width-cols*pitch-3),oy=rand(3,height-rows*pitch-3);
+  const ox=rand(margin,width-cols*pitch-margin),oy=rand(margin,height-rows*pitch-margin);
   const dirs=Array.from({length:8},(_,i)=>({x:Math.round(Math.cos(i*Math.PI/4)),y:Math.round(Math.sin(i*Math.PI/4))}));
   const signs=level.allowedSigns.map(id=>pack.signs[id]).filter(s=>s && s.generatorEligible!==false && !pack.dependentSigns?.has(s.id));
   const capacities=new Map();
