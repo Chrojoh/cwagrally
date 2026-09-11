@@ -442,6 +442,9 @@ export function upgradeCourse(current, pack, targetLevelId) {
           solver: { total, structuralCost, label, forceSequence }
         };
         if (!best || total < best.solver.total) best = candidateResult;
+        // Continue difficult searches, but stop polishing a valid assignment
+        // after enough starts to compare ordinary sign substitutions.
+        if(best && attempt>=11) break;
       }
     }
 

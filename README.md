@@ -1,5 +1,10 @@
 # Rally Course Designer V3 — procedural routes
 
+Level changes run in the background worker and display “Advancing…” while
+searching. Results are discarded if the course or selected organization/level
+changes during the search. Difficult compact-ring upgrades can still take tens
+of seconds; background execution prevents the search from blocking the page.
+
 C-WAGS compact rings (up to 2,100 square feet) use the current level's minimum
 exercise count instead of reserving a higher count for future levels. Drawing
 margins can shrink to 2.5 feet while the ordinary 10-foot spacing validation

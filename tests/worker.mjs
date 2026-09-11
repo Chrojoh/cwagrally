@@ -19,4 +19,14 @@ try {
     signatures.push(signature);
   }
   console.log('Worker request/response, error recovery, validation and retained novelty history PASS');
+  const base=await request({id:4,packId:pack.id,options:{levelId:'S',ring:pack.levels.S.defaultRing}});
+  const upgraded=await request({id:5,packId:pack.id,operation:'upgrade',options:{course:base.course,target:'A'}});
+  assert.equal(upgraded.id,5);
+  assert.equal(upgraded.error,undefined);
+  assert.equal(upgraded.result.course.levelId,'A');
+  assert.ok(isCourseValid(upgraded.result.course,pack));
+  assert.ok(upgraded.result.report.counts);
+  const failedUpgrade=await request({id:6,packId:pack.id,operation:'upgrade',options:{course:base.course,target:'missing'}});
+  assert.match(failedUpgrade.error,/Unknown target level/);
+  console.log('Background level change returns valid course/report and handles errors PASS');
 } finally {await worker.terminate();}

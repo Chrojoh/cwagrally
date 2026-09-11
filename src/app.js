@@ -1,5 +1,4 @@
 import { organizations, getPack } from './orgs/registry.js';
-import { upgradeCourse } from './core/upgrade.js';
 import { validateCourse } from './core/validator.js';
 import { evaluateCourseQuality } from './core/quality.js';
 import { candidateSignsForNode, refreshJoinedFlags } from './core/rules.js';
@@ -880,14 +879,14 @@ function insertAfterSelected() {
 let generationWorker;
 let generationRequest=0;
 const pendingGenerations=new Map();
-function generateInBackground(options) {
+function generateInBackground(options, operation='generate') {
   if(!generationWorker) {
     generationWorker=new Worker(new URL('./core/generation-worker.js',import.meta.url),{type:'module'});
     generationWorker.onmessage=({data})=>{
       const pending=pendingGenerations.get(data.id);
       if(!pending) return;
       pendingGenerations.delete(data.id);
-      data.error ? pending.reject(new Error(data.error)) : pending.resolve(data.course);
+      data.error ? pending.reject(new Error(data.error)) : pending.resolve(data.result ?? data.course);
     };
     generationWorker.onerror=()=>{
       for(const pending of pendingGenerations.values()) pending.reject(new Error('Course generation could not start. Serve this folder over HTTP and try again.'));
@@ -898,7 +897,7 @@ function generateInBackground(options) {
   const id=++generationRequest;
   return new Promise((resolve,reject)=>{
     pendingGenerations.set(id,{resolve,reject});
-    generationWorker.postMessage({id,packId:pack.id,options});
+    generationWorker.postMessage({id,packId:pack.id,options,operation});
   });
 }
 async function doGenerate() {
@@ -955,12 +954,18 @@ function nextLevelId() {
   return nextLevelsFor(pack.levels[course.levelId]).find(id=>pack.levels[id]?.generationEnabled!==false) || null;
 }
 
-function doUpgrade() {
+async function doUpgrade() {
   if(!course){doGenerate();return;}
   const target=nextLevelId();
   if(!target){alert('This is already the last level in this rule pack.');return;}
+  const button=$('upgradeBtn'), originalText=button.textContent;
+  if(button.disabled) return;
+  const requestedPack=pack, originalCourse=JSON.stringify(course), originalLevel=levelEl.value;
+  const request=generationRequest+1;
+  button.disabled=true;button.textContent='Advancing…';
   try{
-    const out=upgradeCourse(course,pack,target);
+    const out=await generateInBackground({course,target},'upgrade');
+    if(request!==generationRequest || pack!==requestedPack || levelEl.value!==originalLevel || JSON.stringify(course)!==originalCourse) return;
     course=out.course;lastReport=out.report;
     showLevelChanges=true;
     syncVenueZonesFromCourse();
@@ -968,7 +973,8 @@ function doUpgrade() {
     ringW.value=course.ring.width;ringH.value=course.ring.height;
     resetHistory();
     render();
-  }catch(e){alert(e.message);}
+  }catch(e){if(request===generationRequest) alert(e.message);}
+  finally{button.textContent=originalText;button.disabled=false;}
 }
 
 orgEl.addEventListener('change',()=>{setPack(orgEl.value);doGenerate();});
