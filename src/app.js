@@ -242,7 +242,7 @@ function updateAdvanceTargets() {
   if(enabled) advanceTargetEl.value=enabled.value;
   const usable=!!enabled;
   advanceTargetEl.disabled=!usable;
-  $('upgradeBtn').disabled=!usable;
+  $('upgradeBtn').disabled=!usable || $('upgradeBtn').getAttribute('aria-busy')==='true';
   $('advanceTargetWrap').hidden=targets.length===0;
 }
 
@@ -959,10 +959,10 @@ async function doUpgrade() {
   const target=nextLevelId();
   if(!target){alert('This is already the last level in this rule pack.');return;}
   const button=$('upgradeBtn'), originalText=button.textContent;
-  if(button.disabled) return;
+  if(button.disabled || button.getAttribute('aria-busy')==='true') return;
   const requestedPack=pack, originalCourse=JSON.stringify(course), originalLevel=levelEl.value;
   const request=generationRequest+1;
-  button.disabled=true;button.textContent='Advancing…';
+  button.disabled=true;button.setAttribute('aria-busy','true');button.textContent='Advancing… please wait';
   try{
     const out=await generateInBackground({course,target},'upgrade');
     if(request!==generationRequest || pack!==requestedPack || levelEl.value!==originalLevel || JSON.stringify(course)!==originalCourse) return;
@@ -974,7 +974,7 @@ async function doUpgrade() {
     resetHistory();
     render();
   }catch(e){if(request===generationRequest) alert(e.message);}
-  finally{button.textContent=originalText;button.disabled=false;}
+  finally{button.removeAttribute('aria-busy');button.textContent=originalText;button.disabled=false;}
 }
 
 orgEl.addEventListener('change',()=>{setPack(orgEl.value);doGenerate();});
