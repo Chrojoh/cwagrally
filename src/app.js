@@ -1,3 +1,4 @@
+import { GenerationClient } from './core/worker-client.js';
 import { organizations, getPack } from './orgs/registry.js';
 import { validateCourse } from './core/validator.js';
 import { evaluateCourseQuality } from './core/quality.js';
@@ -493,6 +494,9 @@ function render(loadImages=true) {
   renderValidation(results);
   renderQuality(quality,results);
   renderSummary();
+  $('routeNotice').hidden=!course.routeFamily?.includes('fallback');
+  $('routeNotice').textContent=course.routeFamily?.includes('fallback')
+    ? 'A fallback layout was used because the search could not find a suitable course in the requested shape. Review the course before use, or try a different shape or ring size.' : '';
   renderReport();
   renderPalette(course.levelId);
   renderNoGoList();
@@ -876,29 +880,41 @@ function insertAfterSelected() {
   render();
 }
 
-let generationWorker;
 let generationRequest=0;
-const pendingGenerations=new Map();
+const generationClient=new GenerationClient(()=>new Worker(new URL('./core/generation-worker.js',import.meta.url),{type:'module'}));
+let searchTimer=null;
+function finishSearch(message='') {
+  clearInterval(searchTimer);searchTimer=null;
+  $('cancelGenerationBtn').hidden=true;
+  $('generationStatus').textContent=message;
+  $('generateBtn').textContent='Generate course';
+  $('generateBtn').disabled=pack.levels[levelEl.value]?.generationEnabled===false;
+  $('upgradeBtn').removeAttribute('aria-busy');
+  $('upgradeBtn').textContent='Advance level';
+  updateAdvanceTargets();
+}
+function cancelSearch() {
+  generationRequest++;
+  generationClient.cancel();
+  finishSearch('Search cancelled. Your existing course is unchanged.');
+}
+function startSearch(operation) {
+  clearInterval(searchTimer);
+  const started=Date.now();
+  const update=()=>{
+    const seconds=Math.floor((Date.now()-started)/1000);
+    $('generationStatus').textContent=`${operation==='upgrade'?'Finding a level change':'Searching for a course'} · ${seconds}s. Checking signs, spacing and working areas. You can cancel at any time.`;
+  };
+  $('cancelGenerationBtn').hidden=false;
+  $('generateBtn').disabled=true;
+  $('upgradeBtn').disabled=true;
+  $('upgradeBtn').setAttribute('aria-busy','true');
+  update();searchTimer=setInterval(update,1000);
+}
 function generateInBackground(options, operation='generate') {
-  if(!generationWorker) {
-    generationWorker=new Worker(new URL('./core/generation-worker.js',import.meta.url),{type:'module'});
-    generationWorker.onmessage=({data})=>{
-      const pending=pendingGenerations.get(data.id);
-      if(!pending) return;
-      pendingGenerations.delete(data.id);
-      data.error ? pending.reject(new Error(data.error)) : pending.resolve(data.result ?? data.course);
-    };
-    generationWorker.onerror=()=>{
-      for(const pending of pendingGenerations.values()) pending.reject(new Error('Course generation could not start. Serve this folder over HTTP and try again.'));
-      pendingGenerations.clear();
-      generationWorker.terminate();generationWorker=null;
-    };
-  }
-  const id=++generationRequest;
-  return new Promise((resolve,reject)=>{
-    pendingGenerations.set(id,{resolve,reject});
-    generationWorker.postMessage({id,packId:pack.id,options,operation});
-  });
+  generationRequest++;
+  startSearch(operation);
+  return generationClient.run(pack.id,options,operation);
 }
 async function doGenerate() {
   const button=$('generateBtn');
@@ -925,13 +941,13 @@ async function doGenerate() {
     lastReport=null;
     showLevelChanges=false;
     resetHistory();render();
-  }catch(e){if(request>=generationRequest) alert(e.message);}
-  finally{if(request>=generationRequest){button.disabled=false;button.textContent='Generate course';}}
+  }catch(e){if(request>=generationRequest && e.name!=='AbortError') alert(e.message);}
+  finally{if(request===generationRequest) finishSearch();}
 }
 
 function doBlankCourse() {
   try {
-    generationRequest++;
+    cancelSearch();
     course = makeBlankCourse({
       pack,
       levelId: levelEl.value,
@@ -943,6 +959,7 @@ function doBlankCourse() {
     setupMode = false;
     resetHistory();
     render();
+    $('generationStatus').textContent='Blank course ready. Drag signs onto the ring to begin.';
   } catch (e) {
     alert(e.message);
   }
@@ -958,7 +975,7 @@ async function doUpgrade() {
   if(!course){doGenerate();return;}
   const target=nextLevelId();
   if(!target){alert('This is already the last level in this rule pack.');return;}
-  const button=$('upgradeBtn'), originalText=button.textContent;
+  const button=$('upgradeBtn');
   if(button.disabled || button.getAttribute('aria-busy')==='true') return;
   const requestedPack=pack, originalCourse=JSON.stringify(course), originalLevel=levelEl.value;
   const request=generationRequest+1;
@@ -973,14 +990,23 @@ async function doUpgrade() {
     ringW.value=course.ring.width;ringH.value=course.ring.height;
     resetHistory();
     render();
-  }catch(e){if(request===generationRequest) alert(e.message);}
-  finally{button.removeAttribute('aria-busy');button.textContent=originalText;button.disabled=false;}
+  }catch(e){if(request===generationRequest && e.name!=='AbortError') alert(e.message);}
+  finally{if(request===generationRequest) finishSearch();}
 }
 
-orgEl.addEventListener('change',()=>{setPack(orgEl.value);doGenerate();});
-levelEl.addEventListener('change',()=>{applyLevelDefaults({preserveRing:true});renderPalette(levelEl.value);});
-ringW.addEventListener('input',updateRingGuidance);
-ringH.addEventListener('input',updateRingGuidance);
+orgEl.addEventListener('change',()=>{cancelSearch();setPack(orgEl.value);doGenerate();});
+levelEl.addEventListener('change',()=>{cancelSearch();applyLevelDefaults({preserveRing:true});renderPalette(levelEl.value);});
+ringW.addEventListener('input',()=>{if(searchTimer) cancelSearch();updateRingGuidance();});
+ringH.addEventListener('input',()=>{if(searchTimer) cancelSearch();updateRingGuidance();});
+routeStyleEl?.addEventListener('change',()=>{if(searchTimer) cancelSearch();});
+$('includeSequences').addEventListener('change',()=>{if(searchTimer) cancelSearch();});
+$('cancelGenerationBtn').onclick=cancelSearch;
+$('focusMapBtn').onclick=()=>{
+  const focused=document.querySelector('.layout').classList.toggle('map-focused');
+  $('focusMapBtn').textContent=focused?'Show panels':'Expand ring';
+  $('focusMapBtn').setAttribute('aria-pressed',String(focused));
+  requestAnimationFrame(()=>render(false));
+};
 $('generateBtn').onclick=doGenerate;
 $('blankCourseBtn').onclick=doBlankCourse;
 $('upgradeBtn').onclick=doUpgrade;

@@ -61,6 +61,9 @@
           <button id="upgradeBtn">Advance level</button>
         </div>
 
+        <div class="actions"><button id="cancelGenerationBtn" type="button" hidden>Cancel search</button></div>
+        <div id="generationStatus" class="muted generation-status" role="status" aria-live="polite"></div>
+
         <label id="advanceTargetWrap" class="advance-target">Advance current course to
           <select id="advanceTarget"></select>
         </label>
@@ -152,6 +155,7 @@
           <span id="courseMeta"></span>
         </div>
         <div class="canvas-tools">
+          <button id="focusMapBtn" type="button" aria-pressed="false">Expand ring</button>
           <button id="setupModeBtn" type="button">Physical setup mode</button>
           <button id="levelChangesBtn" type="button" disabled>Show level changes</button>
           <button id="setupPdfBtn" type="button">Export setup PDF</button>
@@ -159,6 +163,7 @@
         </div>
       </div>
 
+      <div id="routeNotice" class="route-notice" role="status" hidden></div>
       <div class="canvas-shell">
         <canvas id="courseCanvas" width="1100" height="760"></canvas>
       </div>

@@ -1,0 +1,49 @@
+Rally Course Designer — first usability update, October 13, 2026
+
+HOW TO TRY IT ON WINDOWS
+1. Extract the ZIP into a new folder.
+2. Double-click start.cmd. This existing launcher requires Python.
+   If Python is unavailable but Node.js is installed, open a terminal in
+   this folder and run: npx serve . -l 8080
+3. Open http://localhost:8080. Keep the server window open.
+Do not open index.html directly: module workers require an HTTP server.
+
+WHAT CHANGED
+- Cancel search stops the worker, preserving the existing course.
+- Changing organization, level, dimensions, shape or sequence options
+  cancels obsolete searches instead of leaving them consuming CPU.
+- New blank course restores the Generate button immediately.
+- Elapsed-time feedback identifies when generation/advancement is running.
+- Expand ring hides the side panels; Show panels restores them.
+- Fallback layouts display a review notice above the ring.
+
+INSTALLING INTO THE EXISTING GITHUB PROJECT
+The ZIP includes the complete working copy and sign assets.
+Only these repository files changed:
+  index.html
+  styles.css
+  package.json
+  src/app.js
+  src/core/worker-client.js (new)
+  tests/worker-client.mjs (new)
+Upload those six files preserving their paths, or apply FIRST-UPDATE.patch
+using git apply. The public website has not been updated.
+
+VALIDATION AND LIMITS
+New worker-client tests passed: cancellation terminates obsolete work,
+late responses are ignored, successful workers retain search history,
+and errors permit recovery. JavaScript syntax and whitespace checks passed.
+Legacy regression, real-worker generation/advancement, and all seven
+C-WAGS level spacing checks passed. The seeded generation run completed 50
+C-WAGS courses with zero failures and 32 distinct layout clusters; nine
+used classic-fallback. The broader run found a CARO failure at sample 17
+and was stopped before completion. This patch does not change the course
+engine or rule packs and does not resolve that generation failure.
+The separate browser could not reach the local server, so visual checks
+of this update and PDF export verification remain outstanding.
+
+NEXT WORK
+Reproduce CARO failure and slow generation/upgrade cases from the seeded
+suite; profile search effort before changing attempt budgets. Verify rule
+pack sources, refine fallback/quality reporting, then test save/reopen,
+physical setup PDFs and minimum-change level progression with a judge.
