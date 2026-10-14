@@ -1,0 +1,46 @@
+First-person exercise preview — C-WAGS Starter
+
+Open the app over HTTP using start.cmd (Python required), or run
+npx serve . -l 8080 with Node.js, then open http://localhost:8080.
+Choose a course and click Walk course. Perform exercises is enabled by
+default. Play walks between stations and runs supported handler movements.
+Pause at signs stops AFTER a supported exercise. Play/Pause also pauses
+mid-exercise. Station buttons and the slider reset the exercise preview.
+
+SUPPORTED C-WAGS SIGNS
+S1/S2: right and left turns
+S3/S4: full 270-degree right/left rotations
+S5/S6: halt, right pivot, halt/forward
+S7/S8: right/left about turns
+S13: one, two, three forward steps with halts
+S17: one, two, three backward steps with gaze held forward
+S18/S19/S20: slow, fast, normal travel pace
+S21: forward diagonal side step right
+S22/S31: Zig and Zag, opposing right/left turn sequences
+S23/S24: complete right/left 360-degree circles
+S30: halt
+S32/S33: approximately 45-degree bearing changes
+
+Source: https://c-wags.org/wp-content/uploads/2021/04/Starter.2021-web.pdf
+The linked 2021 descriptions match this app's historical C-WAGS pack.
+These are illustrative HANDLER movement previews. No dog is displayed.
+Step length, radius and timing are design choices, not official dimensions.
+Spirals, serpentine, figure eights and other unsupported signs are labelled
+as having no motion script. Other organizations remain route previews.
+The animation does not validate or certify exercise compliance or working
+space. It does not collision-check its added movement paths.
+
+TESTS
+Passed: full signed 270/360 rotations; stationary pivot coordinates;
+backing position and fixed gaze; opposite Zig/Zag offsets; coordinate
+transforms; sampled motion continuity; route playback and camera smoothing;
+exercise arrival, execution and continuous route rejoin. JavaScript syntax
+and diff whitespace checks passed. Real-browser visual review remains needed.
+
+GITHUB
+Upload contents of this folder to the repository root, preserving paths.
+This archive includes previous improvements. New changes since the prior
+first-person package are src/core/exercise-motion.js,
+src/ui/walkthrough.js, tests/exercise-motion.mjs,
+tests/walkthrough-ui.mjs and package.json.
+The live site has not been updated; GitHub write access was rejected earlier.

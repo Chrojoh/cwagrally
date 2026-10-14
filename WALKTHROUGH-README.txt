@@ -1,3 +1,6 @@
+See EXERCISE-PREVIEW.txt for the newest supported exercise animations.
+The following notes describe the earlier route-preview foundation.
+
 Rally Course Designer — First-Person Walkthrough Preview
 
 Extract this ZIP into a new folder. Double-click start.cmd (requires Python),

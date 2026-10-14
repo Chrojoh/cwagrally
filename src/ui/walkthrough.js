@@ -1,3 +1,4 @@
+import {exerciseScript,sampleExercise,exerciseWorldPose} from '../core/exercise-motion.js';
 import {buildWalkthrough,sampleWalkthrough,walkthroughHeading,easeHeading} from '../core/walkthrough.js';
 import {signImageUrl} from '../core/pack.js';
 
@@ -7,28 +8,30 @@ export function openWalkthrough(course,pack) {
   const dialog=document.createElement('dialog');
   dialog.className='walk-dialog';
   dialog.innerHTML=`<div class="walk-header"><strong>Walk course · first-person preview</strong><button type="button" data-close>Close</button></div>
-    <p class="muted">Follow the route and preview signs. Exercise movements are not animated. Equipment markers are illustrative; refer to the setup map for placement.</p>
+    <p class="muted">Preview handler movements for supported C-WAGS signs. Turning radii, step lengths and timing are illustrative. Equipment markers are illustrative; refer to the setup map for placement.</p>
     <canvas aria-label="First-person walkthrough of the current rally course"></canvas>
     <div class="walk-controls"><button data-play>Play</button><button data-prev>Previous station</button><button data-next>Next station</button><button data-restart>Restart</button>
     <label>Speed <select data-speed><option value="3">Normal</option><option value="6">Fast</option><option value="1.5">Slow</option></select></label>
+    <label><input data-exercises type="checkbox" checked> Perform exercises</label>
     <label><input data-pause-stations type="checkbox"> Pause at signs</label>
     <label>View <select data-view><option value="follow">First person</option><option value="overview">Ring overview</option></select></label></div>
     <input data-progress aria-label="Position along course" type="range" min="0" max="${route.length}" step="0.1" value="0">
     <div class="walk-station" aria-live="polite"><img alt=""><div><strong data-title></strong><p data-detail></p></div></div>`;
   document.body.append(dialog);
   const $=s=>dialog.querySelector(s),canvas=$('canvas'),ctx=canvas.getContext('2d');
-  let distance=0,playing=false,frame=0,previous=0,closed=false,arrived=null,velocity=0,cameraHeading=walkthroughHeading(route,0);
+  let distance=0,playing=false,frame=0,previous=0,closed=false,arrived=null,velocity=0,cameraHeading=walkthroughHeading(route,0),exercise=null,exercisePose=null,departure=null,pace=1;
   const images=new Map();
   for(const n of route.stops.filter(n=>n.signId)) {
     const img=new Image();img.onload=()=>{if(!closed) draw();};img.src=signImageUrl(pack,n.signId);images.set(n.signId,img);
   }
   function setPlaying(value){playing=value;if(!value)velocity=0;$('[data-play]').textContent=value?'Pause':'Play';}
-  function setDistance(value,snapCamera=true){distance=Math.max(0,Math.min(route.length,value));arrived=route.stops.find(n=>Math.abs(n.distance-distance)<0.05)||null;if(snapCamera)cameraHeading=walkthroughHeading(route,distance);$('[data-progress]').value=distance;if(snapCamera)draw();}
+  function setDistance(value,snapCamera=true){if(snapCamera){exercise=null;exercisePose=null;departure=null;pace=1;}distance=Math.max(0,Math.min(route.length,value));arrived=route.stops.find(n=>Math.abs(n.distance-distance)<0.05)||null;if(snapCamera)cameraHeading=walkthroughHeading(route,distance);$('[data-progress]').value=distance;if(snapCamera)draw();}
   function stationName(n){return n?.kind==='station'?`Station ${n.ordinal} · ${n.signId} — ${pack.signs[n.signId]?.name||''}`:n?.kind==='finish'?'Finish':'Start';}
   function draw(){
     const rect=canvas.getBoundingClientRect(),w=Math.max(320,Math.round(rect.width)),h=Math.max(260,Math.round(rect.height));
     if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
-    const pose=sampleWalkthrough(route,distance);if(!pose)return;
+    const routePose=sampleWalkthrough(route,distance);if(!routePose)return;
+    const pose=exercisePose||travelPose(routePose);
     const forward={x:Math.cos(cameraHeading),y:Math.sin(cameraHeading)};
     const overview=$('[data-view]').value==='overview',size=Math.max(course.ring.width,course.ring.height);
     const eye=overview?{x:course.ring.width/2-size*.65,y:course.ring.height/2-size*.8,z:size*.85}:{x:pose.x,y:pose.y,z:5.3};
@@ -58,9 +61,9 @@ export function openWalkthrough(course,pack) {
       const sign=pack.signs[n.signId],name=sign?.name||'';
       if(sign?.space?.footprint){sphere(n.x,n.y,0.3,.35,'#ef943d');label(n.x,n.y,.9,/jump/i.test(name)?'JUMP AREA':/spiral|serpentine|figure|clover/i.test(name)?'CONE AREA':'EXERCISE AREA');}
     }
-    const stop=arrived||pose.next,title=stationName(stop);
-    $('[data-title]').textContent=(arrived?'At: ':'Approaching: ')+title;
-    $('[data-detail]').textContent=`${distance.toFixed(1)} / ${route.length.toFixed(1)} ft · ${!playing&&arrived?.kind==='station'?'Press Play to continue.':'Route preview; follow the official exercise description at each station.'}`;
+    const stop=exercise?.stop||arrived||routePose.next,title=stationName(stop);
+    $('[data-title]').textContent=(exercise?'Performing: ':arrived?'At: ':'Approaching: ')+title;
+    $('[data-detail]').textContent=`${distance.toFixed(1)} / ${route.length.toFixed(1)} ft · ${exercise?'Exercise motion preview':!playing&&arrived?.kind==='station'?'Press Play to continue.':$('[data-exercises]').checked&&stop?.kind==='station'&&!exerciseScript(pack.id,stop.signId)?'This exercise has no motion script yet; route preview only.':'Handler view; dog actions are not shown.'}`;
     const image=$('.walk-station img');image.hidden=!stop?.signId;if(stop?.signId){const src=signImageUrl(pack,stop.signId);if(image.getAttribute('src')!==src)image.src=src;image.alt=title;}
   }
   $('[data-play]').onclick=()=>{if(distance>=route.length)setDistance(0);arrived=null;setPlaying(!playing);};
@@ -69,22 +72,68 @@ export function openWalkthrough(course,pack) {
   $('[data-restart]').onclick=()=>{setPlaying(false);setDistance(0);};
   $('[data-progress]').oninput=e=>{setPlaying(false);setDistance(Number(e.target.value));};
   $('[data-view]').onchange=draw;
+  $('[data-exercises]').onchange=()=>{exercise=null;exercisePose=null;departure=null;pace=1;draw();};
+  function travelPose(pose){
+    if(!departure)return pose;
+    const end=departure.nextDistance;
+    const t=Math.max(0,Math.min(1,(distance-departure.distance)/Math.max(.01,end-departure.distance)));
+    return {...pose,x:pose.x+departure.dx*(1-t),y:pose.y+departure.dy*(1-t)};
+  }
+  function travelHeading(){
+    if(departure){
+      const next=route.nodes.find(n=>n.distance>departure.distance+.001);
+      const anchor=sampleWalkthrough(route,departure.distance);
+      if(next&&distance<departure.nextDistance)return Math.atan2(next.y-anchor.y-departure.dy,next.x-anchor.x-departure.dx);
+    }
+    const next=route.stops.find(n=>n.distance>distance+.001);
+    if(next&&$('[data-exercises]').checked&&exerciseScript(pack.id,next.signId)){
+      const index=route.nodes.indexOf(next),before=route.nodes[Math.max(0,index-1)];
+      // Keep the approach facing forward; the exercise owns the full rotation.
+      const segment=route.nodes.findIndex((n,i)=>i>0&&n.distance>distance);
+      if(segment===index)return Math.atan2(next.y-before.y,next.x-before.x);
+    }
+    return walkthroughHeading(route,distance);
+  }
+  function beginExercise(stop){
+    const script=$('[data-exercises]').checked&&exerciseScript(pack.id,stop.signId);
+    if(!script)return false;
+    const index=route.nodes.indexOf(stop),before=route.nodes[Math.max(0,index-1)];
+    const heading=Math.atan2(stop.y-before.y,stop.x-before.x);
+    exercise={stop,script,time:0,origin:{x:stop.x,y:stop.y,heading}};
+    departure=null;velocity=0;cameraHeading=heading;
+    exercisePose=exerciseWorldPose(exercise.origin,sampleExercise(script,0));
+    return true;
+  }
   function tick(now){
     if(closed)return;
     const dt=previous?Math.min(.05,(now-previous)/1000):0;previous=now;
-    if(playing){
+    if(playing&&exercise){
+      exercise.time+=dt*Number($('[data-speed]').value)/3;
+      const local=sampleExercise(exercise.script,exercise.time);
+      exercisePose=exerciseWorldPose(exercise.origin,local);
+      cameraHeading=exercisePose.heading;
+      if(local.done){
+        if(exercise.script.pace)pace=exercise.script.pace;
+        const next=route.nodes.find(n=>n.distance>distance+.001);
+        departure={distance,nextDistance:next?.distance??route.length,dx:exercisePose.x-exercise.stop.x,dy:exercisePose.y-exercise.stop.y};
+        exercise=null;exercisePose=null;
+        if($('[data-pause-stations]').checked)setPlaying(false);
+      }
+    }else if(playing){
       const next=route.stops.find(n=>n.distance>distance+.001);
+      const stopForExercise=next&&$('[data-exercises]').checked&&exerciseScript(pack.id,next.signId);
       const pauseAtSigns=$('[data-pause-stations]').checked;
-      const remaining=Math.max(0,(pauseAtSigns&&next?next.distance:route.length)-distance);
-      const desired=Math.min(Number($('[data-speed]').value),Math.sqrt(2*5*remaining));
+      const remaining=Math.max(0,((pauseAtSigns||stopForExercise)&&next?next.distance:route.length)-distance);
+      const desired=Math.min(Number($('[data-speed]').value)*pace,Math.sqrt(2*5*remaining));
       velocity+=(desired-velocity)*(1-Math.exp(-dt*5));
       const proposed=distance+Math.max(.05,velocity)*dt;
-      if(pauseAtSigns&&next&&proposed>=next.distance){setPlaying(false);setDistance(next.distance,false);}
-      else{setDistance(proposed,false);if(distance>=route.length)setPlaying(false);}
+      if(next&&proposed>=next.distance){
+        setDistance(next.distance,false);
+        if(!beginExercise(next)&&pauseAtSigns)setPlaying(false);
+      }else{setDistance(proposed,false);if(distance>=route.length)setPlaying(false);}
     }
-    cameraHeading=easeHeading(cameraHeading,walkthroughHeading(route,distance),dt);
-    draw();
-    frame=requestAnimationFrame(tick);
+    if(!exercise)cameraHeading=easeHeading(cameraHeading,travelHeading(),dt);
+    draw();frame=requestAnimationFrame(tick);
   }
   function cleanup(){if(closed)return;closed=true;cancelAnimationFrame(frame);observer.disconnect();dialog.remove();}
   $('[data-close]').onclick=()=>dialog.close();dialog.addEventListener('close',cleanup,{once:true});

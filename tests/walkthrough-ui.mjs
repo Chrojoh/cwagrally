@@ -30,3 +30,13 @@ assert.equal(Number(element('[data-progress]').value),20,'continuous playback pa
 assert.ok(draws>0,'loaded sign artwork is drawn');
 element('[data-close]').onclick();assert.ok(removed&&disconnected);assert.equal(callback,null);
 console.log('Walkthrough rendering, station navigation, overview, playback pause and cleanup PASS');
+removed=false;disconnected=false;elements.clear();
+openWalkthrough(course,{id:'cwags',signs:{S1:{id:'S1',name:'Right Turn',image:'Signs/S1.png'}}});
+element('[data-exercises]').checked=true;
+element('[data-play]').onclick();
+let performing=false;
+for(let i=0;i<450;i++){callback(1000+i*50);if(element('[data-title]').textContent.startsWith('Performing:'))performing=true;}
+assert.ok(performing,'arrival starts exercise animation');
+assert.equal(Number(element('[data-progress]').value),20,'exercise rejoins route and reaches finish');
+element('[data-close]').onclick();
+console.log('Exercise arrival, animation and continuous route rejoin PASS');
