@@ -1,9 +1,11 @@
+import {ringFence} from '../core/ring-scene.js';
 import {exerciseScript,sampleExercise,exerciseWorldPose} from '../core/exercise-motion.js';
 import {buildWalkthrough,sampleWalkthrough,walkthroughHeading,easeHeading} from '../core/walkthrough.js';
 import {signImageUrl} from '../core/pack.js';
 
 export function openWalkthrough(course,pack) {
   const route=buildWalkthrough(course);
+  const fence=ringFence(course.ring,course.nodes[0]);
   if(route.nodes.length<2) return;
   const dialog=document.createElement('dialog');
   dialog.className='walk-dialog';
@@ -14,6 +16,7 @@ export function openWalkthrough(course,pack) {
     <label>Speed <select data-speed><option value="3">Normal</option><option value="6">Fast</option><option value="1.5">Slow</option></select></label>
     <label><input data-exercises type="checkbox" checked> Perform exercises</label>
     <label><input data-pause-stations type="checkbox"> Pause at signs</label>
+    <label>Floor <select data-floor><option value="gym">Gym floor</option><option value="mats">Rubber mats</option><option value="grass">Grass</option></select></label>
     <label>View <select data-view><option value="follow">Ground level</option><option value="overview">Ring overview</option></select></label></div>
     <input data-progress aria-label="Position along course" type="range" min="0" max="${route.length}" step="0.1" value="0">
     <div class="walk-station" aria-live="polite"><img alt=""><div><strong data-title></strong><p data-detail></p></div></div>`;
@@ -34,20 +37,74 @@ export function openWalkthrough(course,pack) {
     const pose=exercisePose||travelPose(routePose);
     const forward={x:Math.cos(cameraHeading),y:Math.sin(cameraHeading)};
     const overview=$('[data-view]').value==='overview',size=Math.max(course.ring.width,course.ring.height);
-    const eye=overview?{x:course.ring.width/2-size*.65,y:course.ring.height/2-size*.8,z:size*.85}:{x:pose.x,y:pose.y,z:2};
-    const target=overview?{x:course.ring.width/2,y:course.ring.height/2,z:0}:{x:pose.x+forward.x*15,y:pose.y+forward.y*15,z:1.4};
+    const eye=overview?{x:course.ring.width/2-size*.65,y:course.ring.height/2-size*.8,z:size*.85}:{x:pose.x,y:pose.y,z:1};
+    const target=overview?{x:course.ring.width/2,y:course.ring.height/2,z:0}:{x:pose.x+forward.x*15,y:pose.y+forward.y*15,z:.85};
     const dx=target.x-eye.x,dy=target.y-eye.y,dz=target.z-eye.z,len=Math.hypot(dx,dy,dz),fx=dx/len,fy=dy/len,fz=dz/len,flat=Math.hypot(fx,fy),rx=-fy/flat,ry=fx/flat;
     const ux=-fz*ry,uy=fz*rx,uz=flat,focal=Math.min(w,h)*1.05;
     function project(x,y,z=0){const a=x-eye.x,b=y-eye.y,c=z-eye.z,depth=a*fx+b*fy+c*fz;return depth>.4?{x:w/2+focal*(a*rx+b*ry)/depth,y:h*.49-focal*(a*ux+b*uy+c*uz)/depth,depth}:null;}
-    function line(a,b,color,width=2){const p=project(...a),q=project(...b);if(!p||!q)return;ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();}
+    const depth=p=>(p[0]-eye.x)*fx+(p[1]-eye.y)*fy+(p[2]-eye.z)*fz;
+    function clipped(vertices){
+      const out=[];
+      for(let i=0;i<vertices.length;i++){
+        const a=vertices[i],b=vertices[(i+1)%vertices.length],da=depth(a),db=depth(b);
+        if(da>=.41)out.push(a);
+        if((da>=.41)!==(db>=.41)){
+          const t=(.41-da)/(db-da);out.push(a.map((v,j)=>v+(b[j]-v)*t));
+        }
+      }
+      return out;
+    }
+    function polygon(vertices,color){
+      const points=clipped(vertices).map(p=>project(...p));if(points.length<3)return;
+      ctx.fillStyle=color;ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.fill();
+    }
+    function line(a,b,color,width=2){
+      let da=depth(a),db=depth(b);if(da<.41&&db<.41)return;
+      if(da<.41){const t=(.41-da)/(db-da);a=a.map((v,i)=>v+(b[i]-v)*t);}
+      else if(db<.41){const t=(.41-db)/(da-db);b=b.map((v,i)=>v+(a[i]-v)*t);}
+      const p=project(...a),q=project(...b);if(!p||!q)return;
+      ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();
+    }
     function sphere(x,y,z,r,color){const p=project(x,y,z);if(!p)return;ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(p.x,p.y,Math.max(1,focal*r/p.depth),Math.max(1,focal*r/p.depth),0,0,Math.PI*2);ctx.fill();}
     function label(x,y,z,text){const p=project(x,y,z);if(!p)return;ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillStyle='#172033';ctx.fillText(text,p.x,p.y);}
-    ctx.fillStyle='#dceffc';ctx.fillRect(0,0,w,h);ctx.fillStyle='#e8f1dd';ctx.fillRect(0,h*.48,w,h*.52);
-    for(let x=0;x<=course.ring.width;x+=5)line([x,0,0],[x,course.ring.height,0],'#c4d4be',1);
-    for(let y=0;y<=course.ring.height;y+=5)line([0,y,0],[course.ring.width,y,0],'#c4d4be',1);
-    const corners=[[0,0,0],[course.ring.width,0,0],[course.ring.width,course.ring.height,0],[0,course.ring.height,0]];
-    corners.forEach((a,i)=>line(a,corners[(i+1)%4],'#78927b',3));
-    route.nodes.forEach((n,i)=>{if(i)line([route.nodes[i-1].x,route.nodes[i-1].y,.04],[n.x,n.y,.04],'#6296bc',3);});
+    const floor=$('[data-floor]').value||'gym';
+    ctx.fillStyle='#e5e9ec';ctx.fillRect(0,0,w,h);
+    // Filled world-space flooring stays underfoot during every camera rotation.
+    const rectPoly=(x,y,width,height,z=0)=>[[x,y,z],[x+width,y,z],[x+width,y+height,z],[x,y+height,z]];
+    polygon(rectPoly(-50,-50,course.ring.width+100,course.ring.height+100),floor==='gym'?'#c89e68':floor==='mats'?'#414951':'#537a42');
+    if(floor==='gym'){
+      for(let y=-12,row=0;y<course.ring.height+12;y+=1.2,row++){
+        for(let x=-20+(row%3)*3;x<course.ring.width+15;x+=10){
+          const tone=['#d7b07b','#d0a46e','#dfba87','#cda16a'][(row+Math.round((x+20)/10)+40)%4];
+          polygon(rectPoly(x+.025,y+.018,9.95,1.16),tone);
+          line([x+.2,y+.35,.002],[x+9.5,y+.35,.002],'#b88c5530',.5);
+        }
+      }
+    }else if(floor==='grass'){
+      for(let i=0;i<450;i++){
+        const x=((i*7919)%1009)/1009*course.ring.width,y=((i*3571)%1013)/1013*course.ring.height;
+        line([x,y,0],[x+.07,y+.04,.12],i%2?'#789456':'#3f6838',1);
+      }
+    }else{
+      for(let i=0;i<220;i++){
+        const x=((i*7919)%1009)/1009*course.ring.width,y=((i*3571)%1013)/1013*course.ring.height;
+        polygon(rectPoly(x,y,.07,.04,.002),i%2?'#7d868b':'#252f36');
+      }
+    }
+    // No route grid. The overview alone has a subtle navigation line.
+    if(overview)route.nodes.forEach((n,i)=>{if(i)line([route.nodes[i-1].x,route.nodes[i-1].y,.02],[n.x,n.y,.02],'#668ca5',2);});
+    // Low white lattice panels give a stable rally-ring boundary reference.
+    const panels=[...fence].sort((a,b)=>depth([...(b.a),0])-depth([...(a.a),0]));
+    for(const panel of panels){
+      const {a,b}=panel,point=(t,z)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,z];
+      polygon([point(0,.15),point(1,.15),point(1,2.5),point(0,2.5)],'#ffffff20');
+      for(const z of [.15,2.5])line(point(0,z),point(1,z),'#f7f8f5',3);
+      for(const t of [0,1]){line(point(t,0),point(t,2.8),'#909b9e',6);line(point(t,0),point(t,2.8),'#f9faf7',3);}
+      for(let t=0;t<1;t+=.16){
+        line(point(t,.2),point(Math.min(1,t+.32),2.45),'#e9eee9',1.5);
+        line(point(t,2.45),point(Math.min(1,t+.32),.2),'#e9eee9',1.5);
+      }
+    }
     for(const zone of course.noGoZones||[]){const c=[[zone.x,zone.y,0],[zone.x+zone.width,zone.y,0],[zone.x+zone.width,zone.y+zone.height,0],[zone.x,zone.y+zone.height,0]];c.forEach((a,i)=>line(a,c[(i+1)%4],'#d75d57',5));label(zone.x+zone.width/2,zone.y+zone.height/2,1,zone.label||'No-go area');}
     const objects=route.stops.map(n=>({n,depth:project(n.x,n.y)?.depth||-1})).sort((a,b)=>b.depth-a.depth);
     for(const {n} of objects){
@@ -72,6 +129,7 @@ export function openWalkthrough(course,pack) {
   $('[data-restart]').onclick=()=>{setPlaying(false);setDistance(0);};
   $('[data-progress]').oninput=e=>{setPlaying(false);setDistance(Number(e.target.value));};
   $('[data-view]').onchange=draw;
+  $('[data-floor]').onchange=draw;
   $('[data-exercises]').onchange=()=>{exercise=null;exercisePose=null;departure=null;pace=1;draw();};
   function travelPose(pose){
     if(!departure)return pose;
@@ -99,8 +157,8 @@ export function openWalkthrough(course,pack) {
     if(!script)return false;
     const index=route.nodes.indexOf(stop),before=route.nodes[Math.max(0,index-1)];
     const heading=Math.atan2(stop.y-before.y,stop.x-before.x);
-    exercise={stop,script,time:0,origin:{x:stop.x,y:stop.y,heading}};
-    departure=null;velocity=0;cameraHeading=heading;
+    exercise={stop,script,time:0,entryAngle:Math.atan2(Math.sin(cameraHeading-heading),Math.cos(cameraHeading-heading)),origin:{x:stop.x,y:stop.y,heading}};
+    departure=null;velocity=0;
     exercisePose=exerciseWorldPose(exercise.origin,sampleExercise(script,0));
     return true;
   }
@@ -111,7 +169,7 @@ export function openWalkthrough(course,pack) {
       exercise.time+=dt*Number($('[data-speed]').value)/3;
       const local=sampleExercise(exercise.script,exercise.time);
       exercisePose=exerciseWorldPose(exercise.origin,local);
-      cameraHeading=exercisePose.heading;
+      cameraHeading=exercisePose.heading+exercise.entryAngle*Math.exp(-exercise.time*7);
       if(local.done){
         if(exercise.script.pace)pace=exercise.script.pace;
         const next=route.nodes.find(n=>n.distance>distance+.001);
