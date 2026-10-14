@@ -361,3 +361,14 @@ button:disabled{opacity:.45;cursor:not-allowed}.edit-actions{margin-bottom:9px}.
 .generation-status:not(:empty) { margin-top:10px; }
 .route-notice { padding:10px 12px; color:#745b0b; background:#fff9e9; border:1px solid #ecd697; font-size:12px; line-height:1.5; }
 [hidden] { display:none!important; }
+
+.walk-dialog { width:min(1100px,96vw); max-width:96vw; max-height:95vh; overflow:auto; padding:18px; border:1px solid #a9b9ca; border-radius:14px; color:#172033; }
+.walk-dialog::backdrop { background:#172033b8; }
+.walk-header,.walk-controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.walk-header { justify-content:space-between; }
+.walk-dialog button,.walk-dialog select { padding:8px 12px; border:1px solid #b8c1d0; border-radius:7px; background:white; cursor:pointer; }
+.walk-dialog canvas { width:100%; height:clamp(260px,53vh,570px); display:block; border-radius:10px; margin-bottom:12px; }
+.walk-dialog input[type=range] { width:100%; margin:14px 0; }
+.walk-station { display:flex; gap:16px; align-items:center; min-height:105px; }
+.walk-station img { width:100px; height:100px; object-fit:contain; }
+.walk-station p { font-size:13px; color:#53617a; }

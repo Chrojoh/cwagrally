@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import {buildWalkthrough,sampleWalkthrough,walkthroughHeading,easeHeading} from '../src/core/walkthrough.js';
+const course={nodes:[{kind:'start',x:0,y:0},{kind:'station',x:10,y:0,signId:'S1'},{kind:'waypoint',x:10,y:5},{kind:'station',x:10,y:10,signId:'S2'},{kind:'finish',x:0,y:10}]};
+const original=JSON.stringify(course),route=buildWalkthrough(course);
+assert.equal(route.length,30);
+assert.deepEqual(route.stops.map(n=>n.distance),[0,10,20,30]);
+assert.deepEqual(route.stops.map(n=>n.ordinal),[null,1,2,null]);
+assert.equal(sampleWalkthrough(route,5).x,5);
+assert.equal(sampleWalkthrough(route,5).next.signId,'S1');
+assert.equal(sampleWalkthrough(route,10).heading,Math.PI/2);
+assert.equal(sampleWalkthrough(route,17).y,7);
+assert.equal(sampleWalkthrough(route,25).heading,Math.PI);
+assert.equal(sampleWalkthrough(route,100).distance,30);
+assert.equal(sampleWalkthrough(route,-5).distance,0);
+assert.equal(JSON.stringify(course),original,'preview does not mutate editable course');
+const duplicate=buildWalkthrough({nodes:[{kind:'start',x:0,y:0},{kind:'station',x:0,y:0},{kind:'finish',x:0,y:10}]});
+assert.ok(Number.isFinite(sampleWalkthrough(duplicate,0).heading));
+console.log('Walkthrough route length, station order, waypoint travel, headings, bounds and immutability PASS');
+
+assert.ok(walkthroughHeading(route,9)>0&&walkthroughHeading(route,9)<Math.PI/2,'camera anticipates a corner');
+assert.ok(Math.abs(walkthroughHeading(route,9.99)-walkthroughHeading(route,10.01))<0.02,'corner viewing angle is continuous');
+const eased=easeHeading(Math.PI-.1,-Math.PI+.1,.016);
+assert.ok(eased>Math.PI-.1&&eased<Math.PI+.1,'camera takes shortest rotation across angle boundary');
+console.log('Camera anticipation, corner continuity and shortest-angle smoothing PASS');

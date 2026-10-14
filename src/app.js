@@ -1,3 +1,4 @@
+import { openWalkthrough } from './ui/walkthrough.js';
 import { GenerationClient } from './core/worker-client.js';
 import { organizations, getPack } from './orgs/registry.js';
 import { validateCourse } from './core/validator.js';
@@ -1001,6 +1002,7 @@ ringH.addEventListener('input',()=>{if(searchTimer) cancelSearch();updateRingGui
 routeStyleEl?.addEventListener('change',()=>{if(searchTimer) cancelSearch();});
 $('includeSequences').addEventListener('change',()=>{if(searchTimer) cancelSearch();});
 $('cancelGenerationBtn').onclick=cancelSearch;
+$('walkCourseBtn').onclick=()=>{if(course) openWalkthrough(course,pack);};
 $('focusMapBtn').onclick=()=>{
   const focused=document.querySelector('.layout').classList.toggle('map-focused');
   $('focusMapBtn').textContent=focused?'Show panels':'Expand ring';
