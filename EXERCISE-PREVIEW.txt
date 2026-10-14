@@ -1,4 +1,4 @@
-First-person exercise preview — C-WAGS Starter
+Ground-level exercise preview — C-WAGS Starter
 
 Open the app over HTTP using start.cmd (Python required), or run
 npx serve . -l 8080 with Node.js, then open http://localhost:8080.
@@ -44,3 +44,9 @@ first-person package are src/core/exercise-motion.js,
 src/ui/walkthrough.js, tests/exercise-motion.mjs,
 tests/walkthrough-ui.mjs and package.json.
 The live site has not been updated; GitHub write access was rejected earlier.
+
+GROUND-LEVEL UPDATE
+Camera is approximately two feet above the floor. Sign centres are approximately
+one foot above the floor, with low stands and station numbers above them.
+Ground level is the default; Ring overview remains available. These heights
+are preview choices. Browser visual review remains outstanding.
