@@ -1,3 +1,4 @@
+import {makeReviewDemo} from './core/review-demo.js';
 import { openWalkthrough } from './ui/walkthrough.js';
 import { GenerationClient } from './core/worker-client.js';
 import { organizations, getPack } from './orgs/registry.js';
@@ -1002,6 +1003,7 @@ ringH.addEventListener('input',()=>{if(searchTimer) cancelSearch();updateRingGui
 routeStyleEl?.addEventListener('change',()=>{if(searchTimer) cancelSearch();});
 $('includeSequences').addEventListener('change',()=>{if(searchTimer) cancelSearch();});
 $('cancelGenerationBtn').onclick=cancelSearch;
+$('reviewDemoBtn').onclick=()=>openWalkthrough(makeReviewDemo(),getPack('cwags:2021'));
 $('walkCourseBtn').onclick=()=>{if(course) openWalkthrough(course,pack);};
 $('focusMapBtn').onclick=()=>{
   const focused=document.querySelector('.layout').classList.toggle('map-focused');

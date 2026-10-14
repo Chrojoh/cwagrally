@@ -372,3 +372,27 @@ button:disabled{opacity:.45;cursor:not-allowed}.edit-actions{margin-bottom:9px}.
 .walk-station { display:flex; gap:16px; align-items:center; min-height:105px; }
 .walk-station img { width:100px; height:100px; object-fit:contain; }
 .walk-station p { font-size:13px; color:#53617a; }
+
+/* Full 3D course review: quiet chrome, a large scene and readable station art. */
+.walk-dialog { width:min(1360px,98vw); padding:0; background:#f5f6f4; border:0; border-radius:16px; box-shadow:0 24px 90px #07121e70; }
+.walk-header { padding:18px 22px; background:#142c3b; color:#f4f6f5; letter-spacing:.2px; }
+.walk-header strong { font-size:17px; font-weight:650; }
+.walk-header button { background:#ffffff10; color:white; border-color:#ffffff35; }
+.walk-dialog > p.muted { margin:0; padding:10px 22px; font-size:11px; background:#e9eeed; color:#536973; }
+.review-stage { position:relative; overflow:hidden; background:#d8dedf; }
+.walk-dialog canvas.review-viewport { height:clamp(320px,62vh,740px); width:100%; border-radius:0; margin:0; }
+.review-hud { position:absolute; left:20px; top:17px; display:flex; gap:8px; pointer-events:none; }
+.review-hud span { border:1px solid #ffffff60; background:#18313cc9; color:#fff; padding:7px 11px; border-radius:6px; font-size:10px; letter-spacing:1px; text-transform:uppercase; }
+.review-map { position:absolute; top:17px; right:18px; width:220px; background:#fffffff0; box-shadow:0 3px 22px #172c3922; border:1px solid #ffffff; border-radius:9px; padding-top:10px; }
+.review-map > span { display:block; padding-left:13px; font-size:9px; letter-spacing:1.7px; color:#62737c; }
+.walk-dialog .review-map canvas { display:block; width:220px; height:155px; margin:0; border-radius:0 0 9px 9px; }
+.walk-controls { padding:14px 20px 4px; gap:10px; }
+.walk-controls label { font-size:11px; color:#536773; display:flex; gap:6px; align-items:center; }
+.walk-dialog button { font-size:12px; font-weight:600; }
+.walk-controls [data-play] { background:#173f51; color:white; min-width:78px; border-color:#173f51; }
+.walk-dialog > input[type=range] { display:block; width:calc(100% - 40px); margin:12px 20px; accent-color:#b37b46; }
+.walk-station { padding:0 22px 18px; min-height:84px; }
+.walk-station img { width:76px; height:76px; background:white; border:1px solid #dae0de; border-radius:6px; padding:3px; }
+.walk-station strong { font-size:14px; color:#233d4b; }
+.walk-station p { margin:6px 0 0; font-size:11px; }
+@media(max-width:700px) { .review-map { top:auto; bottom:12px; right:10px; width:154px; } .walk-dialog .review-map canvas { width:154px; height:108px; } .review-hud { left:10px; top:10px; } .walk-controls { padding:10px; } }

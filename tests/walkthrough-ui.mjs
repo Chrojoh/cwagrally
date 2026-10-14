@@ -17,6 +17,7 @@ assert.match(element('[data-title]').textContent,/Start/);
 element('[data-next]').onclick();
 assert.match(element('[data-title]').textContent,/Station 1/);
 assert.equal(Number(element('[data-progress]').value),10);
+assert.equal(element('[data-replay]').disabled,false,'supported station can be replayed');
 for(const floor of ['gym','mats','grass']){element('[data-floor]').value=floor;element('[data-floor]').onchange();}
 element('[data-view]').value='overview';element('[data-view]').onchange();
 element('[data-pause-stations]').checked=true;

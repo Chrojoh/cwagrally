@@ -1,3 +1,4 @@
+import {createReviewRenderer} from './review-scene.js';
 import {ringFence} from '../core/ring-scene.js';
 import {exerciseScript,sampleExercise,exerciseWorldPose} from '../core/exercise-motion.js';
 import {buildWalkthrough,sampleWalkthrough,walkthroughHeading,easeHeading} from '../core/walkthrough.js';
@@ -9,10 +10,13 @@ export function openWalkthrough(course,pack) {
   if(route.nodes.length<2) return;
   const dialog=document.createElement('dialog');
   dialog.className='walk-dialog';
-  dialog.innerHTML=`<div class="walk-header"><strong>Walk course · ground-level preview</strong><button type="button" data-close>Close</button></div>
+  dialog.innerHTML=`<div class="walk-header"><strong>Course review · 3D walkthrough</strong><button type="button" data-close>Close</button></div>
     <p class="muted">Preview handler movements for supported C-WAGS signs. Turning radii, step lengths and timing are illustrative. Equipment markers are illustrative; refer to the setup map for placement.</p>
-    <canvas aria-label="First-person walkthrough of the current rally course"></canvas>
-    <div class="walk-controls"><button data-play>Play</button><button data-prev>Previous station</button><button data-next>Next station</button><button data-restart>Restart</button>
+    <div class="review-stage"><canvas class="review-viewport" aria-label="First-person 3D review of the current rally course"></canvas>
+    <div class="review-hud"><span data-engine>3D · 1 ft camera</span><span data-phase>READY</span></div>
+    <div class="review-map"><span>COURSE POSITION</span><canvas data-minimap aria-label="Overhead course map with camera position and direction"></canvas></div></div>
+    <div class="walk-controls"><button data-play>Play</button><button data-prev>Previous station</button><button data-next>Next station</button><button data-replay>Replay exercise</button><button data-restart>Restart</button>
+    <label>Station <select data-station><option value="0">Start</option></select></label>
     <label>Speed <select data-speed><option value="3">Normal</option><option value="6">Fast</option><option value="1.5">Slow</option></select></label>
     <label><input data-exercises type="checkbox" checked> Perform exercises</label>
     <label><input data-pause-stations type="checkbox"> Pause at signs</label>
@@ -21,7 +25,18 @@ export function openWalkthrough(course,pack) {
     <input data-progress aria-label="Position along course" type="range" min="0" max="${route.length}" step="0.1" value="0">
     <div class="walk-station" aria-live="polite"><img alt=""><div><strong data-title></strong><p data-detail></p></div></div>`;
   document.body.append(dialog);
-  const $=s=>dialog.querySelector(s),canvas=$('canvas'),ctx=canvas.getContext('2d');
+  const $=s=>dialog.querySelector(s);
+  let canvas=$('canvas'),scene3D=null;
+  if(typeof canvas.addEventListener==='function'){
+    const candidate=document.createElement('canvas');candidate.className='review-viewport';candidate.setAttribute('aria-label','First-person 3D review of the current rally course');
+    try{scene3D=createReviewRenderer(candidate,course,pack);canvas.replaceWith(candidate);canvas=candidate;}
+    catch(error){$('[data-engine]').textContent='Basic view · WebGL unavailable';console.warn('3D review unavailable:',error.message);}
+  }
+  const ctx=scene3D?null:canvas.getContext('2d');
+  const mapCanvas=$('[data-minimap]'),mapCtx=mapCanvas?.getContext('2d');
+  const stationSelect=$('[data-station]');
+  if(stationSelect?.append){for(const stop of route.stops.filter(n=>n.kind!=='start')){const option=document.createElement('option');option.value=stop.distance;option.textContent=stop.kind==='finish'?'Finish':`${stop.ordinal} · ${stop.signId}`;stationSelect.append(option);}}
+  if(stationSelect)stationSelect.onchange=()=>{setPlaying(false);setDistance(Number(stationSelect.value));};
   let distance=0,playing=false,frame=0,previous=0,closed=false,arrived=null,velocity=0,cameraHeading=walkthroughHeading(route,0),exercise=null,exercisePose=null,departure=null,pace=1;
   const images=new Map();
   for(const n of route.stops.filter(n=>n.signId)) {
@@ -32,9 +47,10 @@ export function openWalkthrough(course,pack) {
   function stationName(n){return n?.kind==='station'?`Station ${n.ordinal} · ${n.signId} — ${pack.signs[n.signId]?.name||''}`:n?.kind==='finish'?'Finish':'Start';}
   function draw(){
     const rect=canvas.getBoundingClientRect(),w=Math.max(320,Math.round(rect.width)),h=Math.max(260,Math.round(rect.height));
-    if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
+    if(!scene3D&&(canvas.width!==w||canvas.height!==h)){canvas.width=w;canvas.height=h;}
     const routePose=sampleWalkthrough(route,distance);if(!routePose)return;
     const pose=exercisePose||travelPose(routePose);
+    if(scene3D){scene3D.render(pose,cameraHeading,$('[data-view]').value==='overview',$('[data-floor]').value||'gym');drawMap(pose);updateReadout(routePose);return;}
     const forward={x:Math.cos(cameraHeading),y:Math.sin(cameraHeading)};
     const overview=$('[data-view]').value==='overview',size=Math.max(course.ring.width,course.ring.height);
     const eye=overview?{x:course.ring.width/2-size*.65,y:course.ring.height/2-size*.8,z:size*.85}:{x:pose.x,y:pose.y,z:1};
@@ -118,14 +134,30 @@ export function openWalkthrough(course,pack) {
       const sign=pack.signs[n.signId],name=sign?.name||'';
       if(sign?.space?.footprint){sphere(n.x,n.y,0.3,.35,'#ef943d');label(n.x,n.y,.9,/jump/i.test(name)?'JUMP AREA':/spiral|serpentine|figure|clover/i.test(name)?'CONE AREA':'EXERCISE AREA');}
     }
+    drawMap(pose);updateReadout(routePose);
+  }
+  function updateReadout(routePose){
     const stop=exercise?.stop||arrived||routePose.next,title=stationName(stop);
     $('[data-title]').textContent=(exercise?'Performing: ':arrived?'At: ':'Approaching: ')+title;
     $('[data-detail]').textContent=`${distance.toFixed(1)} / ${route.length.toFixed(1)} ft · ${exercise?'Exercise motion preview':!playing&&arrived?.kind==='station'?'Press Play to continue.':$('[data-exercises]').checked&&stop?.kind==='station'&&!exerciseScript(pack.id,stop.signId)?'This exercise has no motion script yet; route preview only.':'Handler view; dog actions are not shown.'}`;
     const image=$('.walk-station img');image.hidden=!stop?.signId;if(stop?.signId){const src=signImageUrl(pack,stop.signId);if(image.getAttribute('src')!==src)image.src=src;image.alt=title;}
+    const replay=$('[data-replay]');if(replay)replay.disabled=!stop?.signId||!exerciseScript(pack.id,stop.signId);
+    const phase=$('[data-phase]');if(phase)phase.textContent=exercise?'EXERCISE':playing?'WALKING':'PAUSED';
+  }
+  function drawMap(pose){
+    if(!mapCtx)return;
+    mapCanvas.width=220;mapCanvas.height=155;
+    const c=mapCtx,padding=17,scale=Math.min((220-padding*2)/course.ring.width,(155-padding*2)/course.ring.height);
+    const x=value=>padding+value*scale,y=value=>padding+value*scale;
+    c.clearRect(0,0,220,155);c.fillStyle='#f6f5f0';c.fillRect(x(0),y(0),course.ring.width*scale,course.ring.height*scale);c.strokeStyle='#c8d1d4';c.lineWidth=1;c.strokeRect(x(0),y(0),course.ring.width*scale,course.ring.height*scale);
+    c.strokeStyle='#a9bbc5';c.lineWidth=1.5;c.beginPath();route.nodes.forEach((n,i)=>i?c.lineTo(x(n.x),y(n.y)):c.moveTo(x(n.x),y(n.y)));c.stroke();
+    for(const stop of route.stops){c.fillStyle='#617787';c.beginPath();c.arc(x(stop.x),y(stop.y),2,0,Math.PI*2);c.fill();}
+    c.save();c.translate(x(pose.x),y(pose.y));c.rotate(cameraHeading);c.fillStyle='#c37536';c.beginPath();c.moveTo(9,0);c.lineTo(-5,-5);c.lineTo(-2,0);c.lineTo(-5,5);c.closePath();c.fill();c.restore();
   }
   $('[data-play]').onclick=()=>{if(distance>=route.length)setDistance(0);arrived=null;setPlaying(!playing);};
   $('[data-next]').onclick=()=>{setPlaying(false);setDistance(route.stops.find(n=>n.distance>distance+.05)?.distance??route.length);};
   $('[data-prev]').onclick=()=>{setPlaying(false);setDistance([...route.stops].reverse().find(n=>n.distance<distance-.05)?.distance??0);};
+  $('[data-replay]').onclick=()=>{const stop=exercise?.stop||arrived||sampleWalkthrough(route,distance).next;if(!stop?.signId||!exerciseScript(pack.id,stop.signId))return;setPlaying(false);setDistance(stop.distance);$('[data-exercises]').checked=true;beginExercise(stop);setPlaying(true);};
   $('[data-restart]').onclick=()=>{setPlaying(false);setDistance(0);};
   $('[data-progress]').oninput=e=>{setPlaying(false);setDistance(Number(e.target.value));};
   $('[data-view]').onchange=draw;
@@ -193,8 +225,9 @@ export function openWalkthrough(course,pack) {
     if(!exercise)cameraHeading=easeHeading(cameraHeading,travelHeading(),dt);
     draw();frame=requestAnimationFrame(tick);
   }
-  function cleanup(){if(closed)return;closed=true;cancelAnimationFrame(frame);observer.disconnect();dialog.remove();}
+  function cleanup(){if(closed)return;closed=true;cancelAnimationFrame(frame);observer.disconnect();scene3D?.dispose();dialog.remove();}
   $('[data-close]').onclick=()=>dialog.close();dialog.addEventListener('close',cleanup,{once:true});
+  if(scene3D)canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();setPlaying(false);$('[data-engine]').textContent='3D paused · close and reopen review';});
   const observer=new ResizeObserver(draw);observer.observe(canvas);
   dialog.showModal();setDistance(0);frame=requestAnimationFrame(tick);
 }
