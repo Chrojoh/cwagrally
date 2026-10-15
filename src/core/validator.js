@@ -1,3 +1,4 @@
+import {workingSpaceWarnings} from './working-space.js';
 import { distance, equipmentPlacementConflicts, equipmentFootprintFor, pointInEquipmentFootprint, requiredTurnAt, segmentsCross, signFitsTurn } from './geometry.js';
 import { joinedConnectionFor, joinDecisionValid, maxUsesFor, quotaCount, signById, transitionRuleFor } from './rules.js';
 import { officialStationCount, ringRuleIssues, ringRuleText, stationCountLabel } from './pack.js';
@@ -329,6 +330,7 @@ export function validateCourse(course, pack) {
     results.push(...customResults);
   }
 
+  results.push(...workingSpaceWarnings(course,pack));
   return results;
 }
 

@@ -1,3 +1,4 @@
+import {workingSpaceReview} from '../core/working-space.js';
 import { equipmentFootprintFor, requiredTurnAt } from '../core/geometry.js';
 import { signImageUrl } from '../core/pack.js';
 
@@ -254,6 +255,16 @@ export function drawCourseToContext(ctx, course, pack, box, imageCache = cache, 
     ctx.fillText(zone.label||'NO-GO',zx+(opts.print?8:4),zy-(opts.print?7:3));
     ctx.restore();
   }
+
+  // Selected exercise guidance stays amber: passing an estimate is not approval.
+  if(!opts.print)course.nodes.forEach((node,i)=>{
+    if(node.stationId!==opts.selectedStationId)return;
+    const review=workingSpaceReview(course,pack,i);if(!review)return;
+    const corners=review.area.corners.map(p=>({x:ox+p.x*scale,y:oy+p.y*scale}));
+    ctx.save();ctx.strokeStyle='#b67812';ctx.fillStyle='rgba(214,154,39,.15)';ctx.setLineDash([7,4]);ctx.lineWidth=2;
+    ctx.beginPath();corners.forEach((p,k)=>k?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.fill();ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#855b11';ctx.font='10px Arial';ctx.textAlign='left';ctx.fillText('Estimated working area · review',corners[0].x,corners[0].y-5);ctx.restore();
+  });
 
   // Equipment working-footprint overlay.
   // This is drawn before the path so the route remains readable. The same

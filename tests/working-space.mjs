@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import pack from '../src/orgs/cwags-2021.js';
+import {workingSpaceFor,workingSpaceReview,workingSpaceWarnings} from '../src/core/working-space.js';
+const course={ring:{width:100,height:100},nodes:[{kind:'start',x:10,y:30},{kind:'station',stationId:'s',signId:'S25',x:20,y:30},{kind:'finish',x:60,y:30}]};
+const original=JSON.stringify(course),a=workingSpaceFor(course,pack,1);
+assert.equal(a.length,32);assert.equal(a.width,10);assert.equal(a.heading,90);
+assert.equal(workingSpaceReview(course,pack,1).conflicts.length,0);
+course.noGoZones=[{x:25,y:29,width:2,height:2,label:'pillar'}];assert.match(workingSpaceReview(course,pack,1).conflicts.join(),/pillar/);delete course.noGoZones;
+course.nodes[2].x=30;assert.match(workingSpaceWarnings(course,pack)[0].message,/anchor/);assert.equal(workingSpaceWarnings(course,pack)[0].severity,'warning');
+course.nodes[1].x=90;assert.match(workingSpaceReview(course,pack,1).conflicts.join(),/boundary/);
+course.nodes=[{kind:'start',x:30,y:10},{kind:'station',stationId:'s',signId:'S27',x:30,y:20},{kind:'finish',x:30,y:60}];
+const south=workingSpaceFor(course,pack,1);assert.equal(south.heading,180);assert.ok(Math.abs(south.corners[0].y-17)<1e-8);
+course.nodes[1].signId='S17';const back=workingSpaceFor(course,pack,1);assert.equal(back.back,15);assert.equal(back.forwardFt,0);
+assert.equal(workingSpaceFor(course,{id:'ckc'},1),null);
+course.nodes[1].signId='S1';assert.equal(workingSpaceFor(course,pack,1),null);
+const restored=JSON.parse(original);workingSpaceReview(restored,pack,1);assert.equal(JSON.stringify(restored),original,'guidance must not edit saved courses');
+console.log('Working-area dimensions, approach rotation, backing, ring/anchor warnings, organization isolation and immutability PASS');

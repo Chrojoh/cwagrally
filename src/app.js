@@ -1,3 +1,4 @@
+import {workingSpaceReview} from './core/working-space.js';
 import {stationMeasurements} from './core/station-measurements.js';
 import {cwagsSpaceEntry} from './core/cwags-space-reference.js';
 import { openWalkthrough } from './ui/walkthrough.js';
@@ -662,6 +663,11 @@ function renderStationInspector(){
   const {node,before,after}=measured;
   function line(label,value){const p=document.createElement('div'),b=document.createElement('b');b.textContent=label+' ';p.append(b,document.createTextNode(value));el.append(p);}
   line(node.signId,pack.signs[node.signId]?.name||'');
+  const working=workingSpaceReview(course,pack,course.nodes.indexOf(node));
+  if(working){
+    line('Estimated working area:',`${working.area.length} × ${working.area.width} ft. ${working.area.source}. ${working.area.assumptions}`);
+    line('Space review:',working.conflicts.length?working.conflicts.join('; '):'No boundary or other-anchor conflict detected in this approximate area.');
+  }
   for(const [name,leg]of [['Before',before],['After',after]])if(leg){
     line(name,`${leg.anchorFeet.toFixed(1)} ft straight between station anchors; ${leg.routeFeet.toFixed(1)} ft along drawn route.`);
     if(leg.rule)line('Exercise-specific distance:',leg.rule.label+(leg.rule.approximate?' Approximate description; software tolerance is provisional.':''));
