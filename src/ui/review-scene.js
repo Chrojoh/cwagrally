@@ -61,15 +61,14 @@ export function buildReviewScene(course,pack,{textureFactory=makeSurfaceTexture,
   const floorMat=material({color:0xffffff,roughness:.46,metalness:0,bumpScale:.012});
   const ground=new THREE.Mesh(new THREE.PlaneGeometry(w+36,h+36),floorMat);ground.rotation.x=-Math.PI/2;ground.position.set(w/2,-.015,h/2);ground.receiveShadow=true;ground.name='floor';scene.add(ground);
   const room=new THREE.Group();room.name='indoor-room';scene.add(room);
-  const wallMat=material({color:'#d8d9d6',roughness:.92}),padMat=material({color:'#344956',roughness:.82}),white=material({color:'#f7f6ef',roughness:.5}),rubber=material({color:'#28333b',roughness:.9});
+  // Flat grey walls stay stable as the camera moves. Overlapping padding
+  // previously shared wall faces, causing depth fighting.
+  const wallMat=new THREE.MeshBasicMaterial({color:'#b8b8b8'});materials.add(wallMat);
+  const white=material({color:'#ffffff',roughness:.7}),rubber=material({color:'#28333b',roughness:.9});
   function box(parent,dimensions,position,mat){const mesh=new THREE.Mesh(new THREE.BoxGeometry(...dimensions),mat);mesh.position.set(...position);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;}
   for(const [dims,pos] of [[[w+30,12,.25],[w/2,6,-12]],[[w+30,12,.25],[w/2,6,h+12]],[[.25,12,h+24],[-12,6,h/2]],[[.25,12,h+24],[w+12,6,h/2]]]){
-    box(room,dims,pos,wallMat);
-    const padding=[...dims];padding[1]=3;box(room,padding,[pos[0],1.5,pos[2]],padMat);
+    const wall=box(room,dims,pos,wallMat);wall.castShadow=false;wall.receiveShadow=false;
   }
-  // Recessed wall lights suggest a calm, softly lit training hall.
-  const lamp=material({color:'#fff9e8',emissive:'#fff1cf',emissiveIntensity:.65,roughness:.35});
-  for(let x=4;x<w;x+=12){box(room,[6,.45,.12],[x,8,-11.8],lamp);box(room,[6,.45,.12],[x,8,h+11.8],lamp);}
   const fenceGroup=new THREE.Group();fenceGroup.name='ring-fence';scene.add(fenceGroup);
   const beams=[];
   function beam(a,b,width,depth=width){
