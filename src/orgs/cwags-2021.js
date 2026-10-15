@@ -1383,7 +1383,7 @@ const signs = {
   },
   "P16": {
     "id": "P16",
-    "name": "Turn–Down, Sit, Heel",
+    "name": "Turn–Send Over Jump",
     "category": "recall",
     "stationary": true,
     "equipment": null,
@@ -1767,10 +1767,19 @@ const equipmentSpace = {
   }
 }
 for (const [id, space] of Object.entries(equipmentSpace)) {
-  if (signs[id]) signs[id].space = space;
+  if (signs[id]) { space.footprint.basis='app-design-allowance'; signs[id].space = space; }
 }
 
 // ---------------------------------------------------------------------------
+// Verified source corrections from the published Pro exercise descriptions.
+signs.P16.equipment='jump';
+signs.P16.generatorEligible=false; // Requires real jump + dog/handler corridor geometry.
+signs.P21.name='Stand–Leave Running–Call to Heel';
+signs.P21.motion.turnDelta=0;
+signs.A21.motion.turnDelta=90;
+signs.A22.motion.turnDelta=-90;
+signs.R16.generatorEligible=false; // ARF single and Zoom 2 double variants need distinct state/geometry.
+
 // Level-aware "what must come next" rules.
 // FINISH is handled separately by allowFinish.
 // ---------------------------------------------------------------------------
@@ -1939,10 +1948,11 @@ const joinedPairRules = [
 const adjacentDistanceRules = [
   // Approximate/direct distances from the C-WAGS 2021 exercise descriptions.
   // These apply when the listed exercises are adjacent on the course.
-  { from:['A14','A24','PR7','PR8'], to:['A15'], target:5, tolerance:1.5, label:'A15 Turn–Down, Sit, Front approximately 5 ft from the dog' },
-  { from:['A14','A24','PR7','PR8'], to:['A17'], min:8, max:10, label:'A17 Call to Heel approximately 8–10 ft from where the dog is left' },
+  { from:['A14','A24','PR7','PR8'], to:['A15'], approximate:true, source:'Advanced p3', target:5, tolerance:1.5, label:'A15 Turn–Down, Sit, Front approximately 5 ft from the dog' },
+  { from:['A14','A24','PR7','PR8'], to:['A17'], approximate:true, source:'Advanced p4', min:8, max:10, label:'A17 Call to Heel approximately 8–10 ft from where the dog is left' },
   { from:['A14','A24','PR7','PR8'], to:['P14'], min:20, label:'P14 Drop on Recall at least 20 ft from the dog' },
-  { from:['A14','A24','PR7','PR8'], to:['P15'], target:12, tolerance:2, label:'P15 Turn–Down, Sit, Front approximately 12 ft from the dog' }
+  { from:['A14','A24','PR7','PR8'], to:['P17','P18'], min:8, max:18, label:'P17/P18 turn sign 8–18 ft from the left dog' },
+  { from:['A14','A24','PR7','PR8'], to:['P15'], approximate:true, source:'Pro p3', target:12, tolerance:2, label:'P15 Turn–Down, Sit, Front approximately 12 ft from the dog' }
 ];
 
 const dependentSigns = new Set([
@@ -2053,11 +2063,12 @@ export const cwags2021 = {
   shortName: 'C-WAGS',
   discipline: 'rally',
   version: '2021',
+  sourceLabel: 'Reviewed published editions; working-space coverage incomplete',
   sourceNote: 'Normalized from the user-provided C-WAGS 2021 Rally rule set. Treat this as a versioned historical rules pack until a newer rulebook is supplied.',
   // Course Guidelines, PDF p.12: 'should', with joined/stated-distance exceptions.
   ordinarySpacing: { min:10, severity:'error', allPairs:true, source:'Rally-Rules-and-Guidelines-2021.pdf, p.12' },
   layout: { preferredGap:10 },
-  assetBase: 'https://raw.githubusercontent.com/Chrojoh/cwagrally/main/Signs/',
+  assetBase: './Signs/',
   signs,
   dependentSigns,
   chainTemplates,
@@ -2182,14 +2193,20 @@ export const cwags2021 = {
           out.push({
             code:'cwags:exercise-distance',
             ok:false,
-            severity:'error',
-            message:`${rule.label}; current gap is ${d.toFixed(1)} ft`,
+            severity:rule.approximate?'warn':'error',
+            message:`${rule.label}; station-anchor gap ${d.toFixed(1)} ft${rule.approximate?'; provisional software tolerance exceeded (review, not a confirmed fixed-limit breach)':''}`,
             details:{station:i+1,nextStation:i+2,from:a.signId,to:b.signId,distance:d,rule}
           });
         }
       }
 
-      // 3) True equipment working footprints.
+      for(const node of stations.filter(n=>n.signId==='P16'))out.push({
+        code:'cwags:p16-geometry-unverified',ok:false,severity:'error',
+        message:'P16 requires a jump, dog/handler offsets and a recall corridor; sign positions alone cannot validate this setup.',
+        details:{stationId:node.stationId,signId:'P16'}
+      });
+
+      // 3) App-designed equipment working envelopes (not official minima).
       // Each equipment exercise has an oriented rectangle aligned with the
       // actual outgoing course direction. The envelope must:
       //   - stay inside the ring,
@@ -2223,6 +2240,12 @@ export const cwags2021 = {
         }
         equipmentPlacements.push({ nodeIndex, sign });
       }
+
+      const unmodeled=stations.filter(n=>!pack.signs[n.signId]?.space?.footprint);
+      out.push({code:'cwags:space-coverage',ok:false,severity:'warn',
+        message:`Working space is not fully verified: ${unmodeled.length}/${stations.length} stations have no swept-area model. Equipment rectangles are app design allowances, not official minimum footprints.`,
+        details:{unmodeledStationIds:unmodeled.map(n=>n.stationId)}
+      });
 
       // 4) ARF jumps require at least 15 ft between jump placements.
       const arfJumps = stations.filter(s => s.signId === 'APR9');

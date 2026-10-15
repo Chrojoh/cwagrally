@@ -2,13 +2,18 @@ import * as THREE from '../vendor/three.module.js';
 import {ringFence} from '../core/ring-scene.js';
 import {signImageUrl} from '../core/pack.js';
 
-export function reviewSignLayout(course) {
+export function reviewSignLayout(course,pack) {
   return course.nodes.flatMap((node,index)=>{
     if(node.kind!=='station')return [];
     let before=index-1;
     while(before>0&&Math.hypot(node.x-course.nodes[before].x,node.y-course.nodes[before].y)<.001)before--;
     const previous=course.nodes[Math.max(0,before)],heading=Math.atan2(node.y-previous.y,node.x-previous.x);
-    return [{node,heading,x:node.x-Math.sin(heading)*1.6,z:node.y+Math.cos(heading)*1.6,normalX:-Math.cos(heading),normalZ:-Math.sin(heading)}];
+    const directionChange=Math.abs(pack?.signs?.[node.signId]?.motion?.turnDelta||0)>0;
+    // General C-WAGS placement: ahead for direction changes, right otherwise.
+    // Two-foot sign offset is a preview choice, not a published minimum.
+    const x=directionChange?node.x+Math.cos(heading)*2:node.x-Math.sin(heading)*1.6;
+    const z=directionChange?node.y+Math.sin(heading)*2:node.y+Math.cos(heading)*1.6;
+    return [{node,heading,x,z,normalX:-Math.cos(heading),normalZ:-Math.sin(heading)}];
   });
 }
 
@@ -90,7 +95,7 @@ export function buildReviewScene(course,pack,{textureFactory=makeSurfaceTexture,
   const tape=material({color:'#d7ceac',roughness:.8});
   for(const [dims,pos] of [[[w,.008,.07],[w/2,0,0]],[[w,.008,.07],[w/2,0,h]],[[.07,.008,h],[0,0,h/2]],[[.07,.008,h],[w,0,h/2]]])box(scene,dims,pos,tape);
   const signs=new THREE.Group();signs.name='station-signs';scene.add(signs);let ordinal=0;
-  for(const layout of reviewSignLayout(course)){
+  for(const layout of reviewSignLayout(course,pack)){
     ordinal++;const group=new THREE.Group();group.name=`station-${ordinal}`;group.position.set(layout.x,0,layout.z);group.rotation.y=Math.atan2(layout.normalX,layout.normalZ);signs.add(group);
     box(group,[1.85,.06,.7],[0,.04,0],rubber);
     for(const x of [-.65,.65])box(group,[.06,.65,.07],[x,.35,-.08],rubber);

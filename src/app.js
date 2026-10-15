@@ -1,10 +1,11 @@
-import {makeReviewDemo} from './core/review-demo.js';
+import {stationMeasurements} from './core/station-measurements.js';
+import {cwagsSpaceEntry} from './core/cwags-space-reference.js';
 import { openWalkthrough } from './ui/walkthrough.js';
 import { GenerationClient } from './core/worker-client.js';
 import { organizations, getPack } from './orgs/registry.js';
 import { validateCourse } from './core/validator.js';
 import { evaluateCourseQuality } from './core/quality.js';
-import { candidateSignsForNode, refreshJoinedFlags } from './core/rules.js';
+import { candidateSignsForNode, refreshJoinedFlags, joinCompatibilityFor, joinDecisionValid, setJoinDecision } from './core/rules.js';
 import { downloadJson, readCourseFile } from './core/storage.js';
 import { exportCoursePdf, exportCourseSetupPdf } from './core/pdf.js';
 import { recalcHeadings } from './core/geometry.js';
@@ -496,6 +497,7 @@ function render(loadImages=true) {
   renderValidation(results);
   renderQuality(quality,results);
   renderSummary();
+  renderStationInspector();
   $('routeNotice').hidden=!course.routeFamily?.includes('fallback');
   $('routeNotice').textContent=course.routeFamily?.includes('fallback')
     ? 'A fallback layout was used because the search could not find a suitable course in the requested shape. Review the course before use, or try a different shape or ring size.' : '';
@@ -559,7 +561,7 @@ function renderValidation(results) {
     const div=document.createElement('div');
     const warning=r.severity==='warn'||r.severity==='warning';
     div.className=`val ${r.ok?'ok':warning?'warn':'error'}`;
-    div.textContent=`${r.ok?'✓':'✕'} ${validationMessage(r,ids)}`;
+    div.textContent=`${r.ok?'✓':warning?'⚠':'✕'} ${validationMessage(r,ids)}`;
     if(!r.ok && ids.size){
       div.classList.add('val-clickable');
       div.title='Click to highlight the affected station';
@@ -652,6 +654,32 @@ function removeStationById(stationId) {
 }
 
 
+function renderStationInspector(){
+  const el=$('stationMeasureInfo');if(!el)return;
+  el.replaceChildren();$('joinModeWrap').hidden=true;$('joinModeNote').textContent='';
+  const measured=course&&stationMeasurements(course,pack,selectedStationId);
+  if(!measured){el.textContent='Select a station to inspect its measured gaps and joining.';return;}
+  const {node,before,after}=measured;
+  function line(label,value){const p=document.createElement('div'),b=document.createElement('b');b.textContent=label+' ';p.append(b,document.createTextNode(value));el.append(p);}
+  line(node.signId,pack.signs[node.signId]?.name||'');
+  for(const [name,leg]of [['Before',before],['After',after]])if(leg){
+    line(name,`${leg.anchorFeet.toFixed(1)} ft straight between station anchors; ${leg.routeFeet.toFixed(1)} ft along drawn route.`);
+    if(leg.rule)line('Exercise-specific distance:',leg.rule.label+(leg.rule.approximate?' Approximate description; software tolerance is provisional.':''));
+    if(leg.joined)line('Joined:',`${leg.joined.origin==='explicit'?'Explicitly designated':'Inferred'}; the drawn gap is not a prescribed heeling distance.`);
+  }
+  if(pack.id==='cwags'){
+    const reference=cwagsSpaceEntry(pack.signs[node.signId],pack);
+    line('Published detail:',reference.measurement);line('App working area:',reference.designEnvelope);
+    line('Reference positions:','Station anchors are not yet distinct dog, handler, sign and equipment positions. Review dog-distance and equipment measurements on the setup map.');
+    if(before?.other.kind==='station'){
+      const compatible=joinCompatibilityFor(pack,before.other.signId,node.signId);
+      $('joinModeWrap').hidden=false;$('joinMode').querySelector('option[value="joined"]').disabled=!compatible;
+      $('joinMode').value=joinDecisionValid(before.other,node)?node.joinDecision.state:'auto';
+      $('joinModeNote').textContent=(measured.staleJoin?'Saved joining decision is stale. ':'')+(compatible?'An explicit designation records your layout intention; it is not judge approval.':'No reviewed joining definition for this pair. Leave unsupported combinations for judge review.');
+    }
+  }
+}
+
 function stationSetupDistance(nodeIndex, ordinal) {
   if(!course?.nodes?.[nodeIndex]) return null;
 
@@ -674,7 +702,7 @@ function stationSetupDistance(nodeIndex, ordinal) {
 
   const previous=course.nodes[prevIndex];
   const fromLabel=previous.kind==='start' ? 'Start' : `#${Math.max(1,ordinal-1)}`;
-  return {feet,fromLabel};
+  return {feet,anchorFeet:Math.hypot(previous.x-course.nodes[nodeIndex].x,previous.y-course.nodes[nodeIndex].y),fromLabel};
 }
 
 function renderStations(problemIds=new Set()) {
@@ -714,7 +742,7 @@ function renderStations(problemIds=new Set()) {
       const op=document.createElement('option');op.value=s.id;op.textContent=`${s.id} — ${s.name}`;
       if(s.id===node.signId)op.selected=true;select.appendChild(op);
     });
-    select.onfocus=()=>{ selectedStationId=node.stationId; updateEditButtons(); };
+    select.onfocus=()=>{ selectedStationId=node.stationId; updateEditButtons();renderStationInspector(); };
     select.onchange=()=>replaceStationSign(node.stationId,select.value);
 
     const detail=document.createElement('div');
@@ -724,7 +752,7 @@ function renderStations(problemIds=new Set()) {
     const distanceLine=document.createElement('div');
     distanceLine.className='station-distance';
     distanceLine.textContent=setup
-      ? `${setup.feet.toFixed(1)} ft from ${setup.fromLabel}`
+      ? `From ${setup.fromLabel}: ${setup.anchorFeet.toFixed(1)} ft anchor gap · ${setup.feet.toFixed(1)} ft route`
       : 'Distance unavailable';
     detail.appendChild(distanceLine);
 
@@ -1003,7 +1031,13 @@ ringH.addEventListener('input',()=>{if(searchTimer) cancelSearch();updateRingGui
 routeStyleEl?.addEventListener('change',()=>{if(searchTimer) cancelSearch();});
 $('includeSequences').addEventListener('change',()=>{if(searchTimer) cancelSearch();});
 $('cancelGenerationBtn').onclick=cancelSearch;
-$('reviewDemoBtn').onclick=()=>openWalkthrough(makeReviewDemo(),getPack('cwags:2021'));
+$('joinMode').onchange=()=>{
+  const measured=course&&stationMeasurements(course,pack,selectedStationId);if(!measured?.before)return;
+  const before=snapshotCourse();
+  try{setJoinDecision(pack,measured.before.other,measured.node,$('joinMode').value);refreshJoinedFlags(course,pack);commitEdit(before);render();}
+  catch(error){alert(error.message);renderStationInspector();}
+};
+$('spaceReferenceBtn').onclick=()=>window.open('./cwags-space-reference.html','_blank','noopener');
 $('walkCourseBtn').onclick=()=>{if(course) openWalkthrough(course,pack);};
 $('focusMapBtn').onclick=()=>{
   const focused=document.querySelector('.layout').classList.toggle('map-focused');
@@ -1105,7 +1139,7 @@ canvas.addEventListener('pointerdown',e=>{
     dragIndex=i;
     dragBefore=snapshotCourse();
     selectedStationId=course.nodes[i].kind==='station'?course.nodes[i].stationId:null;
-    updateEditButtons();
+    updateEditButtons();renderStationInspector();
     canvas.setPointerCapture(e.pointerId);
     drawCourse(canvas,course,pack,{selectedStationId,setupMode,changeStatusByStationId:changeStatusMap()});
   }

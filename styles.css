@@ -396,3 +396,6 @@ button:disabled{opacity:.45;cursor:not-allowed}.edit-actions{margin-bottom:9px}.
 .walk-station strong { font-size:14px; color:#233d4b; }
 .walk-station p { margin:6px 0 0; font-size:11px; }
 @media(max-width:700px) { .review-map { top:auto; bottom:12px; right:10px; width:154px; } .walk-dialog .review-map canvas { width:154px; height:108px; } .review-hud { left:10px; top:10px; } .walk-controls { padding:10px; } }
+
+#stationMeasureInfo > div { margin: 0 0 .55rem; line-height: 1.45; }
+#joinModeNote { margin-top: .5rem; line-height: 1.4; }

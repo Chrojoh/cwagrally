@@ -73,20 +73,43 @@ export function joinedRuleFor(pack, fromId, toId) {
   ) || null;
 }
 
+// Saved decisions are bound to both stations and signs. Replacing/reordering a
+// station cannot silently carry a former spacing exemption onto a new pair.
+export function joinCompatibilityFor(pack,fromId,toId){
+  return joinedRuleFor(pack,fromId,toId)||
+    (pack.id==='cwags'&&fromId==='S5'&&toId==='S11'
+      ?{label:'Pivot and walk-around joined example (guidelines p12)',displayWarnAbove:6,explicitOnly:true}:null);
+}
+export function joinDecisionValid(a,b){
+  const d=b?.joinDecision;
+  return !!d&&d.fromStationId===a?.stationId&&d.fromSignId===a?.signId&&d.toSignId===b?.signId;
+}
+export function joinedConnectionFor(pack,a,b){
+  const compatible=joinCompatibilityFor(pack,a?.signId,b?.signId);
+  if(joinDecisionValid(a,b))return b.joinDecision.state==='joined'&&compatible?{...compatible,origin:'explicit'}:null;
+  const inferred=joinedRuleFor(pack,a?.signId,b?.signId);
+  return inferred?{...inferred,origin:'inferred'}:null;
+}
+export function setJoinDecision(pack,a,b,state){
+  if(!a||!b||!['joined','separate','auto'].includes(state))throw new Error('Choose adjacent stations and a valid joining mode.');
+  if(state==='auto'){delete b.joinDecision;return;}
+  if(state==='joined'&&!joinCompatibilityFor(pack,a.signId,b.signId))throw new Error('This pair has no reviewed joining definition. Leave it for judge review.');
+  b.joinDecision={fromStationId:a.stationId,fromSignId:a.signId,toSignId:b.signId,state};
+}
 export function refreshJoinedFlags(course, pack) {
   if (!course?.nodes) return course;
   let previousStation = null;
   for (const node of course.nodes) {
     if (node.kind !== 'station') continue;
-    const rule = previousStation
-      ? joinedRuleFor(pack, previousStation.signId, node.signId)
-      : null;
+    const rule = previousStation?joinedConnectionFor(pack,previousStation,node):null;
     if (rule) {
       node.joinedToPrevious = true;
       node.joinedReason = rule.label || 'Joined exercise';
+      node.joinedOrigin=rule.origin;
     } else {
       delete node.joinedToPrevious;
       delete node.joinedReason;
+      delete node.joinedOrigin;
     }
     previousStation = node;
   }

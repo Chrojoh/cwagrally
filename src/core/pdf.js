@@ -115,7 +115,7 @@ export async function exportCoursePdf({ course, pack, drawCourseToContext, image
       }
       const from=i===0?'Start':`#${i}`;
       ctx.fillStyle='#5e6a7e';ctx.font='18px Arial';
-      ctx.fillText(`${feet.toFixed(1)} ft from ${from} · x ${node.x.toFixed(1)} · y ${node.y.toFixed(1)}`,sx+190,y+58);
+      ctx.fillText(`${feet.toFixed(1)} ft route from ${from} · x ${node.x.toFixed(1)} · y ${node.y.toFixed(1)}`,sx+190,y+58);
     }
   });
 

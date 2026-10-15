@@ -8,10 +8,15 @@ const context=new Proxy({}, {get:()=>()=>{},set:()=>true});
 const makeCanvas=()=>({getContext:()=>context});
 const world=buildReviewScene(course,getPack('cwags:2021'),{textureFactory:()=>{const t=new THREE.Texture();textures.push(t);return t;},loadSign:()=>new THREE.Texture(),makeCanvas});
 assert.equal(world.signs.children.length,5);
+const placements=reviewSignLayout(course,getPack('cwags:2021'));
+const pivot=placements.find(p=>p.node.signId==='S5');
+assert.ok(pivot.z<pivot.node.y&&Math.abs(pivot.x-pivot.node.x)<1e-8,'direction-change sign is ahead on approach');
+const halt=placements.find(p=>p.node.signId==='S30');
+assert.ok(halt.x>halt.node.x&&Math.abs(halt.z-halt.node.y)<1e-8,'ordinary halt sign is to the approaching handler right');
 assert.ok(world.fenceGroup.children.some(n=>n.isInstancedMesh),'lattice uses batched GPU geometry');
 world.scene.updateMatrixWorld(true);
 for(const group of world.signs.children){
- const i=world.signs.children.indexOf(group),layout=reviewSignLayout(course)[i];
+ const i=world.signs.children.indexOf(group),layout=reviewSignLayout(course,getPack('cwags:2021'))[i];
  const normal=new THREE.Vector3(0,0,1).transformDirection(group.matrixWorld);
  assert.ok(Math.abs(normal.x-layout.normalX)<1e-9&&Math.abs(normal.z-layout.normalZ)<1e-9,'sign faces incoming approach, without billboarding');
 }

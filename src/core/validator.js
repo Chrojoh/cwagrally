@@ -1,5 +1,5 @@
 import { distance, equipmentPlacementConflicts, equipmentFootprintFor, pointInEquipmentFootprint, requiredTurnAt, segmentsCross, signFitsTurn } from './geometry.js';
-import { joinedRuleFor, maxUsesFor, quotaCount, signById, transitionRuleFor } from './rules.js';
+import { joinedConnectionFor, joinDecisionValid, maxUsesFor, quotaCount, signById, transitionRuleFor } from './rules.js';
 import { officialStationCount, ringRuleIssues, ringRuleText, stationCountLabel } from './pack.js';
 import { rectCorners, routeNoGoConflicts } from './venue.js';
 
@@ -165,7 +165,7 @@ export function validateCourse(course, pack) {
       for (let j = i + 1; j < (spacingRule.allPairs ? stations.length : i + 2); j++) {
         const a = stations[i], b = stations[j];
         const d = distance(a, b);
-        const joined = joinedRuleFor(pack, a.signId, b.signId);
+        const joined = joinedConnectionFor(pack,a,b);
         const stated = (pack.adjacentDistanceRules || []).find(rule =>
           rule.from.includes(a.signId) && rule.to.includes(b.signId)
         );
@@ -198,7 +198,7 @@ export function validateCourse(course, pack) {
   const joinedWarnings = [];
   for (let i = 0; i < stations.length - 1; i++) {
     const a = stations[i], b = stations[i + 1];
-    const joined = joinedRuleFor(pack, a.signId, b.signId);
+    const joined = joinedConnectionFor(pack,a,b);
     if (!joined) continue;
     const d = distance(a, b);
     const warnAbove = joined.displayWarnAbove ?? 6;
@@ -223,6 +223,17 @@ export function validateCourse(course, pack) {
       'warning',
       joinedWarnings
     ));
+  }
+
+  if(pack.id==='cwags'){
+    const inferred=[],stale=[];
+    for(let i=0;i<stations.length;i++){
+      const a=stations[i-1],b=stations[i];
+      if(joinedConnectionFor(pack,a,b)?.origin==='inferred')inferred.push({stationId:b.stationId,station:i+1});
+      if(b.joinDecision&&!joinDecisionValid(a,b))stale.push({stationId:b.stationId,station:i+1});
+    }
+    if(inferred.length)results.push(result('joined-inferred',false,`${inferred.length} joined designation(s) inferred from sign pairs; review and explicitly confirm or separate them. Map gaps are not performed travel.`, 'warning',inferred));
+    if(stale.length)results.push(result('joined-stale',false,`${stale.length} saved joining decision(s) no longer match the preceding station/sign; review them.`, 'warning',stale));
   }
 
   const counts = {};

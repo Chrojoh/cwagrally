@@ -114,6 +114,14 @@
         <div id="signPalette" class="sign-palette" aria-label="Allowed sign palette"></div>
       </section>
 
+      <section class="panel station-inspector">
+        <h2>Selected station</h2>
+        <div id="stationMeasureInfo" class="muted">Select a station to inspect its measured gaps and joining.</div>
+        <label id="joinModeWrap" hidden>Join with previous station
+          <select id="joinMode"><option value="auto">Automatic / inferred</option><option value="joined">Explicitly joined</option><option value="separate">Separate exercises</option></select>
+        </label>
+        <div id="joinModeNote" class="muted"></div>
+      </section>
       <section class="panel">
         <h2>Course status</h2>
         <div id="summary" class="summary"></div>
@@ -155,7 +163,7 @@
           <span id="courseMeta"></span>
         </div>
         <div class="canvas-tools">
-          <button id="reviewDemoBtn" type="button">3D demo</button>
+          <button id="spaceReferenceBtn" type="button">C-WAGS space reference</button>
           <button id="walkCourseBtn" type="button">Walk course</button>
           <button id="focusMapBtn" type="button" aria-pressed="false">Expand ring</button>
           <button id="setupModeBtn" type="button">Physical setup mode</button>
